@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>英语学习 App - Demo</title>
+<style>
+:root { --primary: #4F46E5; --primary-light: #EEF2FF; --surface: #F8FAFC; --text: #1E293B; --muted: #64748B; --radius: 12px; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--surface); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+.app { max-width: 480px; margin: 0 auto; width: 100%; flex: 1; display: flex; flex-direction: column; }
+.header { background: var(--primary); color: white; padding: 16px 20px; font-size: 18px; font-weight: 700; text-align: center; }
+.content { flex: 1; padding: 16px; overflow-y: auto; }
+.nav { display: flex; border-top: 1px solid #E2E8F0; background: white; }
+.nav-item { flex: 1; padding: 10px 0; text-align: center; font-size: 12px; color: var(--muted); cursor: pointer; transition: all .2s; }
+.nav-item.active { color: var(--primary); font-weight: 600; }
+.nav-item .icon { font-size: 20px; display: block; margin-bottom: 2px; }
+.page { display: none; }
+.page.active { display: block; }
+.card { background: white; border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+.card-title { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
+.card-heading { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+.article { line-height: 1.8; font-size: 15px; }
+.article .long-word { color: var(--primary); font-weight: 700; background: var(--primary-light); padding: 1px 4px; border-radius: 4px; }
+.translation { color: var(--muted); font-size: 14px; line-height: 1.6; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #E2E8F0; }
+.word-list { list-style: none; }
+.word-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #F1F5F9; }
+.word-badge { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; margin-right: 12px; }
+.word-badge.long { background: var(--primary); color: white; }
+.word-badge.normal { background: var(--primary-light); }
+.word-text { font-weight: 700; }
+.word-meta { color: var(--muted); font-size: 13px; }
+.long-tag { font-size: 10px; background: var(--primary-light); color: var(--primary); padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
+textarea { width: 100%; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px; font-size: 14px; resize: vertical; min-height: 120px; font-family: inherit; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 12px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .2s; }
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: #4338CA; }
+.btn-primary:disabled { background: #A5B4FC; cursor: not-allowed; }
+.btn-outline { background: white; color: var(--primary); border: 1px solid var(--primary); }
+.btn-row { display: flex; gap: 8px; margin-top: 12px; }
+.score-card { background: var(--primary-light); border-radius: var(--radius); padding: 16px; display: flex; align-items: center; margin-bottom: 12px; }
+.score-num { font-size: 42px; font-weight: 800; color: var(--primary); }
+.score-label { color: var(--muted); margin-left: 4px; }
+.score-points { margin-left: auto; background: #FEF3C7; color: #92400E; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 13px; }
+.diff-item { padding: 6px 0; display: flex; align-items: flex-start; gap: 8px; }
+.diff-tag { font-size: 11px; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+.diff-tag.wrong { background: #FEE2E2; color: #991B1B; }
+.diff-tag.missing { background: #FEF3C7; color: #92400E; }
+.diff-tag.extra { background: #E0E7FF; color: #3730A3; }
+.suggestion { display: flex; gap: 6px; padding: 4px 0; font-size: 13px; color: var(--muted); }
+.points-banner { background: var(--primary); color: white; border-radius: var(--radius); padding: 16px; display: flex; align-items: center; margin-bottom: 16px; }
+.points-banner .pts { font-size: 32px; font-weight: 800; margin-left: 12px; }
+.points-banner .total { margin-left: auto; opacity: .8; font-size: 13px; }
+.month-header { display: flex; align-items: center; margin-bottom: 12px; }
+.month-header .title { flex: 1; text-align: center; font-size: 16px; font-weight: 700; }
+.month-header button { background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px 12px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 6px; }
+.cal-cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 13px; font-weight: 600; position: relative; }
+.cal-cell.head { font-size: 12px; color: var(--muted); aspect-ratio: auto; padding: 4px 0; }
+.cal-cell.checked { background: var(--primary); color: white; }
+.cal-cell.today { background: var(--primary-light); border: 1.5px solid var(--primary); }
+.cal-cell.checked .check { position: absolute; top: 3px; right: 3px; font-size: 9px; }
+.checkin-btn { width: 100%; margin-top: 20px; justify-content: center; font-size: 16px; padding: 14px; }
+.generate-btn { width: 100%; margin-bottom: 12px; justify-content: center; }
+.loading { text-align: center; padding: 40px; color: var(--muted); }
+.hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header" id="pageTitle">每日学习</div>
+  <div class="content">
+    <!-- Page 1: Daily -->
+    <div class="page active" id="pageDailyContent"><button class="btn btn-outline generate-btn" onclick="generateDaily()" id="genBtn">✨ AI 生成今日新闻</button><div id="dailyBody"><div class="loading">加载中...</div></div></div>
+    <!-- Page 2: Dictation -->
+    <div class="page" id="pageDictation"><div class="card"><div class="card-title">请根据当日原文进行默写</div><textarea id="dictInput" placeholder="在这里输入你听写到的英文..."></textarea><div class="btn-row"><button class="btn btn-primary" onclick="submitDictation()" id="submitBtn">提交批改</button><button class="btn btn-outline" onclick="toggleOriginal()">查看原文</button><button class="btn btn-outline" onclick="clearDict()">清空</button></div><div id="originalBox" class="hidden translation" style="margin-top:12px"></div></div><div id="dictResult"></div></div>
+    <!-- Page 3: Checkin -->
+    <div class="page" id="pageCheckin"><div id="checkinBody"><div class="loading">加载中...</div></div></div>
+  </div>
+  <div class="nav">
+    <div class="nav-item active" onclick="switchTab(0)"><span class="icon">📖</span>每日学习</div>
+    <div class="nav-item" onclick="switchTab(1)"><span class="icon">✍️</span>默写</div>
+    <div class="nav-item" onclick="switchTab(2)"><span class="icon">📅</span>打卡</div>
+  </div>
+</div>
+<script>const API='http://127.0.0.1:8000';let dailyContent=null;let calMonth={year:new Date().getFullYear(),month:new Date().getMonth()+1};const titles=['每日学习','英语默写','打卡日历'];function switchTab(i){document.querySelectorAll('.page').forEach((p,idx)=>p.classList.toggle('active',idx===i));document.querySelectorAll('.nav-item').forEach((n,idx)=>n.classList.toggle('active',idx===i));document.getElementById('pageTitle').innerText=titles[i];if(i===2)loadCalendar();}
+async function api(path,opts={}){const r=await fetch(API+path,{...opts,headers:{'Content-Type':'application/json',...(opts.headers||{})}});if(!r.ok){const t=await r.text();throw new Error(`${r.status} ${t}`);}return r.json();}
+async function loadDaily(){try{dailyContent=await api('/api/daily/today');renderDaily();}catch(e){document.getElementById('dailyBody').innerHTML=`<div class="loading">加载失败: ${e.message}<br><br>请确认后端已启动 (uvicorn app.main:app)</div>`;}}
+function renderDaily(){const c=dailyContent;const longSet=new Set(c.words.filter(w=>w.is_long_word).map(w=>w.word.toLowerCase()));const article=c.article.replace(/[A-Za-z']+/g,m=>longSet.has(m.toLowerCase())?`<span class="long-word">${m}</span>`:m);const wordsHtml=c.words.map(w=>`<li class="word-item"><div class="word-badge ${w.is_long_word?'long':'normal'}">${w.is_long_word?'🔥':'📚'}</div><div><div class="word-text">${w.word}${w.is_long_word?'<span class="long-tag">长词</span>':''}</div><div class="word-meta">${w.phonetic||''} ${w.meaning||''}</div></div></li>`).join('');document.getElementById('dailyBody').innerHTML=`<div class="card"><div class="card-title">${c.content_date}</div><div class="card-heading">${c.title}</div><div class="article">${article}</div>${c.translation?`<div class="translation">${c.translation}</div>`:''}</div><div class="card"><div class="card-heading" style="font-size:16px">核心单词</div><ul class="word-list">${wordsHtml}</ul></div>`;}
+async function generateDaily(){const btn=document.getElementById('genBtn');btn.disabled=true;btn.innerText='生成中...';try{await api('/api/daily/generate',{method:'POST',body:'{}'});await loadDaily();btn.innerText='✨ 已生成新内容';setTimeout(()=>btn.innerText='✨ AI 生成今日新闻',2000);}catch(e){alert('生成失败: '+e.message);btn.innerText='✨ AI 生成今日新闻';}finally{btn.disabled=false;}}
+function toggleOriginal(){const b=document.getElementById('originalBox');if(b.classList.contains('hidden')){if(!dailyContent){alert('请先在每日学习页加载内容');return;}b.innerText=dailyContent.article;b.classList.remove('hidden');}else{b.classList.add('hidden');}}
+function clearDict(){document.getElementById('dictInput').value='';document.getElementById('dictResult').innerHTML='';}
+async function submitDictation(){const input=document.getElementById('dictInput').value.trim();if(!input){alert('请先输入默写内容');return;}if(!dailyContent){alert('请先在每日学习页加载内容');return;}const btn=document.getElementById('submitBtn');btn.disabled=true;btn.innerText='AI 批改中...';try{const r=await api('/api/dictation/submit',{method:'POST',body:JSON.stringify({user_id:1,content_id:dailyContent.id,original_text:dailyContent.article,user_input:input})});renderResult(r);}catch(e){alert('批改失败: '+e.message);}finally{btn.disabled=false;btn.innerText='提交批改';}}
+function renderResult(r){const fb=r.feedback;const diffsHtml=fb.diffs.map(d=>{const tagText={wrong:'错误',missing:'遗漏',extra:'多余'}[d.type]||'差异';return `<div class="diff-item"><span class="diff-tag ${d.type}">${tagText}</span><span>${d.expected?`应为「<b>${d.expected}</b>」`:''} ${d.actual?`你写「<span style="color:#DC2626">${d.actual}</span>」`:''}</span></div>`;}).join('');const sugHtml=fb.suggestions.map(s=>`<div class="suggestion">💡 ${s}</div>`).join('');document.getElementById('dictResult').innerHTML=`<div class="score-card"><span class="score-num">${r.score}</span><span class="score-label">分</span><span class="score-points">+${r.earned_points} 积分</span></div><div class="card"><div class="card-heading" style="font-size:16px">AI 总评</div><div>${fb.summary}</div>${diffsHtml?`<hr style="border:none;border-top:1px solid #F1F5F9;margin:12px 0"><div class="card-heading" style="font-size:14px">差异点 (${fb.diffs.length})</div>${diffsHtml}`:''}${sugHtml?`<hr style="border:none;border-top:1px solid #F1F5F9;margin:12px 0"><div class="card-heading" style="font-size:14px">改进建议</div>${sugHtml}`:''}</div>`;}
+async function loadCalendar(){try{const c=await api(`/api/checkin/calendar?user_id=1&year=${calMonth.year}&month=${calMonth.month}`);renderCal(c);}catch(e){document.getElementById('checkinBody').innerHTML=`<div class="loading">加载失败: ${e.message}</div>`;}}
+function renderCal(c){const checkedSet=new Set(c.checked_dates);const firstDay=new Date(c.year,c.month-1,1);const daysInMonth=new Date(c.year,c.month,0).getDate();const leading=firstDay.getDay();const today=new Date();const cells=['日','一','二','三','四','五','六'].map(w=>`<div class="cal-cell head">${w}</div>`);for(let i=0;i<leading;i++)cells.push('<div></div>');for(let d=1;d<=daysInMonth;d++){const dateStr=`${c.year}-${String(c.month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const isChecked=checkedSet.has(dateStr);const isToday=today.getFullYear()===c.year&&today.getMonth()+1===c.month&&today.getDate()===d;cells.push(`<div class="cal-cell ${isChecked?'checked':''} ${isToday?'today':''}">${d}${isChecked?'<span class="check">✓</span>':''}</div>`);}
+document.getElementById('checkinBody').innerHTML=`<div class="points-banner">⭐<span class="pts">${c.available_points}</span><span style="margin-left:6px">积分</span><span class="total">累计 ${c.total_points}</span></div><div class="month-header"><button onclick="shiftMonth(-1)">‹</button><div class="title">${c.year} 年 ${c.month} 月</div><button onclick="shiftMonth(1)">›</button></div><div class="cal-grid">${cells.join('')}</div><button class="btn btn-primary checkin-btn" onclick="doCheckin()">✅ 今日打卡</button>`;}
+function shiftMonth(delta){let y=calMonth.year,m=calMonth.month+delta;if(m<1){m=12;y--;}else if(m>12){m=1;y++;}calMonth={year:y,month:m};loadCalendar();}
+async function doCheckin(){try{await api('/api/checkin',{method:'POST',body:JSON.stringify({user_id:1})});alert('打卡成功，+10 积分');loadCalendar();}catch(e){alert('打卡失败: '+e.message);}}
+loadDaily();</script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+# 敏感信息（必须忽略）
+.env
+backend/.env
+*.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+backend/.venv/
+backend/*.db
+backend/*.log
+backend/build/
+backend/dist/
+
+# Flutter 构建产物
+frontend/build/
+frontend/.dart_tool/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 临时日志（开发时调试用）
+*_out.log
+*_err.log

@@ -1,0 +1,6 @@
+"DATABASE_URL=mysql+pymysql://root:zhym2000@localhost:3306/floo_core_db
+LLM_API_KEY=
+LLM_BASE_URL=https://api.deepseek.com/v1
+LLM_MODEL=deepseek-chat
+APP_HOST=0.0.0.0
+APP_PORT=8000"

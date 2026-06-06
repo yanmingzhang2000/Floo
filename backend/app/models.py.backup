@@ -1,0 +1,137 @@
+"""
+数据库表结构。
+为未来扩展（艾宾浩斯记忆曲线、积分商城）预留字段，MVP 阶段部分字段先不消费。
+"""
+from datetime import datetime, date
+
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    JSON,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.orm import relationship
+
+from app.database import Base
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nickname = Column(String(64), nullable=False, default="学习者")
+    # 积分系统：总积分（历史累计）+ 可用积分（扣除消费）
+    total_points = Column(Integer, default=0, nullable=False)
+    available_points = Column(Integer, default=0, nullable=False)
+    streak_days = Column(Integer, default=0, nullable=False)  # 连续打卡天数
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class DailyContent(Base):
+    """每日学习内容主表，由 AI 根据当日新闻生成。"""
+    __tablename__ = "daily_contents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    content_date = Column(Date, unique=True, nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    article = Column(Text, nullable=False)            # 英语原文
+    translation = Column(Text, nullable=True)         # 中文翻译
+    audio_url = Column(String(512), nullable=True)    # 朗读音频（可选，未来可接 TTS）
+    source = Column(String(32), default="ai_generated")  # 内容来源：ai_generated / manual
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    words = relationship("DailyWord", back_populates="content", cascade="all, delete-orphan")
+
+
+class DailyWord(Base):
+    """每日核心单词，含长单词标记。"""
+    __tablename__ = "daily_words"
+
+    id = Column(Integer, primary_key=True, index=True)
+    content_id = Column(Integer, ForeignKey("daily_contents.id", ondelete="CASCADE"))
+    word = Column(String(128), nullable=False)
+    phonetic = Column(String(128), nullable=True)
+    meaning = Column(String(512), nullable=True)
+    is_long_word = Column(Boolean, default=False, nullable=False)  # 长单词标注
+    order_index = Column(Integer, default=0)
+
+    content = relationship("DailyContent", back_populates="words")
+
+
+class DictationRecord(Base):
+    """默写记录 + AI 批改结果。"""
+    __tablename__ = "dictation_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    content_id = Column(Integer, ForeignKey("daily_contents.id"), nullable=True)
+    original_text = Column(Text, nullable=False)      # 原文（参考答案）
+    user_input = Column(Text, nullable=False)         # 用户输入
+    ai_score = Column(Integer, nullable=True)         # AI 打分 0-100
+    ai_feedback = Column(JSON, nullable=True)         # AI 详细批改 JSON
+    earned_points = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class CheckinRecord(Base):
+    """打卡记录。"""
+    __tablename__ = "checkin_records"
+    __table_args__ = (UniqueConstraint("user_id", "checkin_date", name="uq_user_date"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    checkin_date = Column(Date, nullable=False, index=True)
+    earned_points = Column(Integer, default=10)       # 当日获得积分
+    note = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ReviewSchedule(Base):
+    """
+    艾宾浩斯记忆曲线复习计划（扩展用）。
+    每条新学的单词或文章生成多个复习节点。
+    """
+    __tablename__ = "review_schedules"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    target_type = Column(String(32), nullable=False)  # 'word' / 'content'
+    target_id = Column(Integer, nullable=False)
+    review_date = Column(Date, nullable=False, index=True)
+    interval_days = Column(Integer, nullable=False)   # 1 / 2 / 4 / 7 / 15
+    is_completed = Column(Boolean, default=False)
+    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class PointsTransaction(Base):
+    """积分流水（积分商城扩展用）。"""
+    __tablename__ = "points_transactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    change_amount = Column(Integer, nullable=False)   # 正数为获得，负数为消费
+    source = Column(String(64), nullable=False)       # 'checkin' / 'dictation' / 'redeem'
+    reference_id = Column(Integer, nullable=True)
+    description = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+
+class Reward(Base):
+    """积分商城商品表（扩展用，先建表不实现兑换逻辑）。"""
+    __tablename__ = "rewards"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(128), nullable=False)
+    description = Column(Text, nullable=True)
+    cost_points = Column(Integer, nullable=False)
+    stock = Column(Integer, default=-1)               # -1 表示无限
+    image_url = Column(String(512), nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
