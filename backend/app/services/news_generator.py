@@ -1,9 +1,10 @@
 """AI 生成每日新闻英语学习材料。
 
-为什么用 AI 生成而不是爬新闻网站：
-1. 爬虫需要维护反爬策略，MVP 阶段成本太高
-2. AI 可以直接输出适合学习的难度、附带翻译和单词标注
-3. 每次生成的内容可控（长度、话题、难度）
+Plan B 设计：每次调用生成 3 篇独立新闻，存为 3 条 learning_contents 记录。
+好处：
+  1. 1 条记录 = 1 篇新闻，语义清晰
+  2. 记忆追踪可精确到单篇
+  3. 词汇表（lexicon）按关键词相关性分配给各篇文章
 
 没配 LLM_API_KEY 时返回内置示例数据，保证前端能跑通。
 """
@@ -15,141 +16,338 @@ from app.services.llm_client import chat_json
 
 log = logging.getLogger(__name__)
 
-def _build_system_prompt(difficulty: str, theme: str) -> str:
-    """
-    根据用户偏好动态构建 Prompt。
-
-    为什么动态构建而不是固定字符串：difficulty 和 theme 来自用户偏好表，
-    个性化是 Floo! 的核心设计，固定 Prompt 无法体现差异化。
-    """
-    difficulty_map = {
-        "easy": "初级（CET-4 水平，短句为主，词汇常见）",
-        "medium": "中级（CET-6 水平，2-3 个高级词汇）",
-        "hard": "高级（GRE/IELTS 水平，复杂句式，专业词汇）",
-    }
+def _build_batch_system_prompt(theme: str) -> str:
+    """构建生成 3 篇新闻的系统 Prompt。难度固定为中级（CET-6）。"""
     theme_map = {
-        "daily_life": "日常生活",
-        "business": "商业财经",
-        "tech": "科技互联网",
-        "environment": "环保生态",
-        "culture": "文化艺术",
-        "health": "健康医疗",
+        "ai_tech": "AI 与人工智能科技",
+        "product_tech": "产品设计与技术创新",
+        "business": "财经商业与市场动态",
+        "daily_news": "日常新闻与社会热点",
+        "self_growth": "个人成长与职业发展",
     }
-    difficulty_desc = difficulty_map.get(difficulty, difficulty_map["medium"])
-    theme_desc = theme_map.get(theme, "日常生活")
+    theme_desc = theme_map.get(theme, "日常新闻与社会热点")
 
-    return f"""你是一位英语教学专家，擅长将当日热点新闻改编为英语学习材料。
-请生成一篇适合{difficulty_desc}英语学习者的新闻短文（80-120 词），话题方向为【{theme_desc}】，并输出以下 JSON：
+    return f"""你是一位英语教学专家，负责每日为英语学习者生成新闻阅读材料。
+请围绕【{theme_desc}】方向，生成：
+1. 一篇总览（overview）：50-80 词，概括今日该领域的核心动态
+2. 三篇详细新闻（news_1/2/3）：每篇 80-120 词，深入不同子话题
+
+严格按如下 JSON 格式输出，不要包含任何额外文字：
 {{
-  "title": "新闻标题（英文）",
-  "article": "英文正文（80-120 词）",
-  "translation": "中文翻译",
-  "words": [
-    {{"word": "单词", "phonetic": "音标", "meaning": "中文释义", "is_long_word": true/false}}
+  "date": "YYYY-MM-DD",
+  "overview": {{
+    "title_en": "今日总览英文标题",
+    "title_cn": "今日总览中文标题",
+    "summary_en": "英文总览 50-80 词，概括今日核心动态",
+    "summary_cn": "中文翻译",
+    "keywords": ["核心关键词1", "关键词2"]
+  }},
+  "news_1": {{
+    "title_en": "英文标题",
+    "title_cn": "中文标题",
+    "source_link": "虚构但合理的新闻链接，如 https://www.bbc.com/news/...",
+    "summary_en": "英文正文 80-120 词",
+    "summary_cn": "中文翻译",
+    "keywords": ["关键词1", "关键词2", "关键词3"]
+  }},
+  "news_2": {{ "title_en": "...", "title_cn": "...", "source_link": "...", "summary_en": "...", "summary_cn": "...", "keywords": ["..."] }},
+  "news_3": {{ "title_en": "...", "title_cn": "...", "source_link": "...", "summary_en": "...", "summary_cn": "...", "keywords": ["..."] }},
+  "lexicon": [
+    {{
+      "word_phrase": "单词或短语",
+      "phonetic": "音标，如 /ˈwɜːrdz/",
+      "meaning_cn": "中文释义",
+      "usage": "在正文中的例句或用法说明"
+    }}
   ]
 }}
 
 要求：
-- words 提取 4-6 个核心词汇，其中 8 个字母以上的标记 is_long_word=true
-- 正文难度符合{difficulty_desc}标准
-- 只返回 JSON，不要额外文字"""
+- overview 要简洁精炼，帮学习者快速了解今日该领域核心动态
+- 3 篇详细新闻话题不重复，覆盖不同子方向
+- lexicon 共 8-12 个词条，从所有正文中提取核心词汇，难度适合 CET-6
+- 每篇 keywords 与 lexicon 中的词条有重叠，方便关联
+- source_link 格式为知名媒体域名 + 合理路径（overview 不需要 source_link）
+- 只返回 JSON，禁止输出任何解释性文字"""
 
 # 没配 API Key 时的兜底数据
-_MOCK_RESULT: dict[str, Any] = {
-    "title": "AI Assistants Transform Daily Learning",
-    "article": (
-        "Artificial intelligence is reshaping how people learn languages. "
-        "New AI-powered apps can generate personalized reading materials "
-        "based on current news events. Students receive fresh content daily, "
-        "complete with vocabulary highlights and pronunciation guides. "
-        "Researchers say this approach significantly improves retention "
-        "compared to traditional textbook methods."
-    ),
-    "translation": (
-        "人工智能正在重塑人们学习语言的方式。"
-        "新的 AI 驱动应用可以根据时事新闻生成个性化阅读材料。"
-        "学生每天收到新鲜内容，配有词汇高亮和发音指南。"
-        "研究人员表示，与传统教科书方法相比，这种方式显著提高了记忆效果。"
-    ),
-    "words": [
-        {"word": "artificial", "phonetic": "/ˌɑːrtɪˈfɪʃəl/",
-         "meaning": "人工的", "is_long_word": True},
-        {"word": "personalized", "phonetic": "/ˈpɜːrsənəlaɪzd/",
-         "meaning": "个性化的", "is_long_word": True},
-        {"word": "vocabulary", "phonetic": "/vəˈkæbjəleri/",
-         "meaning": "词汇", "is_long_word": True},
-        {"word": "retention", "phonetic": "/rɪˈtenʃən/",
-         "meaning": "记忆保持", "is_long_word": True},
-        {"word": "approach", "phonetic": "/əˈproʊtʃ/",
-         "meaning": "方法", "is_long_word": False},
+_MOCK_BATCH_RESULT: dict[str, Any] = {
+    "date": date.today().isoformat(),
+    "overview": {
+        "title_en": "Today's Tech Digest: AI, Energy & Work",
+        "title_cn": "今日科技速览：AI、能源与工作方式",
+        "summary_en": (
+            "Today's top stories span three major shifts: AI tools are transforming "
+            "how people learn and work, renewable energy installations are breaking "
+            "records worldwide, and remote work continues to reshape urban landscapes. "
+            "Together, these trends signal a fundamental rethinking of productivity, "
+            "sustainability, and city life."
+        ),
+        "summary_cn": (
+            "今日三大核心动态：AI 工具正在改变人们的学习与工作方式，"
+            "全球可再生能源装机量持续创纪录，"
+            "远程办公继续重塑城市格局。"
+            "这些趋势共同预示着生产力、可持续发展和城市生活的深层变革。"
+        ),
+        "keywords": ["artificial intelligence", "renewable", "remote work"],
+    },
+    "news_1": {
+        "title_en": "AI Assistants Transform Daily Learning",
+        "title_cn": "AI 助手改变日常学习方式",
+        "source_link": "https://www.bbc.com/news/technology/ai-learning-2024",
+        "summary_en": (
+            "Artificial intelligence is reshaping how people learn languages. "
+            "New AI-powered apps can generate personalized reading materials "
+            "based on current news events. Students receive fresh content daily, "
+            "complete with vocabulary highlights and pronunciation guides. "
+            "Researchers say this approach significantly improves retention "
+            "compared to traditional textbook methods."
+        ),
+        "summary_cn": (
+            "人工智能正在重塑人们学习语言的方式。"
+            "新的 AI 驱动应用可以根据时事新闻生成个性化阅读材料。"
+            "学生每天收到新鲜内容，配有词汇高亮和发音指南。"
+            "研究人员表示，与传统教科书相比，这种方式显著提高了记忆保持率。"
+        ),
+        "keywords": ["artificial intelligence", "personalized", "retention"],
+    },
+    "news_2": {
+        "title_en": "Green Energy Sets New Records Worldwide",
+        "title_cn": "全球绿色能源创下新纪录",
+        "source_link": "https://www.reuters.com/business/energy/green-records-2024",
+        "summary_en": (
+            "Solar and wind power installations broke global records last year, "
+            "accounting for over 30 percent of electricity generation in key markets. "
+            "Governments are accelerating renewable energy targets in response to "
+            "climate commitments. Industry analysts predict that fossil fuel dependency "
+            "will decline sharply over the next decade as costs continue to fall."
+        ),
+        "summary_cn": (
+            "去年太阳能和风能装机量打破全球纪录，"
+            "在主要市场中占发电量的 30% 以上。"
+            "各国政府正在加快可再生能源目标以履行气候承诺。"
+            "行业分析师预测，随着成本持续下降，"
+            "未来十年对化石燃料的依赖将大幅减少。"
+        ),
+        "keywords": ["renewable", "accelerating", "dependency"],
+    },
+    "news_3": {
+        "title_en": "Remote Work Reshapes City Centers Globally",
+        "title_cn": "远程办公重塑全球城市中心",
+        "source_link": "https://www.economist.com/business/remote-work-cities-2024",
+        "summary_en": (
+            "Office vacancy rates in major cities remain elevated as remote and hybrid "
+            "work arrangements persist. Urban planners are repurposing empty commercial "
+            "buildings into residential units and community spaces. Some economists "
+            "argue this transformation offers a rare opportunity to create more "
+            "affordable and livable city environments for future generations."
+        ),
+        "summary_cn": (
+            "由于远程和混合办公安排持续存在，主要城市的写字楼空置率居高不下。"
+            "城市规划者正在将空置商业建筑改造为住宅单元和社区空间。"
+            "一些经济学家认为，这一转型为未来几代人"
+            "创造更经济实惠、更宜居的城市环境提供了难得机会。"
+        ),
+        "keywords": ["vacancy", "repurposing", "transformation"],
+    },
+    "lexicon": [
+        {
+            "word_phrase": "artificial intelligence",
+            "phonetic": "/ˌɑːrtɪˈfɪʃəl ɪnˈtelɪdʒəns/",
+            "meaning_cn": "人工智能",
+            "usage": "Artificial intelligence is reshaping how people learn languages.",
+        },
+        {
+            "word_phrase": "personalized",
+            "phonetic": "/ˈpɜːrsənəlaɪzd/",
+            "meaning_cn": "个性化的",
+            "usage": "AI apps generate personalized reading materials for each student.",
+        },
+        {
+            "word_phrase": "retention",
+            "phonetic": "/rɪˈtenʃən/",
+            "meaning_cn": "记忆保持；留存",
+            "usage": "This approach significantly improves retention.",
+        },
+        {
+            "word_phrase": "renewable",
+            "phonetic": "/rɪˈnjuːəbl/",
+            "meaning_cn": "可再生的",
+            "usage": "Governments are accelerating renewable energy targets.",
+        },
+        {
+            "word_phrase": "accelerating",
+            "phonetic": "/əkˈseləreɪtɪŋ/",
+            "meaning_cn": "加速的；不断加快的",
+            "usage": "Governments are accelerating renewable energy targets.",
+        },
+        {
+            "word_phrase": "vacancy",
+            "phonetic": "/ˈveɪkənsi/",
+            "meaning_cn": "空缺；空置",
+            "usage": "Office vacancy rates in major cities remain elevated.",
+        },
+        {
+            "word_phrase": "repurposing",
+            "phonetic": "/ˌriːˈpɜːrpəsɪŋ/",
+            "meaning_cn": "重新利用；改作他用",
+            "usage": "Urban planners are repurposing empty commercial buildings.",
+        },
+        {
+            "word_phrase": "transformation",
+            "phonetic": "/ˌtrænsforˈmeɪʃən/",
+            "meaning_cn": "转变；变革",
+            "usage": "This transformation offers a rare opportunity.",
+        },
     ],
 }
 
 
-async def generate_daily_news(
-    topic_hint: str | None = None,
-    difficulty: str = "medium",
-    theme: str = "daily_life",
-) -> dict[str, Any]:
+async def generate_daily_news_batch(
+    theme: str = "daily_news",
+) -> list[dict[str, Any]]:
     """
-    生成一篇当日新闻英语学习材料。
-
-    为什么加 difficulty 和 theme 参数：Floo! 核心设计是个性化推送，
-    上层 router 从用户偏好表读取后传入，LLM Prompt 因此有差异化。
+    一次 API 调用生成 3 篇新闻，返回 3 个规范化 content dict 列表。
+    每个 dict 可直接传给 content_repo.create_ai_content()。
+    难度固定为 medium。
     """
-    system_prompt = _build_system_prompt(difficulty, theme)
+    system_prompt = _build_batch_system_prompt(theme)
     user_prompt = (
-        f"今天是 {date.today().isoformat()}，请生成一篇当日新闻英语学习材料。"
+        f"今天是 {date.today().isoformat()}，"
+        "请生成今日 3 篇英语新闻学习材料，话题来自真实世界当前热点。"
     )
-    if topic_hint:
-        user_prompt += f" 额外话题提示：{topic_hint}"
-        log.debug("使用话题提示：%s", topic_hint)
 
     raw: dict[str, Any]
     try:
         raw = await chat_json(system_prompt, user_prompt, temperature=0.7)
-    except Exception as e:  # noqa: BLE001
-        log.debug("LLM 调用异常 %s，降级到 mock 数据", e)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("LLM 调用异常 %s，降级到 mock 数据", exc)
         raw = {}
 
     if not raw:
-        log.debug("LLM 返回空，使用内置示例")
-        raw = _MOCK_RESULT
+        log.info("LLM 返回空，使用内置 mock 数据")
+        raw = _MOCK_BATCH_RESULT
 
-    return _normalize(raw, difficulty, theme)
+    return _normalize_batch(raw, theme)
 
 
-def _normalize(raw: dict[str, Any], difficulty: str = "medium", theme: str = "daily_life") -> dict[str, Any]:
-    """将 LLM 返回的字段规范化为 repo 层期望的结构。
-
-    为什么要单独这一步：模型返回的字段可能缺失或类型不一致，
-    在这里做容错比在 repo 里做更合适（repo 期望的就是干净数据）。
+def _normalize_batch(
+    raw: dict[str, Any],
+    theme: str,
+) -> list[dict[str, Any]]:
     """
-    words_raw = raw.get("words") or []
-    words = []
-    for idx, item in enumerate(words_raw):
-        if not isinstance(item, dict):
-            log.debug("忽略非 dict 单词项 idx=%s", idx)
-            continue
-        word = (item.get("word") or "").strip()
-        if not word:
-            log.debug("忽略空 word idx=%s", idx)
-            continue
-        words.append({
-            "word": word,
-            "phonetic": item.get("phonetic") or "",
-            "meaning": item.get("meaning") or "",
-            "is_long_word": bool(item.get("is_long_word")) or len(word) >= 8,
-            "order_index": idx,
+    将 LLM 返回的批量 JSON 规范化为 4 个 content dict（1 总览 + 3 详细）。
+
+    顺序：overview 在第一位，content_type 字段区分总览和详细文章。
+    词汇分配策略：
+      1. lexicon 词条的 word_phrase 出现在某篇 keywords 中 → 分配给该篇
+      2. 未匹配任何文章的词条 → 追加给所有文章（保证词汇完整性）
+      3. overview 获得全部 lexicon 词条（作为今日词汇总表）
+    """
+    lexicon: list[dict] = _parse_lexicon(raw.get("lexicon") or [])
+
+    # 第一轮：为每篇详细文章收集匹配词条，记录未匹配索引
+    per_article_words: list[list[dict]] = []
+    per_article_unmatched: list[set[int]] = []
+
+    for key in ("news_1", "news_2", "news_3"):
+        news = raw.get(key)
+        if not isinstance(news, dict):
+            log.warning("LLM 返回缺少 %s，使用占位数据", key)
+            news = {}
+
+        article_keywords = [
+            kw.lower().strip() for kw in (news.get("keywords") or [])
+        ]
+        matched: list[dict] = []
+        unmatched_idx: set[int] = set()
+
+        for idx, lex_item in enumerate(lexicon):
+            phrase = lex_item.get("word", "").lower().strip()
+            if any(phrase in kw or kw in phrase for kw in article_keywords):
+                matched.append({**lex_item, "order_index": len(matched)})
+            else:
+                unmatched_idx.add(idx)
+
+        per_article_words.append(matched)
+        per_article_unmatched.append(unmatched_idx)
+
+    # 全局未匹配 = 未被任何一篇文章匹配的词条
+    global_unmatched: set[int] = (
+        per_article_unmatched[0]
+        & per_article_unmatched[1]
+        & per_article_unmatched[2]
+    )
+
+    results: list[dict[str, Any]] = []
+
+    # overview 记录排在第一位，获得全部 lexicon 作为今日词汇总表
+    overview = raw.get("overview") or {}
+    overview_words = [{**w, "order_index": i} for i, w in enumerate(lexicon)]
+    results.append({
+        "content_date": date.today(),
+        "title": (overview.get("title_en") or "Today's Overview").strip(),
+        "article": (overview.get("summary_en") or "").strip(),
+        "translation": (overview.get("summary_cn") or "").strip() or None,
+        "audio_url": None,
+        "difficulty_level": "medium",
+        "theme_type": theme,
+        "content_type": "overview",  # 标记为总览
+        "words": overview_words,
+    })
+
+    # 3 篇详细文章
+    for i, key in enumerate(("news_1", "news_2", "news_3")):
+        news = raw.get(key) or {}
+        words = per_article_words[i]
+        for idx in sorted(global_unmatched):
+            words.append({**lexicon[idx], "order_index": len(words)})
+
+        results.append({
+            "content_date": date.today(),
+            "title": (news.get("title_en") or "Daily English News").strip(),
+            "article": (news.get("summary_en") or "").strip(),
+            "translation": (news.get("summary_cn") or "").strip() or None,
+            "audio_url": (news.get("source_link") or "").strip() or None,
+            "difficulty_level": "medium",
+            "theme_type": theme,
+            "content_type": "article",  # 标记为详细文章
+            "words": words,
         })
 
-    return {
-        "content_date": date.today(),
-        "title": raw.get("title") or "Daily English News",
-        "article": raw.get("article") or "",
-        "translation": raw.get("translation"),
-        "audio_url": None,
-        "words": words,
-        "difficulty_level": difficulty,
-        "theme_type": theme,
-    }
+    return results
+
+
+def _parse_lexicon(raw_items: list) -> list[dict]:
+    """将 lexicon 列表规范化为 repo 期望的 word dict 格式。"""
+    result = []
+    for idx, item in enumerate(raw_items):
+        if not isinstance(item, dict):
+            continue
+        phrase = (item.get("word_phrase") or "").strip()
+        if not phrase:
+            continue
+        result.append({
+            "word": phrase,
+            "phonetic": (item.get("phonetic") or "").strip(),
+            "meaning": (item.get("meaning_cn") or "").strip(),
+            "usage": (item.get("usage") or "").strip(),
+            "is_long_word": len(phrase) >= 8,
+            "order_index": idx,
+        })
+    return result
+
+
+# ---------------------------------------------------------------------------
+# 向后兼容：单篇生成（内部复用批量逻辑，返回第一篇）
+# ---------------------------------------------------------------------------
+
+async def generate_daily_news(
+    topic_hint: str | None = None,
+    theme: str = "daily_news",
+) -> dict[str, Any]:
+    """单篇生成入口（向后兼容）。内部调用批量生成后返回第一篇。"""
+    if topic_hint:
+        log.debug("topic_hint=%r 在批量模式下忽略", topic_hint)
+    batch = await generate_daily_news_batch(theme=theme)
+    return batch[0] if batch else {}

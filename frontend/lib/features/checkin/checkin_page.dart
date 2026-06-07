@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/models/checkin_models.dart';
-import '../../core/models/content_models.dart';
+
 import 'checkin_provider.dart';
 
 class CheckinPage extends ConsumerWidget {
@@ -82,11 +82,11 @@ class _StreakBanner extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 16),
         child: Row(
           children: [
-            _StatItem(icon: Icons.local_fire_department, iconColor: Colors.orange,
+                        _StatItem(icon: Icons.local_fire_department, iconColor: Colors.orange,
                 value: '${cal.currentStreakDays}', label: '连续打卡天数'),
             Container(width: 1, height: 48, color: cs.onPrimaryContainer.withValues(alpha: 0.2)),
-            _StatItem(icon: Icons.emoji_events, iconColor: Colors.amber,
-                value: '${cal.maxStreakDays}', label: '最长连续天数'),
+            _StatItem(icon: Icons.calendar_today, iconColor: Colors.blue,
+                value: '${cal.checkedDates.length}', label: '本月打卡'),
             Container(width: 1, height: 48, color: cs.onPrimaryContainer.withValues(alpha: 0.2)),
             _StatItem(icon: Icons.stars_rounded, iconColor: Colors.yellow.shade700,
                 value: '${cal.availablePoints}', label: '可用积分'),
@@ -253,11 +253,11 @@ class _CheckinButton extends ConsumerWidget {
           ? null
           : () async {
               final messenger = ScaffoldMessenger.of(context);
-              try {
+                            try {
                 final result = await ref.refresh(doCheckinProvider.future);
                 ref.invalidate(calendarProvider);
                 messenger.showSnackBar(SnackBar(
-                    content: Text('打卡成功！连续 ${result.streakDays} 天，+${result.pointsEarned} 积分')));
+                    content: Text('打卡成功！连续 ${result.currentStreakDays} 天，+${result.pointsEarned} 积分 🎉')));
               } catch (e) {
                 messenger.showSnackBar(SnackBar(content: Text('打卡失败: $e')));
               }

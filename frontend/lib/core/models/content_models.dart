@@ -1,122 +1,189 @@
-import 'dart:convert';
-
 // 学习内容相关模型
+
+/// 词汇条目，对应后端 lexicon 词条
+class WordItem {
+  final String word;
+  final String phonetic;
+  final String meaning;
+  final String usage;
+  final bool isLongWord;
+
+  const WordItem({
+    required this.word,
+    required this.phonetic,
+    required this.meaning,
+    required this.usage,
+    required this.isLongWord,
+  });
+
+  factory WordItem.fromJson(Map<String, dynamic> json) {
+    return WordItem(
+      word: json['word'] as String? ?? '',
+      phonetic: json['phonetic'] as String? ?? '',
+      meaning: json['meaning'] as String? ?? '',
+      usage: json['usage'] as String? ?? '',
+      isLongWord: json['is_long_word'] as bool? ?? false,
+    );
+  }
+}
+
+/// 今日学习内容列表（总览 + 文章）
+class TodayContentList {
+  final String theme;
+  final int dailyGoalMinutes;
+  final List<LearningContent> contents;
+
+  TodayContentList({
+    required this.theme,
+    required this.dailyGoalMinutes,
+    required this.contents,
+  });
+
+  factory TodayContentList.fromJson(Map<String, dynamic> json) {
+    final list = (json['contents'] as List? ?? [])
+        .map((e) => LearningContent.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return TodayContentList(
+      theme: json['theme'] as String? ?? '',
+      dailyGoalMinutes: json['daily_goal_minutes'] as int? ?? 15,
+      contents: list,
+    );
+  }
+
+  /// 根据学习时长目标决定展示几条内容
+  List<LearningContent> get visibleContents {
+    if (contents.isEmpty) return [];
+    int count;
+    if (dailyGoalMinutes < 30) {
+      count = 1; // 只看总览
+    } else if (dailyGoalMinutes < 40) {
+      count = 2; // 总览 + 1 篇
+    } else if (dailyGoalMinutes < 50) {
+      count = 3; // 总览 + 2 篇
+    } else {
+      count = 4; // 全部
+    }
+    return contents.take(count).toList();
+  }
+}
 
 class LearningContent {
   final int id;
-  final int creatorType; // 0=AI, 1=user
   final String difficultyLevel;
   final String themeType;
   final String title;
   final String article;
   final String? translation;
-  final List<String> keyWords;
+  final String? audioUrl;  // 存 source_link
+  final List<WordItem> words;
   final DateTime contentDate;
+  final String contentType;  // overview | article
 
   LearningContent({
     required this.id,
-    required this.creatorType,
     required this.difficultyLevel,
     required this.themeType,
     required this.title,
     required this.article,
     this.translation,
-    required this.keyWords,
+    this.audioUrl,
+    required this.words,
     required this.contentDate,
+    required this.contentType,
   });
 
+  bool get isOverview => contentType == 'overview';
+
+  /// 词汇字符串列表，供文章关键词高亮用
+  List<String> get keyWordStrings => words.map((w) => w.word.toLowerCase()).toList();
+
   factory LearningContent.fromJson(Map<String, dynamic> json) {
-    // 后端字段名映射
     final id = (json['id'] ?? json['content_id']) as int;
     final article = (json['article'] ?? json['content_text']) as String;
     final contentDateStr = (json['content_date'] ?? json['created_at']) as String;
 
-    // key_words 可能是 JSON 字符串或数组
-    List<String> words = [];
-    final kwField = json['key_words'];
-    if (kwField is String) {
-      try {
-        final decoded = jsonDecode(kwField);
-        if (decoded is List) words = decoded.map((e) => e.toString()).toList();
-      } catch (_) {}
-    } else if (kwField is List) {
-      words = kwField.map((e) => e.toString()).toList();
-    }
+    // 解析 words 列表（后端返回 list of dict）
+    final wordsList = (json['words'] as List? ?? [])
+        .whereType<Map<String, dynamic>>()
+        .map(WordItem.fromJson)
+        .toList();
 
     return LearningContent(
       id: id,
-      creatorType: json['creator_type'] as int? ?? 0,
       difficultyLevel: json['difficulty_level'] as String? ?? 'medium',
-      themeType: json['theme_type'] as String? ?? 'mixed',
+      themeType: json['theme_type'] as String? ?? 'daily_news',
       title: json['title'] as String,
       article: article,
       translation: json['translation'] as String?,
-      keyWords: words,
+      audioUrl: json['audio_url'] as String?,
+      words: wordsList,
       contentDate: DateTime.parse(contentDateStr),
+      contentType: json['content_type'] as String? ?? 'article',
     );
   }
 }
 
 class ReviewTask {
-  final int progressId;
   final int contentId;
   final String title;
   final int reviewStage;
+  final double lastAccuracy;
   final DateTime nextReviewAt;
 
   ReviewTask({
-    required this.progressId,
     required this.contentId,
     required this.title,
     required this.reviewStage,
+    required this.lastAccuracy,
     required this.nextReviewAt,
   });
 
   factory ReviewTask.fromJson(Map<String, dynamic> json) {
     return ReviewTask(
-      progressId: json['progress_id'] as int,
       contentId: json['content_id'] as int,
       title: json['title'] as String,
       reviewStage: json['review_stage'] as int,
+      lastAccuracy: (json['last_accuracy'] as num?)?.toDouble() ?? 0.0,
       nextReviewAt: DateTime.parse(json['next_review_at'] as String),
     );
   }
 }
 
 class WeeklySummary {
-  final int summaryId;
-  final int userId;
-  final int yearWeek;
-  final int checkinCount;
-  final int dictationCount;
-  final int avgAccuracy;
-  final int totalPoints;
+  final String yearWeek;         // 格式 YYYYWW
+  final int totalCheckinDays;
+  final int totalLearnedCount;
+  final double avgAccuracyRate;
+  final int totalEarnedPoints;
+  final int weeklyReviewStatus;
 
   WeeklySummary({
-    required this.summaryId,
-    required this.userId,
     required this.yearWeek,
-    required this.checkinCount,
-    required this.dictationCount,
-    required this.avgAccuracy,
-    required this.totalPoints,
+    required this.totalCheckinDays,
+    required this.totalLearnedCount,
+    required this.avgAccuracyRate,
+    required this.totalEarnedPoints,
+    required this.weeklyReviewStatus,
   });
 
   factory WeeklySummary.fromJson(Map<String, dynamic> json) {
     return WeeklySummary(
-      summaryId: json['summary_id'] as int,
-      userId: json['user_id'] as int,
-      yearWeek: json['year_week'] as int,
-      checkinCount: json['checkin_count'] as int? ?? 0,
-      dictationCount: json['dictation_count'] as int? ?? 0,
-      avgAccuracy: json['avg_accuracy'] as int? ?? 0,
-      totalPoints: json['total_points'] as int? ?? 0,
+      yearWeek: json['year_week'] as String? ?? '',
+      totalCheckinDays: json['total_checkin_days'] as int? ?? 0,
+      totalLearnedCount: json['total_learned_count'] as int? ?? 0,
+      avgAccuracyRate: (json['avg_accuracy_rate'] as num?)?.toDouble() ?? 0.0,
+      totalEarnedPoints: json['total_earned_points'] as int? ?? 0,
+      weeklyReviewStatus: json['weekly_review_status'] as int? ?? 0,
     );
   }
 
   String get weekDisplay {
-    final year = yearWeek ~/ 100;
-    final week = yearWeek % 100;
-    return '$year年第$week周';
+    // yearWeek 格式 202623 → 2026年第23周
+    if (yearWeek.length == 6) {
+      final year = yearWeek.substring(0, 4);
+      final week = int.tryParse(yearWeek.substring(4)) ?? 0;
+      return '$year年第$week周';
+    }
+    return yearWeek;
   }
 }

@@ -9,16 +9,21 @@ class DailyPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final asyncContent = ref.watch(dailyContentProvider);
+    final asyncList = ref.watch(todayListProvider);
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      body: asyncContent.when(
+      body: asyncList.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => _ErrorView(
           message: _friendlyError(e),
           onGenerate: () => _generateNew(context, ref),
         ),
-        data: (content) => _DailyBody(content: content),
+        data: (list) => list.contents.isEmpty
+            ? _ErrorView(
+                message: '今日还没有学习内容，点击下方生成',
+                onGenerate: () => _generateNew(context, ref),
+              )
+            : _DailyListBody(todayList: list),
       ),
     );
   }
@@ -27,7 +32,7 @@ class DailyPage extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await ref.refresh(generateDailyProvider.future);
-      ref.invalidate(dailyContentProvider);
+      ref.invalidate(todayListProvider);
       messenger.showSnackBar(const SnackBar(content: Text('新内容已生成')));
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('生成失败: $e')));
@@ -42,50 +47,51 @@ class DailyPage extends ConsumerWidget {
   }
 }
 
-class _DailyBody extends ConsumerWidget {
-  final LearningContent content;
-  const _DailyBody({required this.content});
+class _DailyListBody extends ConsumerWidget {
+  final TodayContentList todayList;
+  const _DailyListBody({required this.todayList});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
+    final visible = todayList.visibleContents;
+    final themeLabel = {
+      'ai_tech': 'AI科技',
+      'product_tech': '产品技术',
+      'business': '财经商业',
+      'daily_news': '日常新闻',
+      'self_growth': '个人成长',
+      'all_random': '随机',
+    }[todayList.theme] ?? todayList.theme;
+
     return CustomScrollView(
       slivers: [
         SliverAppBar(
-          expandedHeight: 160,
+          expandedHeight: 140,
           pinned: true,
-          backgroundColor: cs.primaryContainer,
+          backgroundColor: cs.primary,
           flexibleSpace: FlexibleSpaceBar(
             title: Text(
-              content.title,
-              style: TextStyle(
-                color: cs.onPrimaryContainer,
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-              ),
+              '今日英语 · $themeLabel',
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
             ),
-            background: Stack(
-              fit: StackFit.expand,
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [cs.primary, cs.primaryContainer],
-                    ),
-                  ),
+            background: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [cs.primary, cs.primaryContainer],
                 ),
-                Positioned(
-                  right: -20,
-                  top: -20,
-                  child: Icon(
-                    Icons.auto_stories_outlined,
-                    size: 160,
-                    color: cs.onPrimary.withValues(alpha: 0.08),
-                  ),
+              ),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: Icon(Icons.auto_stories_outlined,
+                      size: 120, color: Colors.white.withValues(alpha: 0.08)),
                 ),
-              ],
+              ),
             ),
           ),
           actions: [
@@ -104,30 +110,18 @@ class _DailyBody extends ConsumerWidget {
           ],
         ),
         SliverPadding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
-              _MetaRow(content: content),
+              _GoalBanner(todayList: todayList),
               const SizedBox(height: 16),
-              _ArticleCard(content: content),
-              const SizedBox(height: 12),
-              if (content.translation != null && content.translation!.isNotEmpty)
-                _TranslationCard(translation: content.translation!),
-              const SizedBox(height: 24),
-              if (content.keyWords.isNotEmpty) ...[
-                Row(
-                  children: [
-                    Icon(Icons.local_fire_department, color: cs.primary, size: 20),
-                    const SizedBox(width: 6),
-                    Text('核心词汇', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                    const Spacer(),
-                    Text('${content.keyWords.length} 个词', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                _KeyWordsWrap(words: content.keyWords),
-                const SizedBox(height: 24),
-              ],
+              ...visible.asMap().entries.map((entry) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: _ContentCard(content: entry.value, index: entry.key),
+                );
+              }),
+              const SizedBox(height: 8),
               FilledButton.icon(
                 icon: const Icon(Icons.edit_note),
                 label: const Text('开始默写练习'),
@@ -139,7 +133,6 @@ class _DailyBody extends ConsumerWidget {
                 label: const Text('查看复习任务'),
                 onPressed: () => context.go('/review'),
               ),
-              const SizedBox(height: 24),
             ]),
           ),
         ),
@@ -151,7 +144,7 @@ class _DailyBody extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await ref.refresh(generateDailyProvider.future);
-      ref.invalidate(dailyContentProvider);
+      ref.invalidate(todayListProvider);
       messenger.showSnackBar(const SnackBar(content: Text('新内容已生成')));
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('生成失败: $e')));
@@ -159,63 +152,128 @@ class _DailyBody extends ConsumerWidget {
   }
 }
 
-class _MetaRow extends StatelessWidget {
-  final LearningContent content;
-  const _MetaRow({required this.content});
+class _GoalBanner extends StatelessWidget {
+  final TodayContentList todayList;
+  const _GoalBanner({required this.todayList});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final diffLabel = {'easy': '初级', 'medium': '中级', 'hard': '高级'}[content.difficultyLevel] ?? content.difficultyLevel;
-    final themeLabel = {
-      'tech': '科技', 'business': '商业', 'culture': '文化', 'daily': '日常', 'mixed': '综合'
-    }[content.themeType] ?? content.themeType;
-    final d = content.contentDate;
-    final dateStr = '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-    return Wrap(
-      spacing: 8,
-      runSpacing: 6,
-      children: [
-        _Chip(label: dateStr, icon: Icons.calendar_today_outlined, color: cs.secondaryContainer, textColor: cs.onSecondaryContainer),
-        _Chip(label: diffLabel, icon: Icons.bar_chart, color: cs.tertiaryContainer, textColor: cs.onTertiaryContainer),
-        _Chip(label: themeLabel, icon: Icons.category_outlined, color: cs.primaryContainer, textColor: cs.onPrimaryContainer),
-      ],
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
-  final Color textColor;
-  const _Chip({required this.label, required this.icon, required this.color, required this.textColor});
-
-  @override
-  Widget build(BuildContext context) {
+    final goal = todayList.dailyGoalMinutes;
+    final count = todayList.visibleContents.length;
+    final total = todayList.contents.length;
+    final hint = count >= total
+        ? '今日全部 $total 篇内容'
+        : '根据 $goal 分钟目标，为你展示 $count/$total 篇';
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(20)),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: cs.secondaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: textColor),
-          const SizedBox(width: 4),
-          Text(label, style: TextStyle(fontSize: 12, color: textColor, fontWeight: FontWeight.w500)),
+          Icon(Icons.timer_outlined, size: 16, color: cs.onSecondaryContainer),
+          const SizedBox(width: 8),
+          Text(hint,
+              style: TextStyle(
+                  fontSize: 13,
+                  color: cs.onSecondaryContainer,
+                  fontWeight: FontWeight.w500)),
+          const Spacer(),
+          Text('$goal 分钟',
+              style: TextStyle(
+                  fontSize: 13,
+                  color: cs.secondary,
+                  fontWeight: FontWeight.w700)),
         ],
       ),
     );
   }
 }
 
-class _ArticleCard extends StatelessWidget {
+class _ContentCard extends StatelessWidget {
   final LearningContent content;
-  const _ArticleCard({required this.content});
+  final int index;
+  const _ContentCard({required this.content, required this.index});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final keyWordSet = content.keyWords.map((w) => w.toLowerCase()).toSet();
+    final isOverview = content.isOverview;
+
+    return Card(
+      elevation: isOverview ? 3 : 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: isOverview
+            ? BorderSide(color: cs.primary.withValues(alpha: 0.4), width: 1.5)
+            : BorderSide.none,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: isOverview ? cs.primary : cs.secondaryContainer,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    isOverview ? '今日总览' : '文章 $index',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: isOverview ? cs.onPrimary : cs.onSecondaryContainer,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                if (content.audioUrl != null)
+                  GestureDetector(
+                    onTap: () {},
+                    child: Icon(Icons.open_in_new,
+                        size: 16, color: cs.onSurfaceVariant),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(content.title,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700, height: 1.3)),
+            const SizedBox(height: 12),
+            _ArticleText(content: content),
+            if (content.translation != null &&
+                content.translation!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _TranslationCard(translation: content.translation!),
+            ],
+            if (content.words.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _WordsSection(words: content.words),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ArticleText extends StatelessWidget {
+  final LearningContent content;
+  const _ArticleText({required this.content});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final keyWordSet = content.keyWordStrings.toSet();
     final spans = <TextSpan>[];
     final regex = RegExp(r"[A-Za-z']+|[^A-Za-z']+");
     for (final m in regex.allMatches(content.article)) {
@@ -232,16 +290,11 @@ class _ArticleCard extends StatelessWidget {
             : null,
       ));
     }
-    return Card(
-      color: cs.surfaceContainerHighest,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: RichText(
-          text: TextSpan(
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.8),
-            children: spans,
-          ),
-        ),
+    return RichText(
+      textAlign: TextAlign.justify,
+      text: TextSpan(
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.8),
+        children: spans,
       ),
     );
   }
@@ -262,26 +315,37 @@ class _TranslationCardState extends State<_TranslationCard> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Card(
+      color: cs.surfaceContainerHighest,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         onTap: () => setState(() => _expanded = !_expanded),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Icon(Icons.translate, size: 18, color: cs.primary),
-                  const SizedBox(width: 8),
-                  Text('中文译文', style: Theme.of(context).textTheme.titleSmall),
+                  Icon(Icons.translate, size: 16, color: cs.primary),
+                  const SizedBox(width: 6),
+                  Text('中文译文',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleSmall
+                          ?.copyWith(fontSize: 13)),
                   const Spacer(),
-                  Icon(_expanded ? Icons.expand_less : Icons.expand_more, color: cs.onSurfaceVariant),
+                  Icon(
+                      _expanded ? Icons.expand_less : Icons.expand_more,
+                      color: cs.onSurfaceVariant,
+                      size: 18),
                 ],
               ),
               if (_expanded) ...[
-                const SizedBox(height: 12),
-                Text(widget.translation, style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.6, color: cs.onSurfaceVariant)),
+                const SizedBox(height: 10),
+                Text(widget.translation,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        height: 1.6, color: cs.onSurfaceVariant),
+                    textAlign: TextAlign.justify),
               ],
             ],
           ),
@@ -291,24 +355,75 @@ class _TranslationCardState extends State<_TranslationCard> {
   }
 }
 
-class _KeyWordsWrap extends StatelessWidget {
-  final List<String> words;
-  const _KeyWordsWrap({required this.words});
+class _WordsSection extends StatelessWidget {
+  final List<WordItem> words;
+  const _WordsSection({required this.words});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: words.map((w) => Chip(
-        avatar: Icon(Icons.local_fire_department, size: 14, color: cs.primary),
-        label: Text(w, style: const TextStyle(fontWeight: FontWeight.w600)),
-        backgroundColor: cs.primaryContainer,
-        labelStyle: TextStyle(color: cs.onPrimaryContainer),
-        padding: EdgeInsets.zero,
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      )).toList(),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.local_fire_department, color: cs.primary, size: 16),
+            const SizedBox(width: 4),
+            Text('核心词汇',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w700, color: cs.primary)),
+            const SizedBox(width: 6),
+            Text('${words.length} 个',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: cs.onSurfaceVariant)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: words.map((w) => _WordChip(word: w)).toList(),
+        ),
+      ],
+    );
+  }
+}
+
+class _WordChip extends StatelessWidget {
+  final WordItem word;
+  const _WordChip({required this.word});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: cs.primaryContainer.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(word.word,
+              style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: cs.onSurface)),
+          if (word.phonetic.isNotEmpty)
+            Text(word.phonetic,
+                style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)),
+          if (word.meaning.isNotEmpty)
+            Text(word.meaning,
+                style: TextStyle(
+                    fontSize: 11,
+                    color: cs.primary,
+                    fontWeight: FontWeight.w500)),
+        ],
+      ),
     );
   }
 }
@@ -327,9 +442,13 @@ class _ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.article_outlined, size: 80, color: cs.onSurfaceVariant.withValues(alpha: 0.4)),
+            Icon(Icons.article_outlined,
+                size: 80,
+                color: cs.onSurfaceVariant.withValues(alpha: 0.4)),
             const SizedBox(height: 16),
-            Text(message, style: Theme.of(context).textTheme.bodyLarge, textAlign: TextAlign.center),
+            Text(message,
+                style: Theme.of(context).textTheme.bodyLarge,
+                textAlign: TextAlign.center),
             const SizedBox(height: 24),
             FilledButton.icon(
               icon: const Icon(Icons.auto_awesome),

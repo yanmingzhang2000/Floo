@@ -33,7 +33,7 @@ class _DictationPageState extends ConsumerState<DictationPage> {
         title: const Text('听写练习'),
         actions: [
           IconButton(
-            tooltip: _showOriginal ? '隐藏原文' : '查看原文',
+            tooltip: _showOriginal ? '隐藏英文原文' : '显示英文原文（参考）',
             icon: Icon(_showOriginal ? Icons.visibility_off_outlined : Icons.visibility_outlined),
             onPressed: () => setState(() => _showOriginal = !_showOriginal),
           ),
@@ -134,7 +134,35 @@ class _DictationBody extends StatelessWidget {
         ),
         const SizedBox(height: 12),
 
-        // 原文（可切换显示）
+        // 中文翻译提示（默写参考）
+        if (content.translation != null && content.translation!.isNotEmpty)
+          Card(
+            color: cs.secondaryContainer,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.translate, size: 14, color: cs.onSecondaryContainer),
+                      const SizedBox(width: 6),
+                      Text('中文提示', style: TextStyle(fontSize: 12, color: cs.onSecondaryContainer, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    content.translation!,
+                    style: TextStyle(height: 1.7, color: cs.onSecondaryContainer),
+                    textAlign: TextAlign.justify,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        const SizedBox(height: 12),
+
+        // 原文（可切换显示，用于对照）
         AnimatedCrossFade(
           duration: const Duration(milliseconds: 250),
           crossFadeState: showOriginal ? CrossFadeState.showFirst : CrossFadeState.showSecond,
@@ -142,7 +170,11 @@ class _DictationBody extends StatelessWidget {
             color: cs.surfaceContainerHighest,
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Text(content.article, style: const TextStyle(height: 1.7)),
+              child: Text(
+                content.article,
+                style: const TextStyle(height: 1.7),
+                textAlign: TextAlign.justify,
+              ),
             ),
           ),
           secondChild: const SizedBox.shrink(),
@@ -150,7 +182,7 @@ class _DictationBody extends StatelessWidget {
         if (showOriginal) const SizedBox(height: 12),
 
         // 输入区
-        Text('请默写上方文章内容：', style: Theme.of(context).textTheme.titleSmall?.copyWith(color: cs.onSurfaceVariant)),
+        Text('根据中文提示，默写对应英文：', style: Theme.of(context).textTheme.titleSmall?.copyWith(color: cs.onSurfaceVariant)),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
@@ -259,6 +291,7 @@ class _ResultCard extends StatelessWidget {
                     Text('${result.accuracy}%', style: TextStyle(color: cs.onPrimaryContainer, fontWeight: FontWeight.w700, fontSize: 18)),
                   ],
                 ),
+
                 const Spacer(),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -279,6 +312,11 @@ class _ResultCard extends StatelessWidget {
                       '复习阶段 ${result.reviewStage}',
                       style: TextStyle(color: cs.onPrimaryContainer, fontSize: 11),
                     ),
+                    if (result.nextReviewAt != null)
+                      Text(
+                        '下次复习: ${result.nextReviewAt!.month}/${result.nextReviewAt!.day}',
+                        style: TextStyle(color: cs.onPrimaryContainer, fontSize: 11),
+                      ),
                   ],
                 ),
               ],
@@ -452,7 +490,7 @@ class _HistoryTile extends StatelessWidget {
     final scoreColor = item.score >= 80
         ? Colors.green.shade700
         : (item.score >= 60 ? Colors.orange.shade700 : cs.error);
-    final d = item.submittedAt;
+    final d = item.createdAt;
     final dateStr = '${d.month}/${d.day} ${d.hour.toString().padLeft(2,'0')}:${d.minute.toString().padLeft(2,'0')}';
     return Card(
       child: ListTile(
@@ -460,9 +498,9 @@ class _HistoryTile extends StatelessWidget {
           backgroundColor: cs.primaryContainer,
           child: Text('${item.score}', style: TextStyle(color: scoreColor, fontWeight: FontWeight.w800, fontSize: 13)),
         ),
-        title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text('准确率 ${item.accuracy}%  · $dateStr'),
-        trailing: Text('+${item.pointsEarned}分', style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600)),
+        title: Text('第 ${item.dictationId} 次默写', maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: Text('准确率 ${item.accuracyRate.toStringAsFixed(0)}%  · $dateStr'),
+        trailing: Text('+${item.earnedPoints}分', style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600)),
       ),
     );
   }

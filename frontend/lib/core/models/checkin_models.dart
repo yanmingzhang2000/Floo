@@ -5,8 +5,6 @@ class CheckinCalendar {
   final int month;
   final List<DateTime> checkedDates;
   final int currentStreakDays;
-  final int maxStreakDays;
-  final int totalPoints;
   final int availablePoints;
 
   CheckinCalendar({
@@ -14,8 +12,6 @@ class CheckinCalendar {
     required this.month,
     required this.checkedDates,
     required this.currentStreakDays,
-    required this.maxStreakDays,
-    required this.totalPoints,
     required this.availablePoints,
   });
 
@@ -27,8 +23,6 @@ class CheckinCalendar {
           .map((e) => DateTime.parse(e as String))
           .toList(),
       currentStreakDays: json['current_streak_days'] as int? ?? 0,
-      maxStreakDays: json['max_streak_days'] as int? ?? 0,
-      totalPoints: json['total_points'] as int? ?? 0,
       availablePoints: json['available_points'] as int? ?? 0,
     );
   }

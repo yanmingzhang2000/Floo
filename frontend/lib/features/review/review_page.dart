@@ -82,10 +82,12 @@ class _ReviewTaskTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    // 阶段越高颜色越深
     final stageColor = task.reviewStage >= 5
         ? cs.tertiaryContainer
         : (task.reviewStage >= 3 ? cs.secondaryContainer : cs.primaryContainer);
+    final accuracyStr = task.lastAccuracy > 0
+        ? '上次准确率 ${task.lastAccuracy.toStringAsFixed(0)}%'
+        : '应复习时间: ${_formatDate(task.nextReviewAt)}';
 
     return Card(
       child: ListTile(
@@ -101,7 +103,7 @@ class _ReviewTaskTile extends StatelessWidget {
             style: const TextStyle(fontWeight: FontWeight.w600),
             maxLines: 1,
             overflow: TextOverflow.ellipsis),
-        subtitle: Text('应复习时间: ${_formatDate(task.nextReviewAt)}'),
+        subtitle: Text(accuracyStr),
         trailing: FilledButton.tonal(
           onPressed: () => context.push('/daily/content/${task.contentId}'),
           child: const Text('去复习'),

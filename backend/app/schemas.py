@@ -71,19 +71,32 @@ class LearningContentOut(BaseModel):
     theme_type: str
     # key_words 从 JSON 字符串解析后返回
     words: list[dict[str, Any]] = []  # 临时用 dict，后续可拆单独表
+    content_type: str = "article"  # overview=今日总览, article=详细文章
+
+
+# 合法 theme 枚举值
+THEME_OPTIONS = ("ai_tech", "product_tech", "business", "daily_news", "self_growth", "all_random")
 
 
 class GenerateContentRequest(BaseModel):
-    """生成学习内容请求 - 读取用户偏好自动填充 difficulty/theme。"""
+    """生成学习内容请求。theme 对应用户偏好，同 theme 当日共享内容。"""
     user_id: int = 1
-    topic_hint: Optional[str] = None
-    difficulty_override: Optional[str] = None  # 临时覆盖难度
-    theme_override: Optional[str] = None  # 临时覆盖主题
+    theme_override: Optional[str] = None  # 临时覆盖主题，调试用
+    force: bool = False  # 强制重新生成，忽略今日已有内容
+
+
+class TodayContentListResponse(BaseModel):
+    """今日完整学习内容列表，前端根据 daily_goal_minutes 决定展示几条。"""
+    theme: str
+    daily_goal_minutes: int
+    contents: list["LearningContentOut"]
 
 
 class GenerateContentResult(BaseModel):
-    """生成结果。"""
+    """生成结果。content_id 保留第一篇 ID 供向后兼容，content_ids 包含全部。"""
     content_id: int
+    content_ids: list[int]
+    count: int
     message: str
 
 

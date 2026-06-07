@@ -16,8 +16,11 @@ from app.schemas import (
     GenerateContentRequest,
     GenerateContentResult,
     LearningContentOut,
+    ReviewListResponse,
+    ReviewTaskOut,
+    TodayContentListResponse,
 )
-from app.services.news_generator import generate_daily_news
+from app.services.news_generator import generate_daily_news_batch
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/daily", tags=["daily"])
@@ -43,48 +46,104 @@ async def generate_daily(
     payload: GenerateContentRequest,
     db: Session = Depends(get_db),
 ):
-    """AI 生成个性化学习内容，读取用户偏好决定难度和主题。"""
-    log.debug("收到生成请求 user_id=%s topic_hint=%s", payload.user_id, payload.topic_hint)
+    """
+    AI 批量生成今日学习内容（3 篇新闻）。
 
-    # 读取用户偏好作为 LLM Prompt 参数
+    按用户偏好的 theme 生成内容，同 theme 当日共享。
+    all_random 主题每天随机挑选真实 theme 生成。
+    幂等设计：同 theme 今日已有 >= 3 条内容时直接返回，不重复调用 LLM。
+    """
+    from app.schemas import THEME_OPTIONS
+    import random
+
+    force = payload.model_dump().get('force', False)
+    log.debug("收到生成请求 user_id=%s force=%s", payload.user_id, force)
+
+    # 读取用户偏好 theme
     user = user_repo.get_user(db, payload.user_id)
-    difficulty = payload.difficulty_override or "medium"
-    theme = payload.theme_override or "daily_life"
+    theme = payload.theme_override or "daily_news"
     if user and user.preference:
-        difficulty = payload.difficulty_override or user.preference.difficulty_level
         theme = payload.theme_override or user.preference.theme_type
-        log.debug("使用用户偏好 difficulty=%s theme=%s", difficulty, theme)
+        log.debug("使用用户偏好 theme=%s", theme)
     else:
-        log.debug("用户无偏好记录，使用默认值 difficulty=%s theme=%s", difficulty, theme)
+        log.debug("用户无偏好记录，使用默认 theme=%s", theme)
 
-    data = await generate_daily_news(
-        topic_hint=payload.topic_hint,
-        difficulty=difficulty,
-        theme=theme,
-    )
-    if not data.get("article"):
-        log.debug("AI 返回 article 为空，返回 500")
+    # all_random 主题：随机选一个真实 theme
+    actual_theme = theme
+    if theme == "all_random":
+        actual_theme = random.choice([t for t in THEME_OPTIONS if t != "all_random"])
+        log.info("all_random 模式，今日随机选择 theme=%s", actual_theme)
+
+    # 幂等检查：同 theme 今日已有内容（1 总览 + 3 文章 = 4 条）且未强制重新生成则直接返回
+    if not force:
+        existing = content_repo.get_today_ai_contents_by_theme(db, actual_theme)
+        if len(existing) >= 4:
+            ids = [c.content_id for c in existing[:3]]
+            log.info("theme=%s 今日内容已存在，跳过生成 content_ids=%s", actual_theme, ids)
+            return GenerateContentResult(
+                content_id=ids[0],
+                content_ids=ids,
+                count=len(ids),
+                message=f"今日 {actual_theme} 内容已生成",
+            )
+
+    batch = await generate_daily_news_batch(theme=actual_theme)
+    if not batch or not batch[0].get("article"):
+        log.warning("AI 返回批量内容为空 theme=%s", actual_theme)
         raise HTTPException(500, "AI 生成失败，请稍后重试")
 
-    content = content_repo.create_ai_content(db, data)
-
-    # 如果有用户 ID，同步初始化记忆进度
-    if user:
-        content_repo.init_memory_progress(db, user.user_id, content.content_id)
-        log.debug("记忆进度已初始化 user_id=%s content_id=%s", user.user_id, content.content_id)
+    content_ids: list[int] = []
+    for data in batch:
+        content = content_repo.create_ai_content(db, data)
+        content_ids.append(content.content_id)
+        # 如果有用户 ID，同步初始化记忆进度
+        if user:
+            content_repo.init_memory_progress(db, user.user_id, content.content_id)
+            log.debug("记忆进度已初始化 user_id=%s content_id=%s", user.user_id, content.content_id)
 
     db.commit()
-    log.debug("生成完成 content_id=%s", content.content_id)
-    return GenerateContentResult(content_id=content.content_id, message="生成成功")
+    log.info("批量生成完成 theme=%s content_ids=%s", actual_theme, content_ids)
+    return GenerateContentResult(
+        content_id=content_ids[0],
+        content_ids=content_ids,
+        count=len(content_ids),
+        message=f"成功生成 {len(content_ids)} 篇学习内容",
+    )
 
 
 @router.get("/today", response_model=LearningContentOut)
-def get_today(db: Session = Depends(get_db)):
-    """获取最新一条 AI 学习内容。"""
-    content = content_repo.get_latest_ai_content(db)
+def get_today(user_id: int = 1, db: Session = Depends(get_db)):
+    """
+    获取今日学习内容（按用户偏好的 theme 返回）。
+
+    同 theme 用户看到相同内容；all_random 用户看当天随机 theme 的内容。
+    """
+    from app.schemas import THEME_OPTIONS
+    import random
+
+    # 读取用户偏好 theme
+    user = user_repo.get_user(db, user_id)
+    theme = "daily_news"
+    if user and user.preference:
+        theme = user.preference.theme_type
+
+    # all_random 用户：从今天已有的所有 theme 中随机返回一条
+    if theme == "all_random":
+        all_today = content_repo.get_today_ai_contents(db)
+        if all_today:
+            content = random.choice(all_today)
+            log.debug("all_random 用户，随机返回 content_id=%s theme=%s", content.content_id, content.theme_type)
+            words = content_repo.parse_words(content)
+            return _content_to_out(content, words)
+        # 无内容时随机选一个 theme
+        theme = random.choice([t for t in THEME_OPTIONS if t != "all_random"])
+        log.debug("all_random 用户且今日无内容，降级到 theme=%s", theme)
+
+    # 按 theme 查询最新内容
+    content = content_repo.get_latest_ai_content_by_theme(db, theme)
     if not content:
-        log.debug("无内容，提示前端先调用 generate")
-        raise HTTPException(404, "暂无学习内容，请先点击生成")
+        log.debug("theme=%s 无内容，提示前端先调用 generate", theme)
+        raise HTTPException(404, f"暂无 {theme} 内容，请先点击生成")
     words = content_repo.parse_words(content)
     return _content_to_out(content, words)
 
@@ -97,6 +156,48 @@ def list_contents(limit: int = 20, db: Session = Depends(get_db)):
     return [_content_to_out(c, content_repo.parse_words(c)) for c in contents]
 
 
+@router.get("/today-list", response_model=TodayContentListResponse)
+def get_today_list(user_id: int = 1, db: Session = Depends(get_db)):
+    """
+    获取今日完整学习内容列表（总览 + 最多 3 篇文章）。
+    前端根据用户学习时长目标决定展示几条：
+      15-30 min → 只看总览（第 1 条）
+      30-40 min → 总览 + 1 篇
+      40-50 min → 总览 + 2 篇
+      50-60 min → 全部
+    """
+    from app.schemas import THEME_OPTIONS
+    import random
+
+    user = user_repo.get_user(db, user_id)
+    theme = "daily_news"
+    if user and user.preference:
+        theme = user.preference.theme_type
+
+    # all_random 用户从今日已有内容里随机取一个 theme
+    if theme == "all_random":
+        all_today = content_repo.get_today_ai_contents(db)
+        if all_today:
+            themes_today = list({c.theme_type for c in all_today})
+            theme = random.choice(themes_today)
+            log.debug("all_random 用户，随机选 theme=%s", theme)
+        else:
+            theme = random.choice([t for t in THEME_OPTIONS if t != "all_random"])
+            log.debug("all_random 用户无今日内容，降级 theme=%s", theme)
+
+    daily_goal = 15
+    if user and user.preference:
+        daily_goal = user.preference.daily_goal_count  # 前端存的是分钟数
+
+    contents = content_repo.get_today_content_list_by_theme(db, theme)
+    log.debug("today-list theme=%s count=%s daily_goal=%s", theme, len(contents), daily_goal)
+    return TodayContentListResponse(
+        theme=theme,
+        daily_goal_minutes=daily_goal,
+        contents=[_content_to_out(c, content_repo.parse_words(c)) for c in contents],
+    )
+
+
 @router.get("/content/{content_id}", response_model=LearningContentOut)
 def get_content(content_id: int, db: Session = Depends(get_db)):
     """按 ID 获取学习内容。"""
@@ -106,3 +207,39 @@ def get_content(content_id: int, db: Session = Depends(get_db)):
         raise HTTPException(404, "内容不存在")
     words = content_repo.parse_words(content)
     return _content_to_out(content, words)
+
+
+@router.get("/review", response_model=ReviewListResponse)
+def get_review_tasks(user_id: int = 1, db: Session = Depends(get_db)):
+    """查询今日待复习任务列表（next_review_at <= 当前时间）。"""
+    from datetime import datetime
+    from sqlalchemy import and_
+    from app.models import UserMemoryProgress, LearningContent as LC
+
+    log.debug("查询复习任务 user_id=%s", user_id)
+    now = datetime.utcnow()
+    rows = (
+        db.query(UserMemoryProgress, LC)
+        .join(LC, LC.content_id == UserMemoryProgress.content_id)
+        .filter(
+            and_(
+                UserMemoryProgress.user_id == user_id,
+                UserMemoryProgress.next_review_at <= now,
+                LC.is_active == True,
+            )
+        )
+        .order_by(UserMemoryProgress.next_review_at.asc())
+        .all()
+    )
+    tasks = [
+        ReviewTaskOut(
+            content_id=p.content_id,
+            title=c.title,
+            review_stage=p.review_stage,
+            last_accuracy=float(p.last_accuracy or 0),
+            next_review_at=p.next_review_at,
+        )
+        for p, c in rows
+    ]
+    log.debug("待复习任务数 user_id=%s count=%s", user_id, len(tasks))
+    return ReviewListResponse(user_id=user_id, total_count=len(tasks), tasks=tasks)

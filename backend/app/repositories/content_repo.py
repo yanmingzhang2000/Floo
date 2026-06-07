@@ -28,6 +28,126 @@ def get_content_by_id(db: Session, content_id: int) -> Optional[LearningContent]
     return content
 
 
+def get_today_ai_contents(db: Session) -> list[LearningContent]:
+    """
+    获取今天已生成的所有 AI 内容列表。
+
+    用于幂等检查：今天已有内容时跳过生成，避免重复调用 LLM API。
+    按 created_at 升序返回，保持与生成顺序一致。
+    """
+    from datetime import datetime
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = datetime.utcnow().replace(hour=23, minute=59, second=59, microsecond=999999)
+    contents = (
+        db.query(LearningContent)
+        .filter(
+            LearningContent.creator_type == 0,
+            LearningContent.is_active == True,
+            LearningContent.created_at >= today_start,
+            LearningContent.created_at <= today_end,
+        )
+        .order_by(LearningContent.created_at.asc())
+        .all()
+    )
+    log.debug("今日已有 AI 内容 count=%s", len(contents))
+    return contents
+
+
+def get_today_ai_contents_by_theme(db: Session, theme: str) -> list[LearningContent]:
+    """
+    获取今天指定 theme 已生成的 AI 内容。
+
+    同一 theme 的用户共享同一批内容，所以按 theme + 日期做幂等检查。
+    避免相同 theme 被重复生成浪费 LLM 调用。
+    """
+    from datetime import datetime
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = datetime.utcnow().replace(hour=23, minute=59, second=59, microsecond=999999)
+    contents = (
+        db.query(LearningContent)
+        .filter(
+            LearningContent.creator_type == 0,
+            LearningContent.is_active == True,
+            LearningContent.theme_type == theme,
+            LearningContent.created_at >= today_start,
+            LearningContent.created_at <= today_end,
+        )
+        .order_by(LearningContent.created_at.asc())
+        .all()
+    )
+    log.debug("今日 theme=%s 已有内容 count=%s", theme, len(contents))
+    return contents
+
+
+def get_latest_ai_content_by_theme(db: Session, theme: str) -> Optional[LearningContent]:
+    """
+    获取指定 theme 最新一条 AI 内容，优先返回 overview。
+    供 /today 接口按用户偏好返回单条预览。
+    """
+    # 优先返回今日总览
+    from datetime import datetime
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    overview = (
+        db.query(LearningContent)
+        .filter(
+            LearningContent.creator_type == 0,
+            LearningContent.is_active == True,
+            LearningContent.theme_type == theme,
+            LearningContent.content_type == "overview",
+            LearningContent.created_at >= today_start,
+        )
+        .order_by(LearningContent.created_at.desc())
+        .first()
+    )
+    if overview:
+        log.debug("找到 theme=%s 今日总览 content_id=%s", theme, overview.content_id)
+        return overview
+    # 没有总览则返回最新一篇
+    content = (
+        db.query(LearningContent)
+        .filter(
+            LearningContent.creator_type == 0,
+            LearningContent.is_active == True,
+            LearningContent.theme_type == theme,
+        )
+        .order_by(LearningContent.created_at.desc())
+        .first()
+    )
+    if content:
+        log.debug("找到 theme=%s 最新内容 content_id=%s", theme, content.content_id)
+    else:
+        log.debug("theme=%s 无内容", theme)
+    return content
+
+
+def get_today_content_list_by_theme(db: Session, theme: str) -> list[LearningContent]:
+    """
+    获取今日指定 theme 的完整内容列表，overview 排第一，articles 按生成顺序排列。
+    供前端根据用户学习时长决定展示几篇。
+    """
+    from datetime import datetime
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = datetime.utcnow().replace(hour=23, minute=59, second=59, microsecond=999999)
+    contents = (
+        db.query(LearningContent)
+        .filter(
+            LearningContent.creator_type == 0,
+            LearningContent.is_active == True,
+            LearningContent.theme_type == theme,
+            LearningContent.created_at >= today_start,
+            LearningContent.created_at <= today_end,
+        )
+        .order_by(
+            # overview 排第一，article 按 content_id 升序
+            LearningContent.content_type.desc(),  # overview > article 字母序
+            LearningContent.content_id.asc(),
+        )
+        .all()
+    )
+    log.debug("theme=%s 今日内容列表 count=%s", theme, len(contents))
+    return contents
+
+
 def get_latest_ai_content(db: Session) -> Optional[LearningContent]:
     """
     获取最新一条 AI 生成内容。
@@ -91,12 +211,13 @@ def create_ai_content(db: Session, data: dict[str, Any]) -> LearningContent:
         creator_type=0,
         user_id=None,
         difficulty_level=data.get("difficulty_level", "medium"),
-        theme_type=data.get("theme_type", "daily_life"),
+        theme_type=data.get("theme_type", "daily_news"),
         title=data.get("title", "Daily English"),
         content_text=data.get("article", ""),
         translation=data.get("translation"),
         key_words=json.dumps(words, ensure_ascii=False),
         audio_url=data.get("audio_url"),
+        content_type=data.get("content_type", "article"),
     )
     db.add(content)
     db.flush()

@@ -12,8 +12,7 @@ class PreferencePage extends ConsumerStatefulWidget {
 }
 
 class _PreferencePageState extends ConsumerState<PreferencePage> {
-  String _difficulty = 'medium';
-  String _theme = 'mixed';
+  String _theme = 'daily_news';
   int _dailyGoal = 15;
   bool _saving = false;
   bool _loaded = false;
@@ -30,7 +29,6 @@ class _PreferencePageState extends ConsumerState<PreferencePage> {
       final pref = await ref.read(userPreferenceProvider.future);
       if (mounted) {
         setState(() {
-          _difficulty = pref.difficultyLevel;
           _theme = pref.themeType;
           _dailyGoal = pref.dailyGoalMinutes;
           _loaded = true;
@@ -47,7 +45,7 @@ class _PreferencePageState extends ConsumerState<PreferencePage> {
       final dio = ref.read(dioProvider);
       final userId = ref.read(currentUserIdProvider);
       await dio.put('/api/user/$userId/preference', data: {
-        'difficulty_level': _difficulty,
+        'difficulty_level': 'medium',
         'theme_type': _theme,
         'daily_goal_minutes': _dailyGoal,
       });
@@ -85,29 +83,23 @@ class _PreferencePageState extends ConsumerState<PreferencePage> {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                // 难度选择
-                Text('文章难度', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 8),
-                _SegmentRow(
-                  options: const [('easy', '初级'), ('medium', '中级'), ('hard', '高级')],
-                  selected: _difficulty,
-                  onChanged: (v) => setState(() => _difficulty = v),
-                ),
-                const SizedBox(height: 24),
-
                 // 主题选择
                 Text('内容主题', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
+                Text('选择你感兴趣的主题方向，我们会为你生成相关英文新闻', 
+                    style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13)),
+                const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
                     for (final (val, label, icon) in [
-                      ('tech', '科技', Icons.computer),
-                      ('business', '商业', Icons.business_center),
-                      ('culture', '文化', Icons.museum),
-                      ('daily', '日常', Icons.home),
-                      ('mixed', '综合', Icons.shuffle),
+                      ('ai_tech', 'AI科技', Icons.psychology),
+                      ('product_tech', '产品技术', Icons.devices),
+                      ('business', '财经商业', Icons.business_center),
+                      ('daily_news', '日常新闻', Icons.newspaper),
+                      ('self_growth', '个人成长', Icons.self_improvement),
+                      ('all_random', '我都要', Icons.shuffle),
                     ])
                       FilterChip(
                         avatar: Icon(icon, size: 16),

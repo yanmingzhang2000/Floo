@@ -101,21 +101,22 @@ class _DetailScaffold extends StatelessWidget {
                           const SizedBox(height: 10),
                           Text(content.translation!,
                               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  height: 1.6, color: cs.onSurfaceVariant)),
+                                  height: 1.6, color: cs.onSurfaceVariant),
+                              textAlign: TextAlign.justify),
                         ],
                       ),
                     ),
                   ),
                 ],
                 // 词汇
-                if (content.keyWords.isNotEmpty) ...[
+                if (content.words.isNotEmpty) ...[
                   const SizedBox(height: 20),
                   Text('核心词汇', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8, runSpacing: 8,
-                    children: content.keyWords.map((w) => Chip(
-                      label: Text(w, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    children: content.words.map((w) => Chip(
+                      label: Text(w.word, style: const TextStyle(fontWeight: FontWeight.w600)),
                       backgroundColor: cs.primaryContainer,
                       labelStyle: TextStyle(color: cs.onPrimaryContainer),
                     )).toList(),
@@ -139,7 +140,10 @@ class _MetaChips extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final diffLabel = {'easy': '初级', 'medium': '中级', 'hard': '高级'}[content.difficultyLevel] ?? content.difficultyLevel;
-    final themeLabel = {'tech': '科技', 'business': '商业', 'culture': '文化', 'daily': '日常', 'mixed': '综合'}[content.themeType] ?? content.themeType;
+    final themeLabel = {
+      'ai_tech': 'AI科技', 'product_tech': '产品技术', 'business': '财经商业',
+      'daily_news': '日常新闻', 'self_growth': '个人成长', 'all_random': '随机',
+    }[content.themeType] ?? content.themeType;
     final d = content.contentDate;
     final dateStr = '${d.year}-${d.month.toString().padLeft(2,'0')}-${d.day.toString().padLeft(2,'0')}';
     return Wrap(spacing: 8, runSpacing: 6, children: [
@@ -165,7 +169,7 @@ class _HighlightedText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final keySet = content.keyWords.map((w) => w.toLowerCase()).toSet();
+    final keySet = content.keyWordStrings.toSet();
     final spans = <TextSpan>[];
     final regex = RegExp(r"[A-Za-z']+|[^A-Za-z']+");
     for (final m in regex.allMatches(content.article)) {
@@ -180,6 +184,7 @@ class _HighlightedText extends StatelessWidget {
       ));
     }
     return RichText(
+      textAlign: TextAlign.justify,
       text: TextSpan(
         style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.8),
         children: spans,

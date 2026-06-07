@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/models/content_models.dart';
+import '../../core/providers/auth_provider.dart';
 import '../checkin/checkin_provider.dart';
 
 class WeeklyPage extends ConsumerWidget {
@@ -14,7 +15,28 @@ class WeeklyPage extends ConsumerWidget {
       body: asyncSummary.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('加载失败: $e')),
-        data: (summary) => _SummaryBody(summary: summary),
+        data: (summary) => summary == null
+            ? _EmptyWeekView()
+            : _SummaryBody(summary: summary),
+      ),
+    );
+  }
+}
+
+class _EmptyWeekView extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.bar_chart, size: 80, color: cs.onSurfaceVariant.withValues(alpha: 0.3)),
+          const SizedBox(height: 16),
+          const Text('本周暂无学习数据', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Text('完成打卡或默写后，周报将自动生成', style: TextStyle(color: cs.onSurfaceVariant)),
+        ],
       ),
     );
   }
@@ -49,7 +71,7 @@ class _SummaryBody extends StatelessWidget {
                 const SizedBox(width: 12),
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('本周获得积分', style: TextStyle(color: cs.onPrimaryContainer, fontSize: 12)),
-                  Text('${summary.totalPoints}',
+                  Text('${summary.totalEarnedPoints}',
                       style: Theme.of(context).textTheme.displaySmall?.copyWith(
                             color: cs.onPrimaryContainer, fontWeight: FontWeight.w800)),
                 ]),
@@ -64,7 +86,7 @@ class _SummaryBody extends StatelessWidget {
           Expanded(child: _StatCard(
             icon: Icons.calendar_today,
             iconColor: cs.primary,
-            value: '${summary.checkinCount}',
+            value: '${summary.totalCheckinDays}',
             label: '打卡天数',
             suffix: '/ 7',
           )),
@@ -72,14 +94,14 @@ class _SummaryBody extends StatelessWidget {
           Expanded(child: _StatCard(
             icon: Icons.edit_note,
             iconColor: cs.secondary,
-            value: '${summary.dictationCount}',
-            label: '默写次数',
+            value: '${summary.totalLearnedCount}',
+            label: '学习篇数',
           )),
           const SizedBox(width: 12),
           Expanded(child: _StatCard(
             icon: Icons.percent,
-            iconColor: summary.avgAccuracy >= 80 ? Colors.green : Colors.orange,
-            value: '${summary.avgAccuracy}%',
+            iconColor: summary.avgAccuracyRate >= 80 ? Colors.green : Colors.orange,
+            value: '${summary.avgAccuracyRate.toStringAsFixed(0)}%',
             label: '平均准确率',
           )),
         ]),
@@ -135,11 +157,11 @@ class _MotivationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final String msg;
-    if (summary.checkinCount >= 7) {
+    if (summary.totalCheckinDays >= 7) {
       msg = '完美！本周全勤打卡，坚持就是胜利！';
-    } else if (summary.checkinCount >= 5) {
-      msg = '很棒！本周打卡 ${summary.checkinCount} 天，继续加油！';
-    } else if (summary.checkinCount >= 3) {
+    } else if (summary.totalCheckinDays >= 5) {
+      msg = '很棒！本周打卡 ${summary.totalCheckinDays} 天，继续加油！';
+    } else if (summary.totalCheckinDays >= 3) {
       msg = '还不错，但还有提升空间，下周争取每天打卡！';
     } else {
       msg = '本周学习不太稳定，制定一个每日学习计划吧！';

@@ -90,6 +90,8 @@ class LearningContent(Base):
     phonetic = Column(Text, nullable=True)
     key_words = Column(Text, nullable=True)
     audio_url = Column(String(512), nullable=True)
+    # overview=今日总览, article=详细文章（默认）
+    content_type = Column(String(16), default="article", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     is_active = Column(Boolean, default=True, nullable=False)
 

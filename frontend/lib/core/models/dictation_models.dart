@@ -48,35 +48,35 @@ class DictationFeedback {
 }
 
 class DictationResult {
-  final int recordId;
-  final int contentId;
-  final int score;
-  final int accuracy;
+  final int dictationId;
+  final double accuracyRate; // 0-100
   final int earnedPoints;
   final int reviewStage;
-  final DateTime nextReviewAt;
+  final DateTime? nextReviewAt;
   final DictationFeedback feedback;
 
   DictationResult({
-    required this.recordId,
-    required this.contentId,
-    required this.score,
-    required this.accuracy,
+    required this.dictationId,
+    required this.accuracyRate,
     required this.earnedPoints,
     required this.reviewStage,
-    required this.nextReviewAt,
+    this.nextReviewAt,
     required this.feedback,
   });
 
+  // 前端显示用，accuracy_rate 即为分数（0-100）
+  int get score => accuracyRate.round();
+  int get accuracy => accuracyRate.round();
+
   factory DictationResult.fromJson(Map<String, dynamic> json) {
     return DictationResult(
-      recordId: json['record_id'] as int,
-      contentId: json['content_id'] as int,
-      score: json['score'] as int? ?? 0,
-      accuracy: json['accuracy'] as int? ?? 0,
+      dictationId: json['dictation_id'] as int,
+      accuracyRate: (json['accuracy_rate'] as num?)?.toDouble() ?? 0.0,
       earnedPoints: json['earned_points'] as int? ?? 0,
       reviewStage: json['review_stage'] as int? ?? 1,
-      nextReviewAt: DateTime.parse(json['next_review_at'] as String),
+      nextReviewAt: json['next_review_at'] != null
+          ? DateTime.parse(json['next_review_at'] as String)
+          : null,
       feedback: DictationFeedback.fromJson(
         json['feedback'] as Map<String, dynamic>,
       ),
@@ -85,33 +85,29 @@ class DictationResult {
 }
 
 class DictationHistory {
-  final int recordId;
-  final int contentId;
-  final String title;
-  final int score;
-  final int accuracy;
-  final int pointsEarned;
-  final DateTime submittedAt;
+  final int dictationId;
+  final int? contentId;
+  final double accuracyRate;
+  final int earnedPoints;
+  final DateTime createdAt;
 
   DictationHistory({
-    required this.recordId,
-    required this.contentId,
-    required this.title,
-    required this.score,
-    required this.accuracy,
-    required this.pointsEarned,
-    required this.submittedAt,
+    required this.dictationId,
+    this.contentId,
+    required this.accuracyRate,
+    required this.earnedPoints,
+    required this.createdAt,
   });
+
+  int get score => accuracyRate.round();
 
   factory DictationHistory.fromJson(Map<String, dynamic> json) {
     return DictationHistory(
-      recordId: json['record_id'] as int,
-      contentId: json['content_id'] as int,
-      title: json['title'] as String? ?? '',
-      score: json['score'] as int? ?? 0,
-      accuracy: json['accuracy'] as int? ?? 0,
-      pointsEarned: json['points_earned'] as int? ?? 0,
-      submittedAt: DateTime.parse(json['submitted_at'] as String),
+      dictationId: json['dictation_id'] as int,
+      contentId: json['content_id'] as int?,
+      accuracyRate: (json['accuracy_rate'] as num?)?.toDouble() ?? 0.0,
+      earnedPoints: json['earned_points'] as int? ?? 0,
+      createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
 }
