@@ -32,3 +32,8 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+if not settings.DATABASE_URL:
+    raise RuntimeError(
+        "DATABASE_URL 环境变量未设置。请在 Railway Variables 中添加 DATABASE_URL。"
+    )
