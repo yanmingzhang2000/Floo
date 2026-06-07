@@ -35,10 +35,10 @@ class _CheckinBody extends ConsumerWidget {
         SliverAppBar(
           expandedHeight: 120,
           pinned: true,
-          backgroundColor: cs.primaryContainer,
+                    backgroundColor: cs.primary,
           flexibleSpace: FlexibleSpaceBar(
             title: Text('打卡日历',
-                style: TextStyle(color: cs.onPrimaryContainer, fontWeight: FontWeight.w700)),
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
             background: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -76,18 +76,18 @@ class _StreakBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Card(
-      color: cs.primaryContainer,
+        return Card(
+      color: cs.secondaryContainer.withValues(alpha: 0.5),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
         child: Row(
           children: [
                         _StatItem(icon: Icons.local_fire_department, iconColor: Colors.orange,
                 value: '${cal.currentStreakDays}', label: '连续打卡天数'),
-            Container(width: 1, height: 48, color: cs.onPrimaryContainer.withValues(alpha: 0.2)),
-            _StatItem(icon: Icons.calendar_today, iconColor: Colors.blue,
-                value: '${cal.checkedDates.length}', label: '本月打卡'),
-            Container(width: 1, height: 48, color: cs.onPrimaryContainer.withValues(alpha: 0.2)),
+            Container(width: 1, height: 48, color: cs.onSurface.withValues(alpha: 0.15)),
+                    _StatItem(icon: Icons.calendar_today, iconColor: Colors.blue,
+                        value: '${cal.checkedDates.length}', label: '本月打卡'),
+                    Container(width: 1, height: 48, color: cs.onSurface.withValues(alpha: 0.15)),
             _StatItem(icon: Icons.stars_rounded, iconColor: Colors.yellow.shade700,
                 value: '${cal.availablePoints}', label: '可用积分'),
           ],
@@ -112,12 +112,12 @@ class _StatItem extends StatelessWidget {
         children: [
           Icon(icon, color: iconColor, size: 26),
           const SizedBox(height: 4),
-          Text(value,
+                    Text(value,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: cs.onPrimaryContainer,
+                    color: cs.onSurface,
                   )),
-          Text(label, style: TextStyle(fontSize: 10, color: cs.onPrimaryContainer)),
+          Text(label, style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)),
         ],
       ),
     );

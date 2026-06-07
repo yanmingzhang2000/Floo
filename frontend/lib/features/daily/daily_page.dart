@@ -285,7 +285,6 @@ class _ArticleText extends StatelessWidget {
             ? TextStyle(
                 color: cs.primary,
                 fontWeight: FontWeight.w700,
-                backgroundColor: cs.primaryContainer.withValues(alpha: 0.5),
               )
             : null,
       ));
@@ -401,7 +400,7 @@ class _WordChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: cs.primaryContainer.withValues(alpha: 0.6),
+        color: cs.secondaryContainer.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(

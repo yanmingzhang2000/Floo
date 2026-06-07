@@ -114,7 +114,7 @@ class _DictationBody extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: cs.primaryContainer,
+            color: cs.secondaryContainer.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(

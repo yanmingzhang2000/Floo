@@ -45,7 +45,7 @@ class _TaskList extends StatelessWidget {
           margin: const EdgeInsets.all(16),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: cs.primaryContainer,
+            color: cs.secondaryContainer.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
