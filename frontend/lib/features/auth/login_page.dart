@@ -58,7 +58,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     textAlign: TextAlign.center,
                   ),
                   Text(
-                    '让英语学习变得轻松有趣',
+                    '送给对这个世界有一点点好奇的你',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: cs.onSurfaceVariant,
                         ),
