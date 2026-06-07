@@ -17,7 +17,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    DATABASE_URL: str = "mysql+pymysql://root:password@localhost:3306/floo_core_db"
+    DATABASE_URL: str = ""
 
     # 大模型配置（兼容 OpenAI 协议）
     # Google Gemini 用户：将 LLM_API_KEY 设为 Gemini API Key，
