@@ -11,21 +11,23 @@
   - 通义千问:        LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
                     LLM_MODEL=qwen-plus
 """
+import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
 
-    DATABASE_URL: str = ""
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "")
 
     # 大模型配置（兼容 OpenAI 协议）
-    # Google Gemini 用户：将 LLM_API_KEY 设为 Gemini API Key，
-    #   LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
-    #   LLM_MODEL=gemini-2.0-flash
-    LLM_API_KEY: str = ""
-    LLM_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai"
-    LLM_MODEL: str = "gemini-2.0-flash"
+    LLM_API_KEY: str = os.getenv("LLM_API_KEY", "")
+    LLM_BASE_URL: str = os.getenv("LLM_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai")
+    LLM_MODEL: str = os.getenv("LLM_MODEL", "gemini-2.0-flash")
 
     APP_HOST: str = "0.0.0.0"
     APP_PORT: int = 8000
@@ -35,5 +37,5 @@ settings = Settings()
 
 if not settings.DATABASE_URL:
     raise RuntimeError(
-        "DATABASE_URL 环境变量未设置。请在 Railway Variables 中添加 DATABASE_URL。"
+        "DATABASE_URL 环境变量未设置，当前值为空。请检查 Railway Variables。"
     )
