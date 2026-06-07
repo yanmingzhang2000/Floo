@@ -2,17 +2,11 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// 后端地址：
-/// - Android 模拟器请使用 10.0.2.2 访问宿主机 localhost
-/// - iOS 模拟器 / 桌面 / Web 用 localhost 即可
+/// 后端地址：统一指向 Railway 生产环境
+const String _productionUrl = 'https://floo-production.up.railway.app';
+
 String _resolveBaseUrl() {
-  if (kIsWeb) return 'http://localhost:8000';
-  switch (defaultTargetPlatform) {
-    case TargetPlatform.android:
-      return 'http://10.0.2.2:8000';
-    default:
-      return 'http://localhost:8000';
-  }
+  return _productionUrl;
 }
 
 final dioProvider = Provider<Dio>((ref) {
