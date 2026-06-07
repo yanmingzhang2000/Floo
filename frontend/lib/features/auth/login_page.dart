@@ -47,7 +47,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Logo 和标题
-                  Icon(Icons.flight_takeoff, size: 64, color: cs.primary),
+                  Image.asset(
+                    'assets/images/logo.png',
+                    height: 80,
+                    errorBuilder: (context, error, stackTrace) {
+                      debugPrint('Logo load error: $error');
+                      return const SizedBox(height: 80);
+                    },
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     'Floo! 飞路一下',
