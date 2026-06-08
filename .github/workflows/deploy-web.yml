@@ -27,11 +27,11 @@ jobs:
           flutter-version: '3.44.0'
           channel: 'stable'
 
-      - name: Install dependencies
+            - name: Install dependencies
         working-directory: frontend
         run: flutter pub get
 
-            - name: Build Web
+      - name: Build Web
         working-directory: frontend
         run: flutter build web --release --base-href "/Floo/"
 
