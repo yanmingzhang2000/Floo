@@ -266,35 +266,255 @@ class _ContentCard extends StatelessWidget {
   }
 }
 
-class _ArticleText extends StatelessWidget {
+class _ArticleText extends StatefulWidget {
   final LearningContent content;
   const _ArticleText({required this.content});
 
   @override
+  State<_ArticleText> createState() => _ArticleTextState();
+}
+
+class _ArticleTextState extends State<_ArticleText> {
+  OverlayEntry? _overlay;
+
+  // 构建单词对应的 WordItem 查找表（小写 key）
+  Map<String, WordItem> get _wordMap => {
+        for (final w in widget.content.words) w.word.toLowerCase(): w,
+      };
+
+  void _showPopover(BuildContext context, String word, Offset globalOffset) {
+    _dismissPopover();
+    final wordItem = _wordMap[word.toLowerCase()];
+    final overlay = Overlay.of(context);
+    _overlay = OverlayEntry(
+      builder: (_) => _WordPopover(
+        word: word,
+        wordItem: wordItem,
+        anchor: globalOffset,
+        onDismiss: _dismissPopover,
+      ),
+    );
+    overlay.insert(_overlay!);
+  }
+
+  void _dismissPopover() {
+    _overlay?.remove();
+    _overlay = null;
+  }
+
+  @override
+  void dispose() {
+    _dismissPopover();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final keyWordSet = content.keyWordStrings.toSet();
-    final spans = <TextSpan>[];
+    final keyWordSet = widget.content.keyWordStrings.toSet();
+    final baseStyle =
+        Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.8);
+    final spans = <InlineSpan>[];
     final regex = RegExp(r"[A-Za-z']+|[^A-Za-z']+");
-    for (final m in regex.allMatches(content.article)) {
+
+    for (final m in regex.allMatches(widget.content.article)) {
       final token = m.group(0)!;
+      // 非英语 token（标点、空格等）直接渲染文本
+      if (!RegExp(r"[A-Za-z]").hasMatch(token)) {
+        spans.add(TextSpan(text: token));
+        continue;
+      }
       final isKey = keyWordSet.contains(token.toLowerCase());
-      spans.add(TextSpan(
-        text: token,
-        style: isKey
-            ? TextStyle(
-                color: cs.primary,
-                fontWeight: FontWeight.w700,
-              )
-            : null,
+      // 每个英语单词用 WidgetSpan 包裹，支持点击
+      spans.add(WidgetSpan(
+        alignment: PlaceholderAlignment.baseline,
+        baseline: TextBaseline.alphabetic,
+        child: GestureDetector(
+          onTapUp: (details) =>
+              _showPopover(context, token, details.globalPosition),
+          child: Text(
+            token,
+            style: baseStyle?.copyWith(
+              color: isKey ? cs.primary : cs.onSurface,
+              fontWeight: isKey ? FontWeight.w700 : FontWeight.normal,
+              // 核心词加下划线虚线，暗示可点击
+              decoration: isKey ? TextDecoration.underline : null,
+              decorationStyle: TextDecorationStyle.dotted,
+              decorationColor: cs.primary.withValues(alpha: 0.5),
+            ),
+          ),
+        ),
       ));
     }
+
     return RichText(
       textAlign: TextAlign.justify,
-      text: TextSpan(
-        style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.8),
-        children: spans,
-      ),
+      text: TextSpan(style: baseStyle, children: spans),
+    );
+  }
+}
+
+/// 单词悬浮卡片
+class _WordPopover extends StatelessWidget {
+  final String word;
+  final WordItem? wordItem;
+  final Offset anchor;
+  final VoidCallback onDismiss;
+
+  const _WordPopover({
+    required this.word,
+    required this.wordItem,
+    required this.anchor,
+    required this.onDismiss,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final screenSize = MediaQuery.of(context).size;
+    const cardWidth = 240.0;
+    const cardMaxHeight = 180.0;
+    const margin = 12.0;
+
+    // 计算卡片左边缘，避免超出屏幕右侧
+    double left = anchor.dx - cardWidth / 2;
+    left = left.clamp(margin, screenSize.width - cardWidth - margin);
+
+    // 默认显示在点击点上方，如果上方空间不足则显示在下方
+    double top = anchor.dy - cardMaxHeight - 8;
+    if (top < margin) top = anchor.dy + 24;
+
+    return Stack(
+      children: [
+        // 透明遮罩层，点击任意处关闭
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: onDismiss,
+            behavior: HitTestBehavior.translucent,
+          ),
+        ),
+        // 卡片本体
+        Positioned(
+          left: left,
+          top: top,
+          width: cardWidth,
+          child: Material(
+            elevation: 8,
+            borderRadius: BorderRadius.circular(14),
+            shadowColor: cs.primary.withValues(alpha: 0.25),
+            child: Container(
+              decoration: BoxDecoration(
+                color: cs.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                    color: cs.primary.withValues(alpha: 0.2), width: 1),
+              ),
+              padding: const EdgeInsets.all(14),
+              child: wordItem != null
+                  ? _KnownWordContent(wordItem: wordItem!, cs: cs)
+                  : _UnknownWordContent(word: word, cs: cs),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 已收录词汇的卡片内容
+class _KnownWordContent extends StatelessWidget {
+  final WordItem wordItem;
+  final ColorScheme cs;
+  const _KnownWordContent({required this.wordItem, required this.cs});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 单词 + 音标行
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Expanded(
+              child: Text(
+                wordItem.word,
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: cs.primary),
+              ),
+            ),
+            if (wordItem.phonetic.isNotEmpty)
+              Text(
+                wordItem.phonetic,
+                style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+              ),
+          ],
+        ),
+        if (wordItem.meaning.isNotEmpty) ...
+          [
+            const SizedBox(height: 6),
+            Text(
+              wordItem.meaning,
+              style: TextStyle(
+                  fontSize: 13,
+                  color: cs.onSurface,
+                  fontWeight: FontWeight.w600),
+            ),
+          ],
+        if (wordItem.usage.isNotEmpty) ...
+          [
+            const SizedBox(height: 8),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: cs.primaryContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                wordItem.usage,
+                style: TextStyle(
+                    fontSize: 12,
+                    color: cs.onPrimaryContainer,
+                    height: 1.5,
+                    fontStyle: FontStyle.italic),
+              ),
+            ),
+          ],
+      ],
+    );
+  }
+}
+
+/// 未收录词汇的卡片内容
+class _UnknownWordContent extends StatelessWidget {
+  final String word;
+  final ColorScheme cs;
+  const _UnknownWordContent({required this.word, required this.cs});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          word,
+          style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: cs.onSurface),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          '非本篇核心词汇',
+          style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+        ),
+      ],
     );
   }
 }
