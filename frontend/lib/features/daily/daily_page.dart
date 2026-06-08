@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/api/dictionary_service.dart';
 import '../../core/models/content_models.dart';
 import 'daily_provider.dart';
 
@@ -354,8 +355,8 @@ class _ArticleTextState extends State<_ArticleText> {
   }
 }
 
-/// 单词悬浮卡片
-class _WordPopover extends StatelessWidget {
+/// 单词悬浮卡片（支持本地核心词 + 远程查词）
+class _WordPopover extends ConsumerStatefulWidget {
   final String word;
   final WordItem? wordItem;
   final Offset anchor;
@@ -369,27 +370,58 @@ class _WordPopover extends StatelessWidget {
   });
 
   @override
+  ConsumerState<_WordPopover> createState() => _WordPopoverState();
+}
+
+class _WordPopoverState extends ConsumerState<_WordPopover> {
+  // 远程查词状态：null=未开始, loading, DictResult, Exception
+  Object? _dictState;
+
+  @override
+  void initState() {
+    super.initState();
+    // 只有非核心词才需要远程查词
+    if (widget.wordItem == null) {
+      _fetchDict();
+    }
+  }
+
+  Future<void> _fetchDict() async {
+    setState(() => _dictState = 'loading');
+    try {
+      final result = await ref
+          .read(dictionaryServiceProvider)
+          .lookup(widget.word);
+      if (mounted) setState(() => _dictState = result);
+    } catch (e) {
+      if (mounted) setState(() => _dictState = e);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final screenSize = MediaQuery.of(context).size;
-    const cardWidth = 240.0;
-    const cardMaxHeight = 180.0;
+    const cardWidth = 260.0;
     const margin = 12.0;
 
     // 计算卡片左边缘，避免超出屏幕右侧
-    double left = anchor.dx - cardWidth / 2;
+    double left = widget.anchor.dx - cardWidth / 2;
     left = left.clamp(margin, screenSize.width - cardWidth - margin);
 
-    // 默认显示在点击点上方，如果上方空间不足则显示在下方
-    double top = anchor.dy - cardMaxHeight - 8;
-    if (top < margin) top = anchor.dy + 24;
+    // 估算卡片高度：核心词约160，查词结果约220，loading约80
+    final estHeight = widget.wordItem != null
+        ? 160.0
+        : (_dictState is DictResult ? 220.0 : 80.0);
+    double top = widget.anchor.dy - estHeight - 8;
+    if (top < margin) top = widget.anchor.dy + 24;
 
     return Stack(
       children: [
         // 透明遮罩层，点击任意处关闭
         Positioned.fill(
           child: GestureDetector(
-            onTap: onDismiss,
+            onTap: widget.onDismiss,
             behavior: HitTestBehavior.translucent,
           ),
         ),
@@ -410,9 +442,14 @@ class _WordPopover extends StatelessWidget {
                     color: cs.primary.withValues(alpha: 0.2), width: 1),
               ),
               padding: const EdgeInsets.all(14),
-              child: wordItem != null
-                  ? _KnownWordContent(wordItem: wordItem!, cs: cs)
-                  : _UnknownWordContent(word: word, cs: cs),
+              child: widget.wordItem != null
+                  ? _KnownWordContent(wordItem: widget.wordItem!, cs: cs)
+                  : _DictLookupContent(
+                      word: widget.word,
+                      dictState: _dictState,
+                      cs: cs,
+                      onRetry: _fetchDict,
+                    ),
             ),
           ),
         ),
@@ -421,7 +458,7 @@ class _WordPopover extends StatelessWidget {
   }
 }
 
-/// 已收录词汇的卡片内容
+/// 已收录词汇的卡片内容（本地数据，含中文释义）
 class _KnownWordContent extends StatelessWidget {
   final WordItem wordItem;
   final ColorScheme cs;
@@ -433,7 +470,6 @@ class _KnownWordContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // 单词 + 音标行
         Row(
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
@@ -454,66 +490,178 @@ class _KnownWordContent extends StatelessWidget {
               ),
           ],
         ),
-        if (wordItem.meaning.isNotEmpty) ...
-          [
-            const SizedBox(height: 6),
-            Text(
-              wordItem.meaning,
+        if (wordItem.meaning.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            wordItem.meaning,
+            style: TextStyle(
+                fontSize: 13,
+                color: cs.onSurface,
+                fontWeight: FontWeight.w600),
+          ),
+        ],
+        if (wordItem.usage.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: cs.primaryContainer,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              wordItem.usage,
               style: TextStyle(
-                  fontSize: 13,
-                  color: cs.onSurface,
-                  fontWeight: FontWeight.w600),
+                  fontSize: 12,
+                  color: cs.onPrimaryContainer,
+                  height: 1.5,
+                  fontStyle: FontStyle.italic),
             ),
-          ],
-        if (wordItem.usage.isNotEmpty) ...
-          [
-            const SizedBox(height: 8),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-              decoration: BoxDecoration(
-                color: cs.primaryContainer,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                wordItem.usage,
-                style: TextStyle(
-                    fontSize: 12,
-                    color: cs.onPrimaryContainer,
-                    height: 1.5,
-                    fontStyle: FontStyle.italic),
-              ),
-            ),
-          ],
+          ),
+        ],
       ],
     );
   }
 }
 
-/// 未收录词汇的卡片内容
-class _UnknownWordContent extends StatelessWidget {
+/// 非核心词：调用 Free Dictionary API 查词
+class _DictLookupContent extends StatelessWidget {
   final String word;
+  final Object? dictState; // null | 'loading' | DictResult | Exception
   final ColorScheme cs;
-  const _UnknownWordContent({required this.word, required this.cs});
+  final VoidCallback onRetry;
+
+  const _DictLookupContent({
+    required this.word,
+    required this.dictState,
+    required this.cs,
+    required this.onRetry,
+  });
 
   @override
   Widget build(BuildContext context) {
+    // 加载中
+    if (dictState == null || dictState == 'loading') {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(word,
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: cs.onSurface)),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 20,
+            width: 20,
+            child: CircularProgressIndicator(
+                strokeWidth: 2, color: cs.primary),
+          ),
+        ],
+      );
+    }
+
+    // 查询失败（词不存在或网络错误）
+    if (dictState is! DictResult) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(word,
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: cs.onSurface)),
+          const SizedBox(height: 6),
+          Text('未找到释义',
+              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: onRetry,
+            child: Text('重试',
+                style: TextStyle(
+                    fontSize: 12,
+                    color: cs.primary,
+                    fontWeight: FontWeight.w600)),
+          ),
+        ],
+      );
+    }
+
+    // 查词成功
+    final result = dictState as DictResult;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          word,
-          style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: cs.onSurface),
+        // 单词 + 音标
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Expanded(
+              child: Text(
+                result.word,
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: cs.primary),
+              ),
+            ),
+            if (result.phonetic.isNotEmpty)
+              Text(result.phonetic,
+                  style:
+                      TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
+          ],
         ),
-        const SizedBox(height: 6),
-        Text(
-          '非本篇核心词汇',
-          style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
-        ),
+        const SizedBox(height: 8),
+        // 各词性释义
+        ...result.meanings.map((m) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 词性标签
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: cs.secondaryContainer,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(m.partOfSpeech,
+                        style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: cs.onSecondaryContainer)),
+                  ),
+                  const SizedBox(height: 5),
+                  ...m.definitions.map((d) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(d.definition,
+                                style: TextStyle(
+                                    fontSize: 12, color: cs.onSurface,
+                                    height: 1.4)),
+                            if (d.example != null &&
+                                d.example!.isNotEmpty) ...[  
+                              const SizedBox(height: 3),
+                              Text('"${d.example}"',
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      color: cs.onSurfaceVariant,
+                                      fontStyle: FontStyle.italic,
+                                      height: 1.4)),
+                            ],
+                          ],
+                        ),
+                      )),
+                ],
+              ),
+            )),
       ],
     );
   }
