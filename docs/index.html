@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Floo 飞路一下 — AI 驱动的英语学习 App，每日推送、默写练习、记忆曲线，让学英语像坐飞路粉一样顺滑。" />
+  <title>Floo 飞路一下 · AI 英语学习</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── 设计令牌 ───────────────────────────────── */
+    :root {
+      --primary:     #5B9AA8;
+      --primary-dark:#3d7a88;
+      --secondary:   #7FB3BE;
+      --accent:      #A8D5DC;
+      --surface:     #F5F5F5;
+      --card:        #FFFFFF;
+      --text-primary:#1A1A1A;
+      --text-muted:  #666666;
+      --radius-lg:   20px;
+      --radius-md:   14px;
+      --radius-sm:   10px;
+      --shadow-sm:   0 2px 12px rgba(91,154,168,.12);
+      --shadow-md:   0 8px 32px rgba(91,154,168,.18);
+      --shadow-lg:   0 20px 60px rgba(91,154,168,.22);
+    }
+
+    /* ── 重置 & 基础 ───────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      background: var(--surface);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+    img { max-width: 100%; display: block; }
+    a { text-decoration: none; color: inherit; }
+
+    /* ── 工具类 ──────────── */
+    .container { width: 100%; max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+    .tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(91,154,168,.13); color: var(--primary);
+      padding: 5px 14px; border-radius: 999px;
+      font-size: 13px; font-weight: 600; letter-spacing: .3px;
+    }
+    .section-title {
+      font-size: clamp(26px, 4vw, 38px);
+      font-weight: 800; line-height: 1.25;
+      color: var(--text-primary);
+    }
+    .section-sub {
+      font-size: 16px; color: var(--text-muted);
+      max-width: 520px; margin: 0 auto;
+      line-height: 1.7;
+    }
+    .text-center { text-align: center; }
+
+    /* ── 导航 ───nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(245,245,245,.85);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(91,154,168,.12);
+      transition: box-shadow .3s;
+    }
+    .nav.scrolled { box-shadow: var(--shadow-sm); }
+    .nav-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 64px;
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 20px; font-weight: 800; color: var(--primary);
+    }
+    .nav-logo-icon {
+      width: 36px; height: 36px;
+      background: var(--primary);
+      border-radius: 10px;
+      display: flfy-content: center;
+      font-size: 18px;
+    }
+    .nav-cta {
+      background: var(--primary); color: #fff;
+      padding: 9px 22px; border-radius: 999px;
+      font-size: 14px; font-weight: 600;
+      transition: background .2s, transform .15s;
+    }
+    .nav-cta:hover { background: var(--primary-dark); transform: translateY(-1px); }
+
+    /* ── Hero ───────────────────────────────  .hero {
+      min-height: 100svh;
+      display: flex; align-items: center;
+      padding: 100px 0 80px;
+      position: relative; overflow: hidden;
+    }
+    .hero-bg {
+      position: absolute; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 70% 60% at 70% 40%, rgba(127,179,190,.22) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 40% at 20% 70%, rgba(91,154,168,.14) 0%, transparent 65%);
+    }
+    /* 装饰泡泡 */
+    .hero-bubble {
+      position: absolute; border-radius: 50%;
+      background: radial-gradient(circle, var(--accent), transparent);
+      opacity: .35; pointer-events: none;
+    }
+    .hero-bubble:nth-child(1) { width: 400px; height: 400px; top: -100px; right: -80px; }
+    .hero-bubble:nth-child(2) { width: 260px; height: 260px; bottom: 60px; right: 18%; }
+    .hero-bubble:nth-child(3) { width: 160px; height: 160px; top: 30%; left: -40px; }
+
+    .hero-content {
+      position: relative; z-index: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px; align-items: center;
+    }
+    .hero-eyebrow { margin-bottom: 20px; }
+    .hero-title {
+      font-size: clamp(36px, 5.5vw, 62px);
+      font-weight: 800; line-height: 1.15;
+      margin-bottom: 20px;
+    }
+    .hero-title .highlight {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-desc {
+      font-size: 17px; color: var(--text-muted);
+      line-height: 1.75; margin-bottom: 36px;
+      max-width: 460px;
+    }
+    .hero-actions { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--primary); color: #fff;
+      padding: 14px 30px; border-radius: 999px;
+      font-size: 15px; font-weight: 700;
+      box-shadow: 0 4px 20px rgba(91,154,168,.4);
+      transition: background .2s, transform .15s, box-shadow .2s;
+    }
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(91,154,168,.5);
+    }
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: transparent; color: var(--primary);
+      padding: 14px 26px; border-radius: 999px;
+      font-size: 15px; font-weight: 600;
+      border: 2px solid rgba(91,154,168,.35);
+      transition: border-color .2s, background .2s, transform .15s;
+    }
+    .btn-secondary:hover {
+      border-color: var(--primary);
+      background: rgba(91,154,168,.07);
+      transform: translateY(-2px);
+    }
+    .hero-stats {
+      display: flex; gap: 28px; margin-top: 44px;
+      padding-top: 32px;
+      border-top: 1px solid rgba(91,154,168,.15);
+    }
+    .stat-item { display: flex; flex-direction: column; }
+    .stat-value {
+      font-size: 28px; font-weight: 800; color: var(--primary);
+    }
+    .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    /* Hero 手机 mockup */
+    .hero-visual { position: relative; }
+    .phone-mockup {
+      width: 100%; max-width: 320px;
+      margin: 0 auto;
+      position: relative;
+    }
+    .phone-shell {
+      background: #1A1A1A;
+      border-radius: 44px;
+      padding: 12px;
+      box-shadow: var(--shadow-lg), inset 0 0 0 1px rgba(255,255,255,.08);
+      position: relative;
+      z-index: 2;
+    }
+    .phone-screen {
+      background: var(--primary);
+      border-radius: 34px;
+      overflow: hidden;
+      aspect-ratio: 9/19.5;
+      display: flex; flex-direction: column;
+    }
+    .phone-notch {
+      width: 100px; height: 26px;
+      background: #1A1A1A;
+      border-radius: 0 0 18px 18px;
+      margin: 0 auto;
+      flex-shrink: 0;
+    }
+    .phone-app-bar {
+      padding: 12px 16px 8px;
+      color: #fff;
+    }
+    .phone-app-bar-title { font-size: 12px; font-weight: 700; opacity: .9; }
+    .phone-app-bar-sub { font-size: 10px; opacity: .6; margin-top: 2px; }
+    .phone-content {
+      background: var(--surface);
+      flex: 1;
+      border-radius: 20px 20px 34px 34px;
+      padding: 14px 12px;
+      overflow: hidden;
+    }
+    .phone-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+    .phone-card-label {
+      font-size: 9px; font-weight: 700;
+      background: var(--primary);
+      color: #fff;
+      display: inline-block;
+      padding: 2px 8px; border-radius: 999px;
+      margin-bottom: 6px;
+    }
+    .phone-card-title { font-size: 11px; font-weight: 700; color: var(--text-primary); margin-bottom: 5px; }
+    .phone-card-body { font-size: 9.5px; color: var(--text-muted); line-height: 1.6; }
+    .phone-card-body .kw { color: var(--primary); font-weight: 700; }
+    .phone-word-row {
+      display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;
+    }
+    .phone-word-chip {
+      background: rgba(91,154,168,.12);
+      color: var(--primary);
+      font-size: 8.5px; font-weight: 600;
+      padding: 3px 8px; border-radius: 6px;
+    }
+    .phone-bottom-nav {
+      display: flex; justify-content: space-around;
+      background: #fff;
+      padding: 8px 0 4px;
+      border-top: 1px solid rgba(0,0,0,.06);
+      flex-shrink: 0;
+    }
+    .phone-nav-item {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 2px; font-size: 7.5px; color: var(--text-muted);
+    }
+    .phone-nav-item.active { color: var(--primary); }
+    .phone-nav-dot {
+      width: 20px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 6px;
+    }
+    .phone-nav-item.active .phone-nav-dot {
+      background: rgba(91,154,168,.15);
+    }
+    /* 浮动徽章 */
+    .phone-badge {
+      position: absolute;
+      background: #fff;
+      border-radius: 14px;
+      padding: 10px 14px;
+      box-shadow: var(--shadow-md);
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; font-weight: 600;
+      z-index: 3;
+      white-space: nowrap;
+      animation: float 3.5s ease-in-out infinite;
+    }
+    .phone-badge-icon { font-size: 18px; }
+    .phone-badge.badge-left {
+      left: -56px; top: 28%;
+      animation-delay: 0s;
+    }
+    .phone-badge.badge-right {
+      right: -52px; bottom: 28%;
+      animation-delay: 1.8s;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-8px); }
+    }
+
+    /* ── 功能特性 ───────────────────────────────── */
+    .features { padding: 100px 0; }
+    .features-header { margin-bottom: 60px; }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 24px;
+    }
+    .feature-card {
+      background: var(--card);
+      border-radius: var(--radius-lg);
+      padding: 32px 28px;
+      box-shadow: var(--shadow-sm);
+      transition: transform .25s, box-shadow .25s;
+      position: relative; overflow: hidden;
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      opacity: 0; transition: opacity .25s;
+    }
+    .feature-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-md); }
+    .feature-card:hover::before { opacity: 1; }
+    .feature-icon {
+      width: 52px; height: 52px;
+      border-radius: 16px;
+      background: rgba(91,154,168,.12);
+      display: flex; alent: center;
+      font-size: 24px; margin-bottom: 20px;
+    }
+    .feature-title {
+      font-size: 18px; font-weight: 700;
+      margin-bottom: 10px; color: var(--text-primary);
+    }
+    .feature-desc { font-size: 14px; color: var(--text-muted); line-height: 1.7; }
+
+    /* ── 学习流程 ──────────────── */
+    .flow { padding: 100px 0; background: #fff; }
+    .flow-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0;
+      margin-top: 60px;
+      position: relative;
+    }
+    /* 连接线 */
+    .flow-steps::before {
+      content: '';
+      position: absolute;
+      top: 36px; left: calc(200px / 2); right: calc(200px / 2);
+      height: 2px;
+      background: linear-gradient(90deg, v));
+      opacity: .25;
+      z-index: 0;
+    }
+    .flow-step {
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center; padding: 0 16px;
+      position: relative; z-index: 1;
+    }
+    .step-num {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: #fff; font-size: 22px; font-weight: 800;
+      display: flex; alint: center;
+      box-shadow: 0 4px 18px rgba(91,154,168,.3);
+      margin-bottom: 18px;
+      position: relative;
+    }
+    .step-icon {
+      position: absolute; bottom: -4px; right: -4px;
+      width: 26px; height: 26px;
+      background: #fff; border-radius: 50%;
+      display: flex; align-itter;
+      font-size: 13px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.1);
+    }
+    .step-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+    .step-desc { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+
+    /* ── 数据洞察 ───────────── */
+    .insight { padding: 100px 0; }
+    .insight-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px; align-items: center;
+    }
+    .insight-label { margin-bottom: 16px; }
+    .insight-title { margin-bottom: 16px; }
+    .insight-desc { font-size: 16px; color: var(--text-muted); line-height: 1.8; margin-bottom: 28px; }
+    .insight-list { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+    .insight-list li {
+      display: flex; align-items: flex-start; gap: 12px;
+      font-size: 15px;
+    }
+    .insight-check {
+      width: 22px; height: 22px; flex-shrink: 0;
+      background: var(--primary);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 11px; margin-top: 1px;
+    }
+
+    /* 模拟图表 */
+    .chart-card {
+      background: var(--card);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      box-shadow: var(--shadow-md);
+    }
+    .chart-title { font-size: 14px; font-weight: 700; margin-bottom: 20px; color: var(--text-primary); }
+    .chart-bars {
+      display: flex; align-items: flex-end;
+      gap: 10px; height: 140px;
+    }
+    .bar-col {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; gap: 6px; height: 100%;
+      justify-content: flex-end;
+    }
+    .bar {
+      width: 100%; border-radius: 6px 6px 0 0;
+      background: linear-gradient(180deg, var(--secondary), var(--primary));
+      transition: height .6s cubic-bezier(.34,1.56,.64,1);
+    }
+    .bar-label { font-size: 10px; color: var(--text-muted); }
+    .chart-divider { height: 1px; background: var(--surface); margin: 20px 0; }
+    .chart-legend {
+      display: flex; gap: 20px; flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--text-muted);
+    }
+    .legend-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+    }
+    .heatmap {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+    .heat-cell {
+      aspect-ratio: 1;
+      border-radius: 3px;
+    }
+    .heat-0 { background: #E8E8E8; }
+    .heat-1 { background: rgba(91,154,168,.3); }
+    .heat-2 { background: rgba(91,154,168,.55); }
+    .heat-3 { background: rgba(91,154,168,.8); }
+    .heat-4 { background: var(--primary); }
+
+    /* ── 积分系统 ─────────────────────────────────────────── */
+    .points { padding: 100px 0; background: #fff; }
+    .points-inner {
+      display: grs: 1fr 1fr;
+      gap: 80px; align-items: center;
+    }
+    .points-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .points-card {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 22px 18px;
+      text-align: center;
+      transition: transform .2s;
+    }
+    .points-card:hover { transform: scale(1.03); }
+    .points-card-icon { font-size: 32px; margin-bottom: 10px; }
+    .points-card-value { font-size: 26px; font-weight: 800; color: var(--primary); }
+    .points-card-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+    /* ── CTA Banner ──────── */
+    .cta-banner {
+      padding: 100px 0;
+      background: linear-gradient(135deg, v));
+      position: relative; overflow: hidden;
+    }
+    .cta-banner::before {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 60% 80% at 80% 50%, rgba(255,255,255,.12) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 60% at 10% 30%, rgba(255,255,255,.08) 0%, transparent 60%);
+    }
+    .cta-inner { position: relative; z-index: 1; text-align: center; }
+    .cta-title {
+      font-size: clamp(28px, 4.5vw, 48px);
+      font-weight: 800; color: #fff;
+      margin-bottom: 16px; line-height: 1.2;
+    }
+    .cta-sub { font-size: 17px; color: rgba(255,255,255,.8); margin-bottom: 40px; }
+    .cta-actions { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    .btn-white {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #fff; color: var(--primary);
+      padding: 15px 34px; border-radius: 999px;
+      font-size: 15px; font-weight: 700;
+      box-shadow: 0 4px 20px rgba(0,0,0,.15);
+      transition: transform .15s, box-shadow .15s;
+    }
+    .btn-white:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,.2); }
+    .btn-outline-white {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: transparent; color: #fff;
+      padding: 15px 30px; border-radius: 999px;
+      font-size: 15px; font-weight: 600;
+      border: 2px solid rgba(255,255,255,.5);
+      transition: border-color .2s, background .2s, transform .15s;
+    }
+    .btn-outline-white:hover {
+      border-color: #fff;
+      background: rgba(255,255,255,.1);
+      transform: translateY(-2px);
+    }
+
+    /* ── Footer ──────────── */
+    .footer {
+      background: var(--text-primary);
+      color: rgba(255,255,255,.55);
+      padding: 48px 0 32px;
+    }
+    .footer-inner {
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 20px;
+    }
+    .footer-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 18px; font-weight: 800; color: #fff;
+    }
+    .footer-logo-icon {
+      width: 32px; height: 32px;
+      background: var(--primary);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .footer-links {
+      display: flex; gap: 28px; flex-wrap: wrap;
+    }
+    .footer-links a { font-size: 14px; transition: color .2s; }
+    .footer-links a:hover { color: #fff; }
+    .footer-copy { font-size: 13px; width: 100%; text-align: center; margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,.1); }
+
+    /* ── 动画 ───ade-up {
+      opacity: 0; transform: translateY(28px);
+      transition: opacity .65s ease, transform .65s ease;
+    }
+    .fade-up.visible { opacity: 1; transform: translateY(0); }
+
+    /* ── 响应式 ──────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .hero-content { grid-template-columns: 1fr; text-align: center; }
+      .hero-desc { margin: 0 auto 36px; }
+      .hero-actions { justify-content: center; }
+      .hero-stats { just   .hero-visual { max-width: 320px; margin: 0 auto; }
+      .phone-badge.badge-left { left: -30px; }
+      .phone-badge.badge-right { right: -30px; }
+      .insight-inner { grid-template-columns: 1fr; }
+      .points-inner { grid-template-columns: 1fr; }
+      .flow-steps::before { display: none; }
+    }
+    @media (max-width: 600px) {
+      .container { padding: 0 16px; }
+      .phone-badge { display: none; }
+      .features-grid { grid-template-columns: 1fr; }
+      .flow-steps { grid-template-columns: 1fr 1fr; }
+      .points-cards { grid-template-columns: 1fr 1fr; }
+      .hero-stats { gap: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── 导航 ──── -->
+<nav class="nav" id="nav" role="navigation" aria-label="主导航">
+  <div class="container">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo" aria-label="Floo 首页">
+        <div class="nav-logo-icon" aria-hidden="true">🌿</div>
+        Floo
+      </a>
+      <a href="#download" class="nav-cta">立即下载</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Hero ─────────────────────────-->
+<section class="hero" id="home" aria-labelledby="hero-title">
+  <div class="hero-bg" aria-hidden="true">
+    <div class="hero-bubble"></div>
+ ble"></div>
+    <div class="hero-bubble"></div>
+  </div>
+  <div class="container">
+    <div class="hero-content">
+
+      <!-- 文字 -->
+      <div class="hero-text">
+        <div class="hero-eyebrow">
+          <span class="tag">✨ AI 驱动 · 科学记忆</span>
+        </div>
+        <h1 class="hero-title" id="hero-title">
+          学英语，<br/>
+          像坐<span class="highlight">飞路粉</span><br/>
+          一样顺滑
+        </h1>
+        <p class="hero-desc">
+          Floo 每天为你 AI 生成个性化英语内容，结合艾宾浩斯记忆曲线，让单词和文章真正留在脑子里。
+        </p>
+        <div class="hero-actions">
+          <a href="#download" class="btn-primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M10 8l6 4-6 4V8z"/></svg>
+            免费开始使用
+          </a>
+          <a href="#features" class="btn-secondary">
+            了解功能
+            <svg width="16" height="16" viewBox="0 0 24 lor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+        <div class="hero-stats" aria-label="产品数据">
+          <div class="stat-item">
+            <span class="stat-value">9</span>
+            <span class="stat-label">主题分类</span>
+          </div>
+          <div class="sts="stat-value">6</span>
+            <span class="stat-label">难度级别</span>
+          </div>
+          <div class="sass="stat-value">∞</span>
+            <span class="stat-label">AI 个性内容</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 手机 mockup -->
+      <div class="hero-visual" aria-hidden="true">
+        <div class="phone-mockup">
+          <!-- 左侧浮动徽章 -->
+          <div class="phone-badge badge-left">
+            <span class="phone-badge-icon">🔥</span>
+            <div>
+              <div style="font-size:11px;color:var(--text-muted)">连续打卡</div>
+              <div style="font-size:14px;color:var(--primary)">21 天</div>
+            </div>
+          </div>
+          <!-- 右侧浮动徽章 -->
+          <div class="phone-badge badge-right">
+            <span class="phone-badge-icon">⭐</span>
+            <ont-size:11px;color:var(--text-muted)">今日积分</div>
+              <div style="font-size:14px;color:var(--primary)">+30</div>
+            </div>
+          </div>
+
+          <div class="phone-shell">
+            <div class="phone-screen">
+              <div class="phone-notch"></div>
+              <div class="phone-app-bar">
+                <div class="phone-app-bar-title">今日英语 · AI科技</div>
+                <div class="phone-app-bar-sub">✦ 根据你的 15 分钟目标推送</div>
+              </dne-content">
+                <div class="phone-card">
+                  <span class="phone-card-label">今日总览</span>
+                  <div class="phone-card-title">The Rise of Multimodal AI</div>
+                  <div class="phone-card-body">
+                    Recent advances in <span class="kw">multimodal</span> AI have enabled models to process text, images, and audio <span class="kw">simultaneously</span>...
+                  </div>
+                  <div class="phone-word-row">
+                    <span class="phone-word-chip">multimodal</span>
+                    <span class="phone-word-chip">simultaneously</span>
+                    <span class="phone-word-chip">inference</span>
+                  </div>
+                </div>
+                <div class="phone-carone-card-label" style="background:rgba(91,154,168,.2);color:var(--primary);">文章 1</span>
+                  <div class="phone-card-title">AI Agents in Production</div>
+                  <div class="phone-card-body">
+                    Deploying AI <span class="kw">agents</span> at scale requires robust <span class="kw">infrastructure</span> and careful evaluation   </div>
+              <div class="phone-bottom-nav">
+                <div class="phone-nav-item active">
+                  <div class="phone-nav-dot">📚</div>
+                  <span>今日</span>
+                </one-nav-item">
+                  <div class="phone-nav-dot">✏️</div>
+                  <span>默写</span>
+                </dne-nav-item">
+                  <div class="phone-nav-dot">🔄</div>
+                  <span>复习</span>
+             ass="phone-nav-itene-nav-dot">📅</div>
+                  <span>打卡</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── 功能特性 ─────────────────────────────────────────────── -->
+<section class="features" id="features" aria-labelledby="features-title">
+  <div class="container">
+    <div class="features-header text-center fade-up">
+      <span class="tag">核心功能</span>
+      <h2 class="section-title" id="features-title" style="margin-top:16px;margin-bottom:16px;">
+        一个 App，学习闭环全覆盖
+      </h2>
+      <p class="section-sub">
+        从内容生成到复习提醒，Floo 把英语学习的每个环节都打通，每天只需 15 分钟。
+      </p>
+    </div>
+
+    <div class="features-grid" role="list">
+
+      <article class="feature-card fade-up" role="listitem">
+        <div class="feature-icon" aria-hidden="true">🤖</div>
+        <h3 class="feature-title">AI 每日内容推送</h3>
+        <p class="feature-desc">
+          根据你选择的主题和难度，AI 每天生成原创英语文章和核心词汇，AI科技、财经商业、个人成长…总有你感兴趣的方向。
+        </p>
+      </article>
+
+      <article class="feature-card fade-up" role="listitem">
+     ria-hidden="true">✏️</div>
+        <h3 class="feature-title">默写练习</h3>
+        <p class="feature-desc">
+          看中文提示，手写英语原文。系统自动对比，精准标出每一处错误，帮你发现高频出错词，真正"写"进记忆。
+        </p>
+      </article>
+
+   de-up" role="listitecon" aria-hidden="true">🧠</div>
+        <h3 class="feature-title">艾宾浩斯记忆曲线</h3>
+        <p class="feature-desc">
+          系统追踪每个词的正确率和遗忘节点，在最佳时机自动安排复习，让记忆效率最大化，告别死记硬背。
+        </p>
+      </articard fade-up" role="listiure-icon" aria-hidden="true">📅</div>
+        <h3 class="feature-title">打卡日历</h3>
+          热力图可视化你的学习轨迹，连续打卡奖励积分，每一天的坚持都有迹可循，让习惯真正养成。
+        </p>
+      </article>
+
+      <article class="feature-card fade-up" role="listitem">
+        <div class="feature-icon" aria-hidden="true">📊</div>
+        <h3 class="feature-title">每周学习报告</h3>
+        <p class="feature-desc">
+          每周自动汇总打卡天数、默写准确率、积分变化，并智能识别你本周最薄弱的词汇，推送定向周复习。
+        <cle class="feature-card fade-up" role="listitem">
+        <div class="feature-icon" aria-hidden="true">🌟</div>
+        <h3 class="feature-title">积分激励系统</h3>
+        <p class="feature-desc">
+          打卡、默写满分、完成复习都能获得积分，积分可兑换各类学习奖励，让每一次努力都有及时反馈。
+        </p>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── 学习流程 ───────────────── -->
+<section class="flow" id="flow" aria-labelledby="flow-title">
+  <div class="container">
+    <div class="text-center fade-up" style="margin-bottom:0">
+      <span class="tag">学习流程</span>
+      <h2 class="section-title" id="flow-title" style="margin-top:16px;margin-bottom:16px;">
+        4 步，每天 15 分钟
+      </h2>
+      <p class="section-sub">
+        简单、可持续的每日学习流程，降低启动阻力，让坚持变得容易。
+      </p>
+    </div>
+
+    <div class="flow-steps" role="list" aria-label="学习步骤">
+      <div class="flow-step fade-up" role="listitem">
+        <div class="step-num" aria-hidden="true">
+          1
+          <div class="step-icon">📖</div>
+        </div>
+        <h3 class="step-title">阅读今日内容</h3>
+        <p class="step-desc">AI 推送个性化文章，关键词自动高亮，附中文译文可随时展开。</p>
+      </div>
+      <div class="flow-step fade-up" role="listitem">
+        <div class="step-num" aria-hidden="true">
+          2
+          <div class="step-icon">✍️</div>
+        </div>
+        <h3 class="step-title">默写练习</h3>
+        <p class="step-desc">看提示写原文，系统精准比对，记录每个词的错误率。</p>
+      </div>
+      <div class="flow-step fade-up" role="listitem">
+        <div class="step-num" aria-hidden="true">
+          3
+          <div class="step-icon">🔁</div>
+        </div>
+        <h3 class="step-title">完成复习任务</h3>
+        <p class="step-desc">系统根据遗忘曲线调度，复习昨天和上周即将遗忘的内容。</p>
+      </div>
+      <div class="flow-step fade-up" role="listitem">
+        <div class="step-num" aria-hidden="true">
+          4
+          <div class="step-icon">✅</div>
+        </div>
+        <h3 class="step-title">打卡领积分</h3>
+        <p class="step-desc">完成今日学习，一键打卡，获取积分奖励，连续天数火焰加成。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 数据洞察 ─────────────────────────────────────────────── -->
+<section class="insight" id="insight" aria-labelledby="insight-title">
+  <div class="container">
+    <div class="insight-inner">
+      <!-- 图表 -->
+      <div class="fade-up" aria-hidden="true">
+        <div class="chart-card">
+          <div class="chart-title">📈 本周默写准确率趋势</div>
+          <div class="chart-bars" id="chartBars">
+            <!-- JS 动态生成 -->
+          </div>
+          <div class="chart-divider"></div>
+          <div class="chart-legend">
+            <div class="legend-item">
+              <div class="legend-dot" style="background:var(--primary)"></div>
+              默写准确率
+            </div>
+          </div>
+          <div style="margin-top:20px">
+            <div class="chart-title">🗓️ 近期打卡记录</div>
+            <div class="heatmap" id="heatmap"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 文字 -->
+      <div>
+        <div class="insight-label fade-up">
+          <span class="tag">数据驱动</span>
+        </div>
+        <h2 class="section-title insight-title fade-up" id="insight-title">
+          每一次练习，<br/>都在优化你的学习路径
+        </h2>
+        <p class="insight-desc fade-up">
+          Floo 持续追踪你的每次默写、每个错词、每天的复习情况，在后台智能调整推送和复习节奏。
+        </p>
+        <ul class="insight-list fade-up" aria-label="数据功能列表">
+          <li>
+            <div class="insight-check" aria-hidden="true">✓</div>
+            <span>词汇级错误追踪，自动识别高频出错词</span>
+          </li>
+          <li>
+            <div class="insight-check" aria-hidden="true">✓</div>
+            <span>记忆进度分 6 个阶段，精准调度复习时机</span>
+          </li>
+          <li>
+            <div class="insight-check" aria-hidden="true">✓</div>
+            <span>每周自动聚合数据，生成个性化周复习清单</span>
+          </li>
+          <li>
+            <div class="insight-check" aria-hidden="true">✓</div>
+            <span>打卡热力图，可视化你的学习坚持曲线</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 积分系统 ─────────────── -->
+<section class="points" id="points" aria-labelledby="points-title">
+  <div class="container">
+    <div class="points-inner">
+      <div>
+        <div class="fade-up"><span class="tag">游戏化激励</span></div>
+        <h2 class="section-title fade-up" id="points-title" style="margin:16px 0;">
+          坚持有奖，<br/>每次努力都不白费
+        </h2>
+        <p class="section-sub fade-up" style="margin:0 0 32px;text-align:left;">
+          Floo 的积分系统把每个学习行为都变成可量化的奖励，即时反馈，让坚持更有动力。
+        </p>
+        <a href="#download" class="btn-primary fade-up" style="width:fit-content">
+          开始赚积分 →
+        </a>
+      </div>
+      <div class="points-cards fade-up" aria-label="积分获取方式">
+        <div class="points-card">
+          <div class="points-card-icon">📅</div>
+          <div class="points-card-value">+10</div>
+          <div class="points-card-label">每日打卡</div>
+        </div>
+        <div class="points-card">
+          <div class="points-card-icon">✏️</div>
+          <div class="points-card-value">+20</div>
+          <div class="points-card-label">默写满分</div>
+        </div>
+        <div class="points-card">
+          <div class="points-card-icon">🔥</div>
+          <div class="points-card-value">×2</div>
+          <div class="points-card-label">连续 7 天加成</div>
+        </div>
+        <div class="points-card">
+          <div class="points-card-icon">📊</div>
+          <div class="points-card-value">+50</div>
+          <div class="points-card-label">完成周复习</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA Banner ─────────────────────────────────────────────── -->
+<section class="cta-banner" id="download" aria-labelledby="cta-title">
+  <div class="container">
+    <div class="cta-inner">
+      <h2 class="cta-title" id="cta-title">
+        今天就开始，<br/>让英语成为你的超能力
+      </h2>
+      <p class="cta-sub">免费下载，每天 15 分钟，AI 陪你走过每一个学习节点。</p>
+      <div class="cta-actions">
+        <a href="#" class="btn-white" aria-label="下载 iOS 版本">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+          App Store
+        </a>
+        <a href="#" class="btn-outline-white" aria-label="下载 Android 版本">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4483-.9993.9993-.9993c.5511 0 .9993.4483.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4483.9993.9993 0 .5511-.4483.9997-.9993.9997m11.4043-6.6265l1.9997-3.4629a.416.416 0 0 0-.1522-.5668.4155.4155 0 0 0-.5668.1522l-2.0264 3.5109A11.914 11.914 0 0 0 12 7.5c-1.7145 0-3.3343.3653-4.7852 1.0183L5.1881 4.9996a.4158.4158 0 0 0-.5668-.1522.4158.4158 0 0 0-.1522.5668l1.9997 3.4629C3.4242 10.3792 1.7533 13.0619 1.5 16.2h21c-.2527-3.1381-1.9236-5.8208-4.6184-7.4851"/></svg>
+          Google Play
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ─────────────────────────── -->
+<footer class="footer" role="contentinfo">
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-logo">
+        <div class="footer-logo-icon" aria-hidden="true">🌿</div>
+        Floo 飞路一下
+      </div>
+      <nav class="footer-links" aria-label="页脚导航">
+        <a href="#features">功能特性</a>
+        <a href="#flow">学习流程</a>
+        <a href="#insight">数据洞察</a>
+        <a href="#download">下载</a>
+      </nav>
+    </div>
+    <div class="footer-copy">
+      © 2025 Floo 飞路一下 · 用 AI 让英语学习真正发生
+    </div>
+  </div>
+</footer>
+
+<script>
+  // ── 导航滚动效果 ─────────────────
+  const nav = document.getElementById('nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 20);
+  }, { passive: true });
+
+  // ── 滚动进入动画 ────────────────
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.fade-up').forEach(el => io.observe(el));
+
+  // ── 柱状图 ───
+  const bars = document.getElementById('chartBars');
+  const data = [62, 75, 71, 83, 88, 79, 92];
+  const days = ['周一','周二','周三','周四','周五','周六','周日'];
+  if (bars) {
+    bars.innerHTML = data.map((v, i) => `
+      <div class="bar-col">
+        <div class="bar" style="height:0%" data-h="${v}%" title="${days[i]}: ${v}%"></div>
+        <span class="bar-label">${days[i]}</span>
+      </div>
+    `).join('');
+    // 延迟触发高度动画
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        bars.querySelectorAll('.bar').forEach(b => {
+          b.style.height = b.dataset.h;
+        });
+      }, 400);
+    });
+  }
+
+  // ── 热力图 ───────────────
+  const heatmap = document.getElementById('heatmap');
+  if (heatmap) {
+    const levels = [0,1,2,3,4,3,2, 1,3,4,4,3,2,1, 0,2,3,4,4,3,2, 1,2,4,4,3,2,3, 2,3,3,4,4,2,1];
+    heatmap.innerHTML = levels.map(l =>
+      `<div class="heat-cell heat-${l}" aria-hidden="true"></div>`
+    ).join('');
+  }
+</script>
+</body>
+</html>

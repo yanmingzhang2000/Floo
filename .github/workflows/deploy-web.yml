@@ -31,9 +31,14 @@ jobs:
         working-directory: frontend
         run: flutter pub get
 
-      - name: Build Web
+            - name: Build Web
         working-directory: frontend
         run: flutter build web --release --base-href "/Floo/"
+
+      - name: Copy H5 landing page into build output
+        run: |
+          mkdir -p frontend/build/web/landing
+          cp docs/index.html frontend/build/web/landing/index.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
