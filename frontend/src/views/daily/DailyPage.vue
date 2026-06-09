@@ -114,9 +114,8 @@ const visibleCount = computed(() => visibleContents.value.length)
 const totalCount = computed(() => contents.value.length)
 const visibleContents = computed(() => {
   const goal = auth.preference?.daily_goal_minutes || 15
-  if (goal <= 30) return contents.value.slice(0, 1)
-  if (goal <= 40) return contents.value.slice(0, 2)
-  return contents.value
+  const limit = goal <= 15 ? 1 : goal <= 30 ? 2 : goal <= 45 ? 3 : 4
+  return contents.value.slice(0, limit)
 })
 
 onMounted(() => {

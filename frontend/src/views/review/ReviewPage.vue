@@ -12,7 +12,7 @@
       <div class="feature-tab" :class="{ active: activeTab === 'review' }" @click="activeTab = 'review'">
         <span class="feature-icon">🔄</span>
         <span class="feature-name">记忆复习</span>
-        <span class="feature-badge" v-if="dueTasks.length">{{ dueTasks.length }}</span>
+        <span class="feature-badge" v-if="dueTasks.length">{{ visibleDueTasks.length }}/{{ dueTasks.length }}</span>
       </div>
       <div class="feature-tab" :class="{ active: activeTab === 'dictation' }" @click="activeTab = 'dictation'">
         <span class="feature-icon">✏️</span>
@@ -35,16 +35,16 @@
           <div class="stat-label">已掌握</div>
         </div>
         <div class="stat-card">
-          <div class="stat-num" style="color:var(--warning)">{{ dueTasks.length }}</div>
-          <div class="stat-label">待复习</div>
+          <div class="stat-num" style="color:var(--warning)">{{ visibleDueTasks.length }}</div>
+          <div class="stat-label">今日待复习</div>
         </div>
       </div>
 
       <!-- 待复习队列 -->
-      <div class="section" v-if="dueTasks.length">
-        <h3 class="section-title">📋 待复习队列 <span class="section-hint">（按记忆曲线到期排序）</span></h3>
+      <div class="section" v-if="visibleDueTasks.length">
+        <h3 class="section-title">📋 今日复习 <span class="section-hint">（{{ visibleDueTasks.length }}/{{ dueTasks.length }} 条，按记忆曲线排序）</span></h3>
         <div class="task-list">
-          <div v-for="task in dueTasks" :key="task.content_id" class="card task-item">
+          <div v-for="task in visibleDueTasks" :key="task.content_id" class="card task-item">
             <div class="task-avatar" :style="{ background: stageColors[task.review_stage] || 'var(--primary)' }">
               S{{ task.review_stage }}
             </div>
@@ -62,7 +62,8 @@
 
       <div v-else class="empty-state" style="padding-top:20px">
         <div class="icon" style="color:var(--success)">✅</div>
-        <p>暂无待复习内容，继续学习吧！</p>
+        <p v-if="dueTasks.length">今日复习已完成，还有 {{ dueTasks.length }} 条待复习</p>
+        <p v-else>暂无待复习内容，继续学习吧！</p>
       </div>
 
       <!-- 全部内容进度 -->
@@ -110,13 +111,13 @@
 
       <!-- 全部学习内容 -->
       <div class="section">
-        <h3 class="section-title">📚 全部学习内容 <span class="section-hint">（点击开始默写）</span></h3>
+        <h3 class="section-title">📚 今日学习 <span class="section-hint">（{{ visibleContents.length }}/{{ allContents.length }} 条）</span></h3>
         <div v-if="allContents.length === 0" class="empty-state">
           <div class="icon">📝</div>
           <p>暂无学习内容</p>
         </div>
         <div v-else class="content-list">
-          <div v-for="item in allContents" :key="item.id" class="card content-item" @click="startDictation(item)">
+          <div v-for="item in visibleContents" :key="item.id" class="card content-item" @click="startDictation(item)">
             <div class="content-left">
               <div class="content-title">{{ item.title }}</div>
               <div class="content-meta">
@@ -248,6 +249,18 @@ const sortedProgress = computed(() => {
     return 0
   })
 })
+
+// 根据每日学习时长计算展示上限
+const dailyLimit = computed(() => {
+  const goal = auth.preference?.daily_goal_minutes || 15
+  return goal <= 15 ? 1 : goal <= 30 ? 2 : goal <= 45 ? 3 : 4
+})
+
+// 复习 tab：只显示 dailyLimit 条待复习
+const visibleDueTasks = computed(() => dueTasks.value.slice(0, dailyLimit.value))
+
+// 默写 tab：只显示 dailyLimit 条内容
+const visibleContents = computed(() => allContents.value.slice(0, dailyLimit.value))
 
 onMounted(loadData)
 
