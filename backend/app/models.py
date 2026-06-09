@@ -1,5 +1,5 @@
 """
-Floo! (飞路一下) 数据库模型 - 完整 9 表设计
+Floo! (飞路一下) 数据库模型 - 11 表设计
 
 业务集群划分：
 - 集群一：用户与偏好设定（user_main, user_learning_preference）
@@ -7,6 +7,7 @@ Floo! (飞路一下) 数据库模型 - 完整 9 表设计
 - 集群三：学习行为与记忆追踪（user_memory_progress, user_checkin_records,
          user_dictation_history, user_weekly_summary）
 - 集群四：游戏化激励（user_point_account, point_log_history）
+- 集群五：积分商城（character, user_collection）
 """
 from datetime import datetime
 
@@ -51,6 +52,7 @@ class UserMain(Base):
     dictations = relationship("UserDictationHistory", back_populates="user", cascade="all, delete-orphan")
     weekly_summaries = relationship("UserWeeklySummary", back_populates="user", cascade="all, delete-orphan")
     custom_contents = relationship("LearningContent", back_populates="creator", foreign_keys="LearningContent.user_id")
+    collections = relationship("UserCollection", back_populates="user", cascade="all, delete-orphan")
 
 
 class UserLearningPreference(Base):
@@ -277,3 +279,49 @@ class PointLogHistory(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     account = relationship("UserPointAccount", back_populates="transactions")
+
+
+# ============== 业务集群五：积分商城 ==============
+
+class Character(Base):
+    """角色表 - 积分商城盲盒角色，每个角色对应一个好词。"""
+    __tablename__ = "character"
+
+    character_id = Column(Integer, primary_key=True, autoincrement=True)
+    # 角色名称（英文好词）
+    name = Column(String(64), unique=True, nullable=False, index=True)
+    # 中文含义
+    meaning = Column(String(128), nullable=False)
+    # 图片URL
+    image_url = Column(String(512), nullable=True)
+    # 稀有度：common/rare/legendary
+    rarity = Column(String(16), nullable=False, default="common")
+    # 角色描述
+    description = Column(String(512), nullable=True)
+    # 抽取概率（万分比）
+    weight = Column(Integer, nullable=False, default=7000)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    collections = relationship("UserCollection", back_populates="character")
+
+
+class UserCollection(Base):
+    """用户收藏表 - 记录用户抽到的角色。"""
+    __tablename__ = "user_collection"
+    __table_args__ = (
+        UniqueConstraint("user_id", "character_id", name="uq_user_character"),
+    )
+
+    collection_id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("user_main.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    character_id = Column(Integer, ForeignKey("character.character_id", ondelete="CASCADE"), nullable=False, index=True)
+    # 抽到的数量（重复角色累加）
+    count = Column(Integer, default=1, nullable=False)
+    # 第一次获得时间
+    obtained_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    # 最近一次获得时间
+    last_obtained_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("UserMain", back_populates="collections")
+    character = relationship("Character", back_populates="collections")
