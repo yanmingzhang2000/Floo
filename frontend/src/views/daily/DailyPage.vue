@@ -1,5 +1,6 @@
 <template>
   <div class="page-container">
+    <OnboardingGuide />
     <div class="page-header">
       <h1>今日英语 · {{ themeLabel }}</h1>
       <p class="subtitle">已完成 {{ visibleCount }}/{{ totalCount }} 篇</p>
@@ -101,6 +102,7 @@ import { dailyApi, generationLimitApi, favoritesApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { dictionaryApi } from '@/api'
 import { speakWord, initVoices } from '@/composables/useSpeech'
+import OnboardingGuide from '@/components/OnboardingGuide.vue'
 import type { LearningContent, WordItem } from '@/types'
 
 const auth = useAuthStore()
