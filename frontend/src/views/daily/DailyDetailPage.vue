@@ -42,7 +42,10 @@
       <Transition name="fade">
         <div v-if="wordPopup" class="modal-overlay" @click.self="wordPopup = null">
           <div class="word-popup card">
-            <h3>{{ wordPopup.word }}</h3>
+            <div class="popup-header">
+              <h3>{{ wordPopup.word }}</h3>
+              <button class="speak-btn" @click="speakWord(wordPopup!.word)">🔊</button>
+            </div>
             <p v-if="wordPopup.phonetic" class="phonetic">{{ wordPopup.phonetic }}</p>
             <p class="meaning">{{ wordPopup.meaning }}</p>
             <p v-if="wordPopup.usage" class="usage">{{ wordPopup.usage }}</p>
@@ -57,6 +60,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { dailyApi, dictionaryApi } from '@/api'
+import { speakWord, initVoices } from '@/composables/useSpeech'
 import type { LearningContent, WordItem } from '@/types'
 
 const route = useRoute()
@@ -65,6 +69,7 @@ const content = ref<LearningContent | null>(null)
 const wordPopup = ref<{ word: string; phonetic?: string; meaning: string; usage?: string } | null>(null)
 
 onMounted(async () => {
+  initVoices()
   try {
     const { data } = await dailyApi.getContent(Number(route.params.id))
     content.value = data
@@ -90,6 +95,9 @@ async function handleWordClick(e: Event, item: LearningContent) {
   const target = e.target as HTMLElement
   const word = target.dataset.word || target.textContent || ''
   if (!word || !target.classList.contains('keyword') && !target.classList.contains('clickable-word')) return
+
+  speakWord(word)
+
   const found = item.words?.find(w => w.word.toLowerCase() === word.toLowerCase())
   if (found) {
     wordPopup.value = { word: found.word, phonetic: found.phonetic, meaning: found.meaning, usage: found.usage }
@@ -124,7 +132,10 @@ async function handleWordClick(e: Event, item: LearningContent) {
 .word-phonetic { font-size: 11px; color: var(--on-surface-variant); }
 .word-meaning { font-size: 12px; color: var(--on-surface-variant); }
 .word-popup { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; padding: 20px; z-index: 200; border-radius: 20px 20px 0 0; }
-.word-popup h3 { font-size: 22px; }
+.popup-header { display: flex; align-items: center; gap: 12px; }
+.popup-header h3 { font-size: 22px; margin: 0; }
+.speak-btn { width: 36px; height: 36px; border: none; background: var(--primary-container); border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.speak-btn:hover { background: var(--primary); }
 .word-popup .phonetic { color: var(--on-surface-variant); }
 .word-popup .meaning { margin-top: 10px; font-size: 16px; }
 .word-popup .usage { margin-top: 8px; color: var(--on-surface-variant); font-size: 14px; font-style: italic; }

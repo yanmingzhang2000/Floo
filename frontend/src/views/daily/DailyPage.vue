@@ -63,7 +63,10 @@
       <Transition name="fade">
         <div v-if="wordPopup" class="modal-overlay" @click.self="wordPopup = null">
           <div class="word-popup card">
-            <h3>{{ wordPopup.word }}</h3>
+            <div class="popup-header">
+              <h3>{{ wordPopup.word }}</h3>
+              <button class="speak-btn" @click="speakWord(wordPopup!.word)">🔊</button>
+            </div>
             <p v-if="wordPopup.phonetic" class="phonetic">{{ wordPopup.phonetic }}</p>
             <p class="meaning">{{ wordPopup.meaning }}</p>
             <p v-if="wordPopup.usage" class="usage">{{ wordPopup.usage }}</p>
@@ -79,6 +82,7 @@ import { ref, computed, onMounted } from 'vue'
 import { dailyApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { dictionaryApi } from '@/api'
+import { speakWord, initVoices } from '@/composables/useSpeech'
 import type { LearningContent, WordItem } from '@/types'
 
 const auth = useAuthStore()
@@ -102,7 +106,10 @@ const visibleContents = computed(() => {
   return contents.value
 })
 
-onMounted(loadData)
+onMounted(() => {
+  initVoices()
+  loadData()
+})
 
 async function loadData() {
   loading.value = true
@@ -151,6 +158,9 @@ async function handleWordClick(e: Event, item: LearningContent) {
   const target = e.target as HTMLElement
   const word = target.dataset.word || target.textContent || ''
   if (!word || !target.classList.contains('keyword') && !target.classList.contains('clickable-word')) return
+
+  // 朗读单词
+  speakWord(word)
 
   // 核心词：优先用本地数据
   const found = item.words?.find(w => w.word.toLowerCase() === word.toLowerCase())
@@ -277,7 +287,30 @@ function showWordDetail(w: WordItem) {
   border-radius: 20px 20px 0 0;
 }
 
-.word-popup h3 { font-size: 22px; }
+.popup-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.popup-header h3 { font-size: 22px; margin: 0; }
+
+.speak-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: var(--primary-container);
+  border-radius: 50%;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.speak-btn:hover { background: var(--primary); }
+
 .word-popup .phonetic { color: var(--on-surface-variant); margin-top: 4px; }
 .word-popup .meaning { margin-top: 10px; font-size: 16px; }
 .word-popup .usage { margin-top: 8px; color: var(--on-surface-variant); font-size: 14px; font-style: italic; }
