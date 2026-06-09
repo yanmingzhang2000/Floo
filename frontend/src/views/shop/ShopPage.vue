@@ -21,7 +21,7 @@
           <div class="box-icon">✨</div>
           <div class="box-info">
             <div class="box-title">Floo！</div>
-            <div class="box-desc">抽取随机角色，收集美好品质</div>
+            <div class="box-desc">今日份惊喜已上线</div>
           </div>
         </div>
 
