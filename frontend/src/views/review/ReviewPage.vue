@@ -109,10 +109,10 @@
         </div>
       </div>
 
-      <!-- 全部学习内容 -->
+      <!-- 今日学习内容 -->
       <div class="section">
-        <h3 class="section-title">📚 今日学习 <span class="section-hint">（{{ visibleContents.length }}/{{ allContents.length }} 条）</span></h3>
-        <div v-if="allContents.length === 0" class="empty-state">
+        <h3 class="section-title">📚 今日学习 <span class="section-hint">（{{ visibleContents.length }} 条）</span></h3>
+        <div v-if="todayContents.length === 0" class="empty-state">
           <div class="icon">📝</div>
           <p>暂无学习内容</p>
         </div>
@@ -227,7 +227,7 @@ const progressList = ref<MemoryProgress[]>([])
 const masteredCount = ref(0)
 
 // 默写
-const allContents = ref<LearningContent[]>([])
+const todayContents = ref<LearningContent[]>([])
 const history = ref<DictationHistory[]>([])
 const dictatingContent = ref<LearningContent | null>(null)
 const showOriginal = ref(false)
@@ -259,24 +259,24 @@ const dailyLimit = computed(() => {
 // 复习 tab：只显示 dailyLimit 条待复习
 const visibleDueTasks = computed(() => dueTasks.value.slice(0, dailyLimit.value))
 
-// 默写 tab：只显示 dailyLimit 条内容
-const visibleContents = computed(() => allContents.value.slice(0, dailyLimit.value))
+// 默写 tab：显示今日学习内容（已在getTodayList中按dailyGoal过滤）
+const visibleContents = computed(() => todayContents.value)
 
 onMounted(loadData)
 
 async function loadData() {
   loading.value = true
   try {
-    const [reviewRes, progressRes, listRes, histRes] = await Promise.all([
+    const [reviewRes, progressRes, todayRes, histRes] = await Promise.all([
       dailyApi.getReviewTasks(auth.currentUserId),
       dailyApi.getAllProgress(auth.currentUserId),
-      dailyApi.getList(50),
+      dailyApi.getTodayList(auth.currentUserId),
       dictationApi.getHistory(auth.currentUserId).catch(() => ({ data: [] })),
     ])
     dueTasks.value = reviewRes.data.tasks || []
     progressList.value = progressRes.data.items || []
     masteredCount.value = progressRes.data.mastered_count || 0
-    allContents.value = listRes.data || []
+    todayContents.value = todayRes.data.contents || []
     history.value = histRes.data?.slice(0, 20) || []
   } catch { /* ignore */ }
   loading.value = false
@@ -284,7 +284,7 @@ async function loadData() {
 
 function getContentTitle(contentId?: number | null): string {
   if (!contentId) return ''
-  const item = allContents.value.find(c => c.id === contentId)
+  const item = todayContents.value.find(c => c.id === contentId)
   return item?.title || ''
 }
 
