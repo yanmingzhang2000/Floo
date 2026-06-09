@@ -92,4 +92,16 @@ export const favoritesApi = {
     api.get('/api/favorites/check', { params: { user_id: userId, word } }),
 }
 
+// ===== 积分商城 =====
+export const shopApi = {
+  getCharacters: (userId: number) =>
+    api.get('/api/shop/characters', { params: { user_id: userId } }),
+  getBalance: (userId: number) =>
+    api.get('/api/shop/balance', { params: { user_id: userId } }),
+  openBox: (userId: number, count: number) =>
+    api.post('/api/shop/open-box', { user_id: userId, count }),
+  getCollection: (userId: number) =>
+    api.get('/api/shop/collection', { params: { user_id: userId } }),
+}
+
 export default api

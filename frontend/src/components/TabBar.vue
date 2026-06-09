@@ -65,6 +65,7 @@ const tabs = [
   { path: '/learning', label: '每日学习', icon: '📖' },
   { path: '/dictionary', label: '单词书', icon: '📚' },
   { path: '/review', label: '复习', icon: '🔄' },
+  { path: '/shop', label: '商城', icon: '🎁' },
   { path: '/checkin', label: '打卡', icon: '📅' },
 ]
 

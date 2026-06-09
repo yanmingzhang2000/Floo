@@ -124,3 +124,23 @@ export interface PointAccount {
   current_streak_days: number
   max_streak_days: number
 }
+
+export interface Character {
+  character_id: number
+  name: string
+  meaning: string
+  image_url?: string
+  rarity: 'common' | 'rare' | 'legendary'
+  description?: string
+  count: number
+}
+
+export interface BoxResult {
+  character_id: number
+  name: string
+  meaning: string
+  image_url?: string
+  rarity: string
+  description?: string
+  is_new: boolean
+}
