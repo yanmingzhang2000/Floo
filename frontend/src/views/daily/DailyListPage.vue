@@ -12,7 +12,7 @@
     </div>
 
     <div v-else class="list-view">
-      <router-link v-for="item in list" :key="item.id" :to="`/daily/content/${item.id}`" class="list-item card">
+      <router-link v-for="item in list" :key="item.id" :to="`/learning/content/${item.id}`" class="list-item card">
         <div class="item-icon">📄</div>
         <div class="item-info">
           <div class="item-title">{{ item.title }}</div>

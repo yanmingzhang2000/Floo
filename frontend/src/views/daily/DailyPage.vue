@@ -7,7 +7,7 @@
         <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white" @click="handleGenerate" :disabled="generating || remainingCount <= 0">
           {{ generating ? '生成中...' : remainingCount > 0 ? `✨ 生成新内容 (${remainingCount}次)` : '今日已用完' }}
         </button>
-        <router-link to="/daily/list" class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white">
+        <router-link to="/learning/list" class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white">
           📋 历史内容
         </router-link>
       </div>
@@ -24,37 +24,48 @@
     </div>
 
     <div v-else>
-      <div v-for="(item, idx) in visibleContents" :key="item.id" class="content-card card">
-        <div class="card-header">
-          <span class="tag tag-primary">{{ item.content_type === 'overview' ? '今日总览' : `文章 ${idx}` }}</span>
-          <span class="tag tag-success">{{ item.difficulty_level }}</span>
-        </div>
-        <h3 class="card-title">{{ item.title }}</h3>
+      <!-- 分页指示器 -->
+      <div class="page-indicator" v-if="visibleContents.length > 1">
+        <span v-for="(item, idx) in visibleContents" :key="item.id" class="indicator-dot" :class="{ active: currentSlide === idx }"></span>
+      </div>
 
-        <div class="article-body" v-html="renderArticle(item)" @click="handleWordClick($event, item)"></div>
+      <!-- 滑动容器 -->
+      <div class="swiper-container" ref="swiperRef" @touchstart="handleTouchStart" @touchmove="handleTouchMove" @touchend="handleTouchEnd">
+        <div class="swiper-wrapper" :style="{ transform: `translateX(-${currentSlide * 100}%)` }">
+          <div v-for="(item, idx) in visibleContents" :key="item.id" class="swiper-slide">
+            <div class="content-card card">
+              <div class="card-header">
+                <span class="tag tag-primary">{{ item.content_type === 'overview' ? '今日总览' : `文章 ${idx + 1}` }}</span>
+                <span class="tag tag-success">{{ item.difficulty_level }}</span>
+              </div>
+              <h3 class="card-title">{{ item.title }}</h3>
 
-        <div v-if="item.translation" class="translation-toggle" @click="toggleTranslation(item.id)">
-          {{ expandedTranslations.has(item.id) ? '收起译文 ▲' : '查看译文 ▼' }}
-        </div>
-        <div v-if="expandedTranslations.has(item.id) && item.translation" class="translation">
-          {{ item.translation }}
-        </div>
+              <div class="article-body" v-html="renderArticle(item)" @click="handleWordClick($event, item)"></div>
 
-        <div v-if="item.words?.length" class="words-section">
-          <h4>核心词汇</h4>
-          <div class="words-wrap">
-            <div v-for="w in item.words" :key="w.word" class="word-chip" @click="showWordDetail(w)">
-              <span class="word-text">{{ w.word }}</span>
-              <span class="word-phonetic" v-if="w.phonetic">{{ w.phonetic }}</span>
-              <span class="word-meaning">{{ w.meaning }}</span>
+              <div v-if="item.translation" class="translation-toggle" @click="toggleTranslation(item.id)">
+                {{ expandedTranslations.has(item.id) ? '收起译文 ▲' : '查看译文 ▼' }}
+              </div>
+              <div v-if="expandedTranslations.has(item.id) && item.translation" class="translation">
+                {{ item.translation }}
+              </div>
+
+              <div v-if="item.words?.length" class="words-section">
+                <h4>核心词汇</h4>
+                <div class="words-wrap">
+                  <div v-for="w in item.words" :key="w.word" class="word-chip" @click="showWordDetail(w)">
+                    <span class="word-text">{{ w.word }}</span>
+                    <span class="word-phonetic" v-if="w.phonetic">{{ w.phonetic }}</span>
+                    <span class="word-meaning">{{ w.meaning }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <div class="bottom-actions">
-        <router-link to="/dictation" class="btn btn-primary btn-block">开始默写练习</router-link>
-        <router-link to="/review" class="btn btn-outline btn-block">查看复习任务</router-link>
+        <router-link to="/review" class="btn btn-primary btn-block">去默写/复习</router-link>
       </div>
     </div>
 
@@ -99,6 +110,10 @@ const contents = ref<LearningContent[]>([])
 const expandedTranslations = ref(new Set<number>())
 const wordPopup = ref<{ word: string; phonetic?: string; meaning: string; usage?: string; isFavorite?: boolean } | null>(null)
 const remainingCount = ref(3)
+const currentSlide = ref(0)
+const swiperRef = ref<HTMLElement | null>(null)
+let touchStartX = 0
+let touchStartY = 0
 
 const themeLabels: Record<string, string> = {
   ai_tech: 'AI科技', product_tech: '产品技术', business: '财经商业',
@@ -113,6 +128,38 @@ const visibleContents = computed(() => {
   if (goal <= 40) return contents.value.slice(0, 2)
   return contents.value
 })
+
+function handleTouchStart(e: TouchEvent) {
+  touchStartX = e.touches[0].clientX
+  touchStartY = e.touches[0].clientY
+}
+
+function handleTouchMove(e: TouchEvent) {
+  if (!touchStartX) return
+  const diffX = e.touches[0].clientX - touchStartX
+  const diffY = e.touches[0].clientY - touchStartY
+  // 如果是垂直滑动，不处理
+  if (Math.abs(diffY) > Math.abs(diffX)) return
+  e.preventDefault()
+}
+
+function handleTouchEnd(e: TouchEvent) {
+  if (!touchStartX) return
+  const diffX = e.changedTouches[0].clientX - touchStartX
+  const diffY = e.changedTouches[0].clientY - touchStartY
+  // 忽略垂直滑动
+  if (Math.abs(diffY) > Math.abs(diffX)) {
+    touchStartX = 0
+    return
+  }
+  const threshold = 50
+  if (diffX < -threshold && currentSlide.value < visibleContents.value.length - 1) {
+    currentSlide.value++
+  } else if (diffX > threshold && currentSlide.value > 0) {
+    currentSlide.value--
+  }
+  touchStartX = 0
+}
 
 onMounted(() => {
   initVoices()

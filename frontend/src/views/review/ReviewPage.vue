@@ -40,7 +40,7 @@
               上次准确率 {{ (task.last_accuracy * 100).toFixed(0) }}%
             </div>
           </div>
-          <router-link :to="`/daily/content/${task.content_id}`" class="btn btn-sm btn-primary">去复习</router-link>
+          <router-link :to="`/learning/content/${task.content_id}`" class="btn btn-sm btn-primary">去复习</router-link>
         </div>
       </div>
     </template>
@@ -117,7 +117,7 @@
       <div v-else class="empty-state">
         <div class="icon">✏️</div>
         <p>今日暂无学习内容，请先生成</p>
-        <router-link to="/daily" class="btn btn-primary" style="margin-top:16px">去生成</router-link>
+        <router-link to="/learning" class="btn btn-primary" style="margin-top:16px">去生成</router-link>
       </div>
     </template>
   </div>

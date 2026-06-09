@@ -12,15 +12,15 @@ const router = createRouter({
       path: '/',
       component: () => import('@/components/TabBar.vue'),
       children: [
-        { path: '', redirect: '/daily' },
-        { path: 'daily', name: 'daily', component: () => import('@/views/daily/DailyPage.vue') },
-        { path: 'favorites', name: 'favorites', component: () => import('@/views/FavoritesPage.vue') },
+        { path: '', redirect: '/learning' },
+        { path: 'learning', name: 'learning', component: () => import('@/views/daily/DailyPage.vue') },
+        { path: 'dictionary', name: 'dictionary', component: () => import('@/views/FavoritesPage.vue') },
         { path: 'review', name: 'review', component: () => import('@/views/review/ReviewPage.vue') },
         { path: 'checkin', name: 'checkin', component: () => import('@/views/checkin/CheckinPage.vue') },
       ],
     },
-    { path: '/daily/list', name: 'daily-list', component: () => import('@/views/daily/DailyListPage.vue') },
-    { path: '/daily/content/:id', name: 'daily-detail', component: () => import('@/views/daily/DailyDetailPage.vue') },
+    { path: '/learning/list', name: 'daily-list', component: () => import('@/views/daily/DailyListPage.vue') },
+    { path: '/learning/content/:id', name: 'daily-detail', component: () => import('@/views/daily/DailyDetailPage.vue') },
     { path: '/weekly', name: 'weekly', component: () => import('@/views/weekly/WeeklyPage.vue') },
     { path: '/preference', name: 'preference', component: () => import('@/views/profile/PreferencePage.vue') },
   ],
@@ -32,7 +32,7 @@ router.beforeEach((to) => {
     return { name: 'login' }
   }
   if (to.name === 'login' && userId) {
-    return { name: 'daily' }
+    return { name: 'learning' }
   }
 })
 

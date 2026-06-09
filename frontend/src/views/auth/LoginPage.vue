@@ -53,7 +53,7 @@ async function handleSubmit() {
       ? await userApi.register(form)
       : await userApi.login(form)
     auth.setSession(data.user_id, data.username)
-    router.push('/daily')
+    router.push('/learning')
   } catch (e: any) {
     error.value = e.response?.data?.detail || '操作失败，请重试'
   } finally {

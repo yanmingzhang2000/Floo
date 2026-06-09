@@ -79,7 +79,7 @@
     <div v-else class="empty-state">
       <div class="icon">✏️</div>
       <p>今日暂无学习内容，请先生成</p>
-      <router-link to="/daily" class="btn btn-primary" style="margin-top:16px">去生成</router-link>
+      <router-link to="/learning" class="btn btn-primary" style="margin-top:16px">去生成</router-link>
     </div>
 
     <!-- 历史记录 -->

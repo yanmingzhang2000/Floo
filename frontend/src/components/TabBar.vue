@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <header class="top-nav">
       <div class="top-left">
-        <router-link to="/daily" class="logo-link">
+        <router-link to="/learning" class="logo-link">
           <span class="logo-text">Floo!</span>
         </router-link>
       </div>
@@ -35,7 +35,7 @@
               <span class="username">{{ auth.username || '未登录' }}</span>
             </div>
             <div class="sheet-body">
-              <router-link to="/favorites" class="sheet-item" @click="showProfile = false">
+              <router-link to="/dictionary" class="sheet-item" @click="showProfile = false">
                 📚 我的收藏
               </router-link>
               <router-link to="/preference" class="sheet-item" @click="showProfile = false">
@@ -62,8 +62,8 @@ const auth = useAuthStore()
 const showProfile = ref(false)
 
 const tabs = [
-  { path: '/daily', label: '每日学习', icon: '📖' },
-  { path: '/favorites', label: '单词书', icon: '📚' },
+  { path: '/learning', label: '每日学习', icon: '📖' },
+  { path: '/dictionary', label: '单词书', icon: '📚' },
   { path: '/review', label: '复习', icon: '🔄' },
   { path: '/checkin', label: '打卡', icon: '📅' },
 ]
