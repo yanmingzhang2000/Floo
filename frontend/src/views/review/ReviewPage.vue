@@ -69,19 +69,20 @@
       <div class="section" v-if="progressList.length">
         <h3 class="section-title">📊 全部内容进度</h3>
         <div class="progress-list">
-          <div v-for="item in progressList" :key="item.content_id" class="card progress-item">
+          <div v-for="item in sortedProgress" :key="item.content_id" class="card progress-item">
             <div class="progress-left">
               <div class="progress-title">{{ item.title }}</div>
               <div class="progress-meta">
                 <span class="stage-badge" :style="{ background: stageColors[item.review_stage] || 'var(--primary)' }">
-                  S{{ item.review_stage }}
+                  {{ item.review_stage === 0 ? '新' : `S${item.review_stage}` }}
                 </span>
                 <span v-if="item.is_mastered" class="mastered-badge">已掌握</span>
+                <span v-else-if="item.review_stage === 0" class="due-text">未默写</span>
                 <span v-else-if="item.next_review_at" class="due-text">{{ formatDue(item.next_review_at) }}</span>
               </div>
             </div>
             <div class="progress-accuracy" :style="{ color: getAccuracyColor(item.last_accuracy) }">
-              {{ (item.last_accuracy * 100).toFixed(0) }}%
+              {{ item.review_stage === 0 ? '-' : `${(item.last_accuracy * 100).toFixed(0)}%` }}
             </div>
           </div>
         </div>
@@ -238,6 +239,15 @@ const stageColors: Record<number, string> = {
   3: '#FFC107', 4: '#4CAF50', 5: '#2196F3',
   6: '#9C27B0', 7: '#00BCD4',
 }
+
+// 按阶段排序：已掌握 > 复习中 > 新内容
+const sortedProgress = computed(() => {
+  return [...progressList.value].sort((a, b) => {
+    if (a.is_mastered !== b.is_mastered) return a.is_mastered ? -1 : 1
+    if (a.review_stage !== b.review_stage) return b.review_stage - a.review_stage
+    return 0
+  })
+})
 
 onMounted(loadData)
 

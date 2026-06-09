@@ -248,7 +248,7 @@ def get_content(content_id: int, db: Session = Depends(get_db)):
 
 @router.get("/review", response_model=ReviewListResponse)
 def get_review_tasks(user_id: int = 1, db: Session = Depends(get_db)):
-    """查询今日待复习任务列表（next_review_at <= 当前时间）。"""
+    """查询今日待复习任务列表（stage>=1 且 next_review_at <= 当前时间）。"""
     from datetime import datetime
     from sqlalchemy import and_
     from app.models import UserMemoryProgress, LearningContent as LC
@@ -261,6 +261,7 @@ def get_review_tasks(user_id: int = 1, db: Session = Depends(get_db)):
         .filter(
             and_(
                 UserMemoryProgress.user_id == user_id,
+                UserMemoryProgress.review_stage >= 1,
                 UserMemoryProgress.next_review_at <= now,
                 LC.is_active == True,
             )
