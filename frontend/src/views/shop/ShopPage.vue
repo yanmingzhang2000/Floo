@@ -10,17 +10,17 @@
     <div v-else>
       <!-- 标签切换 -->
       <div class="tab-bar">
-        <button :class="['tab-btn', { active: activeTab === 'shop' }]" @click="activeTab = 'shop'">盲盒商店</button>
+        <button :class="['tab-btn', { active: activeTab === 'shop' }]" @click="activeTab = 'shop'">Floo！</button>
         <button :class="['tab-btn', { active: activeTab === 'collection' }]" @click="activeTab = 'collection'">我的收藏</button>
       </div>
 
       <!-- 商店标签 -->
       <div v-if="activeTab === 'shop'" class="tab-content">
-        <!-- 盲盒卡片 -->
+        <!-- Floo卡片 -->
         <div class="box-card">
-          <div class="box-icon">🎁</div>
+          <div class="box-icon">✨</div>
           <div class="box-info">
-            <div class="box-title">好词盲盒</div>
+            <div class="box-title">Floo！</div>
             <div class="box-desc">抽取随机角色，收集美好品质</div>
           </div>
         </div>
@@ -59,7 +59,7 @@
       <div v-if="activeTab === 'collection'" class="tab-content">
         <div v-if="collection.length === 0" class="empty-state">
           <div class="empty-icon">📦</div>
-          <div class="empty-text">还没有收藏，快去抽盲盒吧！</div>
+          <div class="empty-text">还没有收藏，快去 Floo！吧</div>
         </div>
         <div v-else class="collection-grid">
           <div v-for="item in collection" :key="item.collection_id" class="collection-card" :class="item.rarity">
@@ -78,7 +78,7 @@
     <!-- 抽卡结果弹窗 -->
     <div v-if="showResult" class="modal-overlay" @click="showResult = false">
       <div class="modal-content result-modal" @click.stop>
-        <div class="result-title">🎉 恭喜获得</div>
+        <div class="result-title">✨ 恭喜获得</div>
         <div class="result-list">
           <div v-for="(item, idx) in resultItems" :key="idx" class="result-item" :class="item.rarity">
             <div class="result-icon">{{ getCharIcon(item.name) }}</div>

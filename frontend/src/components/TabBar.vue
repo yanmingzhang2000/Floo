@@ -36,7 +36,7 @@
             </div>
             <div class="sheet-body">
               <router-link to="/shop" class="sheet-item" @click="showProfile = false">
-                🎁 积分商城
+                ✨ Floo！
               </router-link>
               <router-link to="/preference" class="sheet-item" @click="showProfile = false">
                 ⚙️ 学习偏好设置
