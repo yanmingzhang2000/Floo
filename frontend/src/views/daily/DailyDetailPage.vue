@@ -73,29 +73,37 @@ onMounted(async () => {
 })
 
 function renderArticle(item: LearningContent) {
-  if (!item.words?.length) return item.article
   let html = item.article
-  for (const w of item.words) {
-    const regex = new RegExp(`\\b(${w.word})\\b`, 'gi')
-    html = html.replace(regex, `<mark class="keyword" data-word="${w.word}"><strong>$1</strong></mark>`)
+  if (item.words?.length) {
+    for (const w of item.words) {
+      const regex = new RegExp(`\\b(${w.word})\\b`, 'gi')
+      html = html.replace(regex, `<mark class="keyword" data-word="$1"><strong>$1</strong></mark>`)
+    }
   }
+  html = html.replace(/\b([a-zA-Z]+(?:'[a-zA-Z]+)?)\b/g, (match, word) => {
+    if (match.startsWith('<mark')) return match
+    return `<span class="clickable-word" data-word="${word}">${word}</span>`
+  })
   return html
 }
 
 async function handleWordClick(e: Event, item: LearningContent) {
   const target = e.target as HTMLElement
-  if (!target.classList.contains('keyword')) return
   const word = target.dataset.word || target.textContent || ''
+  if (!word) return
   const found = item.words?.find(w => w.word.toLowerCase() === word.toLowerCase())
   if (found) {
     wordPopup.value = { word: found.word, phonetic: found.phonetic, meaning: found.meaning, usage: found.usage }
-  } else {
-    try {
-      const { data } = await dictionaryApi.lookup(word)
-      const meaning = data?.ec?.word?.[0]?.trs?.[0]?.tr?.[0]?.l?.i?.[0] || '未找到释义'
-      wordPopup.value = { word, meaning }
-    } catch { wordPopup.value = { word, meaning: '查询失败' } }
+    return
   }
+  try {
+    const { data } = await dictionaryApi.lookup(word)
+    const ec = data?.ec?.word?.[0]
+    const phonetic = ec?.usphone || ec?.ukphone || ''
+    const trs = ec?.trs || []
+    const meaning = trs.map((t: any) => t?.tr?.[0]?.l?.i?.[0]).filter(Boolean).join('；') || '未找到释义'
+    wordPopup.value = { word, phonetic: phonetic ? `/${phonetic}/` : undefined, meaning }
+  } catch { wordPopup.value = { word, meaning: '查询失败' } }
 }
 </script>
 
@@ -104,6 +112,8 @@ async function handleWordClick(e: Event, item: LearningContent) {
 .card-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
 .article-body { font-size: 15px; line-height: 1.8; }
 .article-body :deep(mark.keyword) { background: var(--primary-container); color: var(--on-primary-container); padding: 1px 3px; border-radius: 3px; cursor: pointer; }
+.article-body :deep(.clickable-word) { cursor: pointer; border-bottom: 1px dashed var(--primary-light); transition: background 0.15s; }
+.article-body :deep(.clickable-word):hover { background: var(--primary-container); border-radius: 2px; }
 .words-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
 .word-chip { display: flex; flex-direction: column; padding: 8px 12px; background: var(--surface-container); border-radius: var(--radius-sm); cursor: pointer; }
 .word-chip:hover { background: var(--primary-container); }

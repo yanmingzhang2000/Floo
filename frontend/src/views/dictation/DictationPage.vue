@@ -2,7 +2,7 @@
   <div class="page-container">
     <div class="page-header">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <h1>听写练习</h1>
+        <h1>默写练习</h1>
         <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white" @click="showOriginal = !showOriginal">
           {{ showOriginal ? '🙈 隐藏原文' : '👁️ 显示原文' }}
         </button>

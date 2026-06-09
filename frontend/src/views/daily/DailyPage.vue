@@ -129,29 +129,44 @@ function toggleTranslation(id: number) {
 }
 
 function renderArticle(item: LearningContent) {
-  if (!item.words?.length) return item.article
   let html = item.article
-  for (const w of item.words) {
-    const regex = new RegExp(`\\b(${w.word})\\b`, 'gi')
-    html = html.replace(regex, `<mark class="keyword" data-word="${w.word}"><strong>$1</strong></mark>`)
+  // 先把核心词高亮（带下划线+粗体）
+  if (item.words?.length) {
+    for (const w of item.words) {
+      const regex = new RegExp(`\\b(${w.word})\\b`, 'gi')
+      html = html.replace(regex, `<mark class="keyword" data-word="$1"><strong>$1</strong></mark>`)
+    }
   }
+  // 再把所有剩余英文单词也包裹成可点击的span
+  html = html.replace(/\b([a-zA-Z]+(?:'[a-zA-Z]+)?)\b/g, (match, word) => {
+    // 已经被mark包裹的不再处理
+    if (match.startsWith('<mark')) return match
+    return `<span class="clickable-word" data-word="${word}">${word}</span>`
+  })
   return html
 }
 
 async function handleWordClick(e: Event, item: LearningContent) {
   const target = e.target as HTMLElement
-  if (!target.classList.contains('keyword')) return
   const word = target.dataset.word || target.textContent || ''
+  if (!word) return
+
+  // 核心词：优先用本地数据（包含音标和词性）
   const found = item.words?.find(w => w.word.toLowerCase() === word.toLowerCase())
   if (found) {
     wordPopup.value = { word: found.word, phonetic: found.phonetic, meaning: found.meaning, usage: found.usage }
-  } else {
-    try {
-      const { data } = await dictionaryApi.lookup(word)
-      const meaning = data?.ec?.word?.[0]?.trs?.[0]?.tr?.[0]?.l?.i?.[0] || '未找到释义'
-      wordPopup.value = { word, meaning }
-    } catch { wordPopup.value = { word, meaning: '查询失败' } }
+    return
   }
+
+  // 非核心词：调用有道词典API
+  try {
+    const { data } = await dictionaryApi.lookup(word)
+    const ec = data?.ec?.word?.[0]
+    const phonetic = ec?.usphone || ec?.ukphone || ''
+    const trs = ec?.trs || []
+    const meaning = trs.map((t: any) => t?.tr?.[0]?.l?.i?.[0]).filter(Boolean).join('；') || '未找到释义'
+    wordPopup.value = { word, phonetic: phonetic ? `/${phonetic}/` : undefined, meaning }
+  } catch { wordPopup.value = { word, meaning: '查询失败' } }
 }
 
 function showWordDetail(w: WordItem) {
@@ -176,6 +191,17 @@ function showWordDetail(w: WordItem) {
   padding: 1px 3px;
   border-radius: 3px;
   cursor: pointer;
+}
+
+.article-body :deep(.clickable-word) {
+  cursor: pointer;
+  border-bottom: 1px dashed var(--primary-light);
+  transition: background 0.15s;
+}
+
+.article-body :deep(.clickable-word):hover {
+  background: var(--primary-container);
+  border-radius: 2px;
 }
 
 .translation-toggle {
