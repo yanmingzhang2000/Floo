@@ -1,5 +1,19 @@
 <template>
   <div class="tab-bar">
+    <!-- 顶部导航栏 -->
+    <header class="top-nav">
+      <div class="top-left">
+        <router-link to="/daily" class="logo-link">
+          <span class="logo-text">Floo!</span>
+        </router-link>
+      </div>
+      <div class="top-right">
+        <div class="profile-btn" @click="showProfile = true">
+          <span class="avatar-text">{{ auth.username?.[0]?.toUpperCase() || '?' }}</span>
+        </div>
+      </div>
+    </header>
+
     <div class="tab-content">
       <router-view />
     </div>
@@ -9,10 +23,6 @@
         <span class="nav-icon">{{ tab.icon }}</span>
         <span class="nav-label">{{ tab.label }}</span>
       </router-link>
-
-      <div class="nav-item fab" @click="showProfile = true">
-        <span class="nav-icon">👤</span>
-      </div>
     </nav>
 
     <!-- 个人设置弹窗 -->
@@ -69,9 +79,44 @@ function handleLogout() {
   min-height: 100vh;
 }
 
+.top-nav {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  z-index: 90;
+}
+
+.top-left { display: flex; align-items: center; }
+.logo-link { text-decoration: none; }
+.logo-text { color: white; font-size: 20px; font-weight: 800; }
+
+.profile-btn {
+  width: 36px;
+  height: 36px;
+  background: rgba(255,255,255,0.25);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.profile-btn:hover { background: rgba(255,255,255,0.4); }
+.avatar-text { color: white; font-size: 16px; font-weight: 700; }
+
 .tab-content {
   flex: 1;
-  padding-bottom: 70px;
+  padding-top: 52px;
+  padding-bottom: 64px;
 }
 
 .bottom-nav {
@@ -106,11 +151,6 @@ function handleLogout() {
 
 .nav-icon { font-size: 20px; }
 .nav-label { font-size: 11px; font-weight: 500; }
-
-.fab {
-  flex: 0;
-  padding: 6px 12px;
-}
 
 .profile-sheet {
   position: fixed;

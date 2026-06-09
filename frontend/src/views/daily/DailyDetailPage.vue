@@ -131,7 +131,7 @@ async function handleWordClick(e: Event, item: LearningContent) {
 .word-text { font-weight: 600; font-size: 14px; }
 .word-phonetic { font-size: 11px; color: var(--on-surface-variant); }
 .word-meaning { font-size: 12px; color: var(--on-surface-variant); }
-.word-popup { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; padding: 20px; z-index: 200; border-radius: 20px 20px 0 0; }
+.word-popup { position: fixed; bottom: 64px; left: 50%; transform: translateX(-50%); width: calc(100% - 32px); max-width: 452px; padding: 20px; z-index: 200; border-radius: 20px; }
 .popup-header { display: flex; align-items: center; gap: 12px; }
 .popup-header h3 { font-size: 22px; margin: 0; }
 .speak-btn { width: 36px; height: 36px; border: none; background: var(--primary-container); border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }

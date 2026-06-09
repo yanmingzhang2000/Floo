@@ -277,14 +277,16 @@ function showWordDetail(w: WordItem) {
 
 .word-popup {
   position: fixed;
-  bottom: 0;
+  bottom: 64px;
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
   max-width: 480px;
   padding: 20px;
   z-index: 200;
-  border-radius: 20px 20px 0 0;
+  border-radius: 20px;
+  margin: 0 16px;
+  width: calc(100% - 32px);
 }
 
 .popup-header {
