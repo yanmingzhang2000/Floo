@@ -38,6 +38,9 @@
               <router-link to="/dictionary" class="sheet-item" @click="showProfile = false">
                 📚 我的收藏
               </router-link>
+              <router-link to="/shop" class="sheet-item" @click="showProfile = false">
+                🎁 积分商城
+              </router-link>
               <router-link to="/preference" class="sheet-item" @click="showProfile = false">
                 ⚙️ 学习偏好设置
               </router-link>
@@ -65,7 +68,6 @@ const tabs = [
   { path: '/learning', label: '每日学习', icon: '📖' },
   { path: '/dictionary', label: '单词书', icon: '📚' },
   { path: '/review', label: '复习', icon: '🔄' },
-  { path: '/shop', label: '商城', icon: '🎁' },
   { path: '/checkin', label: '打卡', icon: '📅' },
 ]
 
