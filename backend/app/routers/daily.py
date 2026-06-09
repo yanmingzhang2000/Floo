@@ -52,12 +52,32 @@ async def generate_daily(
     按用户偏好的 theme 生成内容，同 theme 当日共享。
     all_random 主题每天随机挑选真实 theme 生成。
     幂等设计：同 theme 今日已有 >= 3 条内容时直接返回，不重复调用 LLM。
+    限制：每人每天最多生成3次。
     """
+    from datetime import date, timedelta
     from app.schemas import THEME_OPTIONS
+    from app.models import DailyGenerationLimit
     import random
 
     force = payload.model_dump().get('force', False)
     log.debug("收到生成请求 user_id=%s force=%s", payload.user_id, force)
+
+    # 检查每日生成次数限制（每天最多3次）
+    today = date.today()
+    limit_record = (
+        db.query(DailyGenerationLimit)
+        .filter(
+            DailyGenerationLimit.user_id == payload.user_id,
+            DailyGenerationLimit.limit_date == today
+        )
+        .first()
+    )
+    
+    if limit_record and limit_record.generation_count >= 3 and not force:
+        log.debug("用户 %s 今日已生成 %s 次，达到上限", payload.user_id, limit_record.generation_count)
+        raise HTTPException(429, "今日生成次数已达上限（每天最多3次），请明天再来")
+    
+    log.debug("用户 %s 今日已生成 %s 次，继续执行", payload.user_id, limit_record.generation_count if limit_record else 0)
 
     # 读取用户偏好 theme
     user = user_repo.get_user(db, payload.user_id)
@@ -102,6 +122,21 @@ async def generate_daily(
             log.debug("记忆进度已初始化 user_id=%s content_id=%s", user.user_id, content.content_id)
 
     db.commit()
+    
+    # 更新每日生成次数限制
+    if limit_record:
+        limit_record.generation_count += 1
+        log.debug("更新生成次数 user_id=%s count=%s", payload.user_id, limit_record.generation_count)
+    else:
+        new_limit = DailyGenerationLimit(
+            user_id=payload.user_id,
+            limit_date=today,
+            generation_count=1
+        )
+        db.add(new_limit)
+        log.debug("创建生成次数记录 user_id=%s date=%s", payload.user_id, today)
+    db.commit()
+    
     log.info("批量生成完成 theme=%s content_ids=%s", actual_theme, content_ids)
     return GenerateContentResult(
         content_id=content_ids[0],
@@ -243,3 +278,31 @@ def get_review_tasks(user_id: int = 1, db: Session = Depends(get_db)):
     ]
     log.debug("待复习任务数 user_id=%s count=%s", user_id, len(tasks))
     return ReviewListResponse(user_id=user_id, total_count=len(tasks), tasks=tasks)
+
+
+@router.get("/generation-limit")
+def get_generation_limit(user_id: int = 1, db: Session = Depends(get_db)):
+    """获取用户今日剩余生成次数。"""
+    from datetime import date
+    from app.models import DailyGenerationLimit
+
+    today = date.today()
+    limit_record = (
+        db.query(DailyGenerationLimit)
+        .filter(
+            DailyGenerationLimit.user_id == user_id,
+            DailyGenerationLimit.limit_date == today
+        )
+        .first()
+    )
+    
+    used_count = limit_record.generation_count if limit_record else 0
+    remaining = max(0, 3 - used_count)
+    
+    log.debug("生成次数限制 user_id=%s used=%s remaining=%s", user_id, used_count, remaining)
+    return {
+        "user_id": user_id,
+        "used_count": used_count,
+        "remaining_count": remaining,
+        "max_count": 3
+    }

@@ -212,6 +212,19 @@ class UserWeeklySummary(Base):
 
 # ============== 业务集群四：游戏化激励 ==============
 
+class DailyGenerationLimit(Base):
+    """每日内容生成次数限制表 - 每用户每天最多生成3次。"""
+    __tablename__ = "daily_generation_limit"
+    __table_args__ = (
+        UniqueConstraint("user_id", "limit_date", name="uq_user_date_limit"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("user_main.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    limit_date = Column(Date, nullable=False, index=True)
+    generation_count = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
 class UserPointAccount(Base):
     """用户积分账户表 - 全局积分资产，余额变更必须同步写 point_log_history 流水。"""
     __tablename__ = "user_point_account"

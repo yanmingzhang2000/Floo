@@ -70,4 +70,10 @@ export const dictionaryApi = {
     api.get('/api/dictionary/lookup', { params: { word } }),
 }
 
+// ===== 生成次数限制 =====
+export const generationLimitApi = {
+  getLimit: (userId: number) =>
+    api.get('/api/daily/generation-limit', { params: { user_id: userId } }),
+}
+
 export default api

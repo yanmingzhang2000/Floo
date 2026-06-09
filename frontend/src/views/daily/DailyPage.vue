@@ -4,8 +4,8 @@
       <h1>今日英语 · {{ themeLabel }}</h1>
       <p class="subtitle">已完成 {{ visibleCount }}/{{ totalCount }} 篇</p>
       <div class="actions">
-        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white" @click="handleGenerate" :disabled="generating">
-          {{ generating ? '生成中...' : '✨ 生成新内容' }}
+        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white" @click="handleGenerate" :disabled="generating || remainingCount <= 0">
+          {{ generating ? '生成中...' : remainingCount > 0 ? `✨ 生成新内容 (${remainingCount}次)` : '今日已用完' }}
         </button>
         <router-link to="/daily/list" class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white">
           📋 历史内容
@@ -79,7 +79,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { dailyApi } from '@/api'
+import { dailyApi, generationLimitApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { dictionaryApi } from '@/api'
 import { speakWord, initVoices } from '@/composables/useSpeech'
@@ -91,6 +91,7 @@ const generating = ref(false)
 const contents = ref<LearningContent[]>([])
 const expandedTranslations = ref(new Set<number>())
 const wordPopup = ref<{ word: string; phonetic?: string; meaning: string; usage?: string } | null>(null)
+const remainingCount = ref(3)
 
 const themeLabels: Record<string, string> = {
   ai_tech: 'AI科技', product_tech: '产品技术', business: '财经商业',
@@ -116,11 +117,20 @@ async function loadData() {
   try {
     const { data } = await dailyApi.getTodayList(auth.currentUserId)
     contents.value = data.contents || []
+    // 加载生成次数限制
+    const { data: limitData } = await generationLimitApi.getLimit(auth.currentUserId)
+    remainingCount.value = limitData.remaining_count
   } catch { contents.value = [] }
   loading.value = false
 }
 
 async function handleGenerate() {
+  // 检查生成次数限制
+  if (remainingCount.value <= 0) {
+    alert('今日生成次数已达上限（每天最多3次），请明天再来')
+    return
+  }
+  
   generating.value = true
   try {
     await dailyApi.generate(auth.currentUserId)
@@ -162,17 +172,12 @@ async function handleWordClick(e: Event, item: LearningContent) {
   // 朗读单词
   speakWord(word)
 
-  // 核心词：优先用本地数据
-  const found = item.words?.find(w => w.word.toLowerCase() === word.toLowerCase())
-  if (found) {
-    wordPopup.value = { word: found.word, phonetic: found.phonetic, meaning: found.meaning, usage: found.usage }
-    return
-  }
+  // 显示加载状态
+  wordPopup.value = { word, meaning: '查询中...' }
 
-  // 非核心词：调用有道词典API
+  // 所有词汇统一调用词典API
   try {
     const { data } = await dictionaryApi.lookup(word)
-    // 有道API返回格式: data.ec.word[0].trs[0].tr[0].l.i[0]
     const ec = data?.ec?.word?.[0]
     const phonetic = ec?.usphone || ec?.ukphone || ''
     const trs = ec?.trs || []
@@ -180,9 +185,7 @@ async function handleWordClick(e: Event, item: LearningContent) {
     if (meaning) {
       wordPopup.value = { word, phonetic: phonetic ? `/${phonetic}/` : undefined, meaning }
     } else {
-      // 备用：尝试其他字段
-      const simpleMeaning = data?.simple?.word?.[0]?.usphone || ''
-      wordPopup.value = { word, meaning: simpleMeaning || '未找到释义' }
+      wordPopup.value = { word, meaning: '未找到释义' }
     }
   } catch (err) {
     console.error('Dictionary lookup failed:', err)

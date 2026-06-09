@@ -98,11 +98,10 @@ async function handleWordClick(e: Event, item: LearningContent) {
 
   speakWord(word)
 
-  const found = item.words?.find(w => w.word.toLowerCase() === word.toLowerCase())
-  if (found) {
-    wordPopup.value = { word: found.word, phonetic: found.phonetic, meaning: found.meaning, usage: found.usage }
-    return
-  }
+  // 显示加载状态
+  wordPopup.value = { word, meaning: '查询中...' }
+
+  // 所有词汇统一调用词典API
   try {
     const { data } = await dictionaryApi.lookup(word)
     const ec = data?.ec?.word?.[0]
