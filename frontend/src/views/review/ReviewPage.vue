@@ -313,7 +313,7 @@ function startDictation(item: LearningContent) {
 
 function startDictationById(contentId?: number | null) {
   if (!contentId) return
-  const item = allContents.value.find(c => c.id === contentId)
+  const item = todayContents.value.find(c => c.id === contentId)
   if (item) startDictation(item)
 }
 
