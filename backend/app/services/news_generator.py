@@ -57,7 +57,7 @@ def _build_batch_system_prompt(theme: str) -> str:
       "word_phrase": "单词或短语",
       "phonetic": "音标，如 /ˈwɜːrdz/",
       "meaning_cn": "中文释义",
-      "usage": "在正文中的例句或用法说明"
+      "usage": "从文章正文中提取的原句，必须包含该词"
     }}
   ]
 }}
@@ -65,7 +65,8 @@ def _build_batch_system_prompt(theme: str) -> str:
 要求：
 - overview 要简洁精炼，帮学习者快速了解今日该领域核心动态
 - 3 篇详细新闻话题不重复，覆盖不同子方向
-- lexicon 共 8-12 个词条，从所有正文中提取核心词汇，难度适合 CET-6
+- lexicon 共 8-12 个词条，必须从上面 3 篇文章的正文中提取，难度适合 CET-6
+- 每个词条的 usage 字段必须是该词在文章中出现的原句（截取包含该词的完整句子）
 - 每篇 keywords 与 lexicon 中的词条有重叠，方便关联
 - source_link 格式为知名媒体域名 + 合理路径（overview 不需要 source_link）
 - 只返回 JSON，禁止输出任何解释性文字"""
@@ -152,34 +153,40 @@ _MOCK_BATCH_RESULT: dict[str, Any] = {
     },
     "lexicon": [
         {
-            "word_phrase": "artificial intelligence",
-            "phonetic": "/ˌɑːrtɪˈfɪʃəl ɪnˈtelɪdʒəns/",
-            "meaning_cn": "人工智能",
+            "word_phrase": "reshaping",
+            "phonetic": "/riːˈʃeɪpɪŋ/",
+            "meaning_cn": "重塑；改变",
             "usage": "Artificial intelligence is reshaping how people learn languages.",
         },
         {
             "word_phrase": "personalized",
             "phonetic": "/ˈpɜːrsənəlaɪzd/",
             "meaning_cn": "个性化的",
-            "usage": "AI apps generate personalized reading materials for each student.",
+            "usage": "New AI-powered apps can generate personalized reading materials.",
         },
         {
             "word_phrase": "retention",
             "phonetic": "/rɪˈtenʃən/",
             "meaning_cn": "记忆保持；留存",
-            "usage": "This approach significantly improves retention.",
+            "usage": "This approach significantly improves retention compared to traditional methods.",
         },
         {
-            "word_phrase": "renewable",
-            "phonetic": "/rɪˈnjuːəbl/",
-            "meaning_cn": "可再生的",
-            "usage": "Governments are accelerating renewable energy targets.",
+            "word_phrase": "installations",
+            "phonetic": "/ˌɪnstəˈleɪʃənz/",
+            "meaning_cn": "安装；装机量",
+            "usage": "Solar and wind power installations broke global records last year.",
         },
         {
             "word_phrase": "accelerating",
             "phonetic": "/əkˈseləreɪtɪŋ/",
             "meaning_cn": "加速的；不断加快的",
             "usage": "Governments are accelerating renewable energy targets.",
+        },
+        {
+            "word_phrase": "dependency",
+            "phonetic": "/dɪˈpendənsi/",
+            "meaning_cn": "依赖；依靠",
+            "usage": "Fossil fuel dependency will decline sharply over the next decade.",
         },
         {
             "word_phrase": "vacancy",
@@ -191,13 +198,7 @@ _MOCK_BATCH_RESULT: dict[str, Any] = {
             "word_phrase": "repurposing",
             "phonetic": "/ˌriːˈpɜːrpəsɪŋ/",
             "meaning_cn": "重新利用；改作他用",
-            "usage": "Urban planners are repurposing empty commercial buildings.",
-        },
-        {
-            "word_phrase": "transformation",
-            "phonetic": "/ˌtrænsforˈmeɪʃən/",
-            "meaning_cn": "转变；变革",
-            "usage": "This transformation offers a rare opportunity.",
+            "usage": "Urban planners are repurposing empty commercial buildings into residential units.",
         },
     ],
 }
@@ -264,7 +265,8 @@ def _normalize_batch(
 
         for idx, lex_item in enumerate(lexicon):
             phrase = lex_item.get("word", "").lower().strip()
-            if any(phrase in kw or kw in phrase for kw in article_keywords):
+            # 精确匹配：词组完全相等，或词组是keywords的子串
+            if any(phrase == kw or phrase in kw for kw in article_keywords):
                 matched.append({**lex_item, "order_index": len(matched)})
             else:
                 unmatched_idx.add(idx)
