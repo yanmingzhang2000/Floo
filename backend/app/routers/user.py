@@ -74,17 +74,22 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
     return user
 
 
-@router.get("/{user_id}/preference", response_model=UserPreferenceOut)
+@router.get("/{user_id}/preference")
 def get_preference(user_id: int, db: Session = Depends(get_db)):
     """获取用户学习偏好。"""
     user = user_repo.get_user(db, user_id)
     if not user or not user.preference:
         log.debug("user_id=%s 偏好不存在", user_id)
         raise HTTPException(404, "用户偏好不存在")
-    return user.preference
+    pref = user.preference
+    return {
+        "difficulty_level": pref.difficulty_level,
+        "theme_type": pref.theme_type,
+        "daily_goal_minutes": pref.daily_goal_count,
+    }
 
 
-@router.put("/{user_id}/preference", response_model=UserPreferenceOut)
+@router.put("/{user_id}/preference")
 def update_preference(
     user_id: int,
     payload: UserPreferenceUpdate,
@@ -102,4 +107,8 @@ def update_preference(
         log.debug("user_id=%s 偏好不存在，无法更新", user_id)
         raise HTTPException(404, "用户偏好不存在")
     db.commit()
-    return pref
+    return {
+        "difficulty_level": pref.difficulty_level,
+        "theme_type": pref.theme_type,
+        "daily_goal_minutes": pref.daily_goal_count,
+    }

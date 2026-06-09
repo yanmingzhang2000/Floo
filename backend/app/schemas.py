@@ -38,18 +38,25 @@ class UserOut(BaseModel):
 
 class UserPreferenceOut(BaseModel):
     """用户学习偏好输出。"""
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     difficulty_level: str
     theme_type: str
     daily_goal_count: int
 
+    @property
+    def daily_goal_minutes(self) -> int:
+        """前端使用daily_goal_minutes字段名。"""
+        return self.daily_goal_count
+
 
 class UserPreferenceUpdate(BaseModel):
     """更新学习偏好。"""
+    model_config = ConfigDict(populate_by_name=True)
+
     difficulty_level: Optional[str] = None
     theme_type: Optional[str] = None
-    daily_goal_count: Optional[int] = None
+    daily_goal_count: Optional[int] = Field(None, alias="daily_goal_minutes")
 
 
 # ============== 学习内容相关 ==============
