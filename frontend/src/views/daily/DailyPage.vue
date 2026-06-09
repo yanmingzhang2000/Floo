@@ -144,9 +144,12 @@ function handleTouchMove(e: TouchEvent) {
   if (!touchStartX) return
   const diffX = e.touches[0].clientX - touchStartX
   const diffY = e.touches[0].clientY - touchStartY
-  // 如果是垂直滑动，不处理
+  // 垂直滑动不处理
   if (Math.abs(diffY) > Math.abs(diffX)) return
-  e.preventDefault()
+  // 只有水平移动超过10px才阻止默认行为（避免误拦点击）
+  if (Math.abs(diffX) > 10) {
+    e.preventDefault()
+  }
 }
 
 function handleTouchEnd(e: TouchEvent) {
@@ -279,6 +282,43 @@ async function toggleFavorite() {
 .content-card { margin-top: 16px; }
 .card-header { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
 .card-title { font-size: 17px; font-weight: 700; margin-bottom: 12px; }
+
+.page-indicator {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 0;
+}
+
+.indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--surface-container-high);
+  transition: all 0.3s;
+}
+
+.indicator-dot.active {
+  background: var(--primary);
+  width: 20px;
+  border-radius: 4px;
+}
+
+.swiper-container {
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+.swiper-wrapper {
+  display: flex;
+  transition: transform 0.3s ease;
+}
+
+.swiper-slide {
+  min-width: 100%;
+  flex-shrink: 0;
+  padding: 0 16px;
+}
 
 .read-btn {
   margin-left: auto;
