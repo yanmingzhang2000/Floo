@@ -320,6 +320,46 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
+.feature-tabs {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.feature-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 12px;
+  background: var(--surface-container);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.feature-tab.active {
+  background: var(--primary);
+  color: white;
+}
+
+.feature-icon { font-size: 24px; }
+.feature-name { font-size: 13px; font-weight: 500; }
+
+.feature-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--error);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
 .stats-row {
   display: flex;
   gap: 10px;
