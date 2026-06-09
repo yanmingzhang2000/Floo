@@ -73,24 +73,23 @@ onMounted(async () => {
 })
 
 function renderArticle(item: LearningContent) {
-  let html = item.article
-  if (item.words?.length) {
-    for (const w of item.words) {
-      const regex = new RegExp(`\\b(${w.word})\\b`, 'gi')
-      html = html.replace(regex, `<mark class="keyword" data-word="$1"><strong>$1</strong></mark>`)
-    }
-  }
+  const words = item.words || []
+  let html = item.article.replace(/<[^>]+>/g, (tag) => `___TAG${tag}___`)
   html = html.replace(/\b([a-zA-Z]+(?:'[a-zA-Z]+)?)\b/g, (match, word) => {
-    if (match.startsWith('<mark')) return match
+    const isKey = words.some(w => w.word.toLowerCase() === word.toLowerCase())
+    if (isKey) {
+      return `<mark class="keyword" data-word="${word}"><strong>${word}</strong></mark>`
+    }
     return `<span class="clickable-word" data-word="${word}">${word}</span>`
   })
+  html = html.replace(/___TAG([^_]+)___/g, '$1')
   return html
 }
 
 async function handleWordClick(e: Event, item: LearningContent) {
   const target = e.target as HTMLElement
   const word = target.dataset.word || target.textContent || ''
-  if (!word) return
+  if (!word || !target.classList.contains('keyword') && !target.classList.contains('clickable-word')) return
   const found = item.words?.find(w => w.word.toLowerCase() === word.toLowerCase())
   if (found) {
     wordPopup.value = { word: found.word, phonetic: found.phonetic, meaning: found.meaning, usage: found.usage }
@@ -101,8 +100,12 @@ async function handleWordClick(e: Event, item: LearningContent) {
     const ec = data?.ec?.word?.[0]
     const phonetic = ec?.usphone || ec?.ukphone || ''
     const trs = ec?.trs || []
-    const meaning = trs.map((t: any) => t?.tr?.[0]?.l?.i?.[0]).filter(Boolean).join('；') || '未找到释义'
-    wordPopup.value = { word, phonetic: phonetic ? `/${phonetic}/` : undefined, meaning }
+    const meaning = trs.map((t: any) => t?.tr?.[0]?.l?.i?.[0]).filter(Boolean).join('；')
+    if (meaning) {
+      wordPopup.value = { word, phonetic: phonetic ? `/${phonetic}/` : undefined, meaning }
+    } else {
+      wordPopup.value = { word, meaning: '未找到释义' }
+    }
   } catch { wordPopup.value = { word, meaning: '查询失败' } }
 }
 </script>

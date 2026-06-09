@@ -129,29 +129,30 @@ function toggleTranslation(id: number) {
 }
 
 function renderArticle(item: LearningContent) {
-  let html = item.article
-  // 先把核心词高亮（带下划线+粗体）
-  if (item.words?.length) {
-    for (const w of item.words) {
-      const regex = new RegExp(`\\b(${w.word})\\b`, 'gi')
-      html = html.replace(regex, `<mark class="keyword" data-word="$1"><strong>$1</strong></mark>`)
-    }
-  }
-  // 再把所有剩余英文单词也包裹成可点击的span
+  const words = item.words || []
+  // 先用占位符保护HTML标签
+  let html = item.article.replace(/<[^>]+>/g, (tag) => `___TAG${tag}___`)
+
+  // 把所有英文单词包裹成span
   html = html.replace(/\b([a-zA-Z]+(?:'[a-zA-Z]+)?)\b/g, (match, word) => {
-    // 已经被mark包裹的不再处理
-    if (match.startsWith('<mark')) return match
+    const isKey = words.some(w => w.word.toLowerCase() === word.toLowerCase())
+    if (isKey) {
+      return `<mark class="keyword" data-word="${word}"><strong>${word}</strong></mark>`
+    }
     return `<span class="clickable-word" data-word="${word}">${word}</span>`
   })
+
+  // 恢复HTML标签
+  html = html.replace(/___TAG([^_]+)___/g, '$1')
   return html
 }
 
 async function handleWordClick(e: Event, item: LearningContent) {
   const target = e.target as HTMLElement
   const word = target.dataset.word || target.textContent || ''
-  if (!word) return
+  if (!word || !target.classList.contains('keyword') && !target.classList.contains('clickable-word')) return
 
-  // 核心词：优先用本地数据（包含音标和词性）
+  // 核心词：优先用本地数据
   const found = item.words?.find(w => w.word.toLowerCase() === word.toLowerCase())
   if (found) {
     wordPopup.value = { word: found.word, phonetic: found.phonetic, meaning: found.meaning, usage: found.usage }
@@ -161,12 +162,22 @@ async function handleWordClick(e: Event, item: LearningContent) {
   // 非核心词：调用有道词典API
   try {
     const { data } = await dictionaryApi.lookup(word)
+    // 有道API返回格式: data.ec.word[0].trs[0].tr[0].l.i[0]
     const ec = data?.ec?.word?.[0]
     const phonetic = ec?.usphone || ec?.ukphone || ''
     const trs = ec?.trs || []
-    const meaning = trs.map((t: any) => t?.tr?.[0]?.l?.i?.[0]).filter(Boolean).join('；') || '未找到释义'
-    wordPopup.value = { word, phonetic: phonetic ? `/${phonetic}/` : undefined, meaning }
-  } catch { wordPopup.value = { word, meaning: '查询失败' } }
+    const meaning = trs.map((t: any) => t?.tr?.[0]?.l?.i?.[0]).filter(Boolean).join('；')
+    if (meaning) {
+      wordPopup.value = { word, phonetic: phonetic ? `/${phonetic}/` : undefined, meaning }
+    } else {
+      // 备用：尝试其他字段
+      const simpleMeaning = data?.simple?.word?.[0]?.usphone || ''
+      wordPopup.value = { word, meaning: simpleMeaning || '未找到释义' }
+    }
+  } catch (err) {
+    console.error('Dictionary lookup failed:', err)
+    wordPopup.value = { word, meaning: '查询失败，请稍后重试' }
+  }
 }
 
 function showWordDetail(w: WordItem) {

@@ -16,6 +16,11 @@ export default defineConfig({
         target: 'https://floo-production.up.railway.app',
         changeOrigin: true,
       },
+      '/dict-proxy': {
+        target: 'https://dict.youdao.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/dict-proxy/, ''),
+      },
     },
   },
   base: '/Floo/',

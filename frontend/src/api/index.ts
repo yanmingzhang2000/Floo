@@ -64,10 +64,10 @@ export const checkinApi = {
     api.get('/api/checkin/weekly', { params: { user_id: userId } }),
 }
 
-// ===== 有道词典 =====
+// ===== 词典查询（通过后端代理） =====
 export const dictionaryApi = {
   lookup: (word: string) =>
-    axios.get(`https://dict.youdao.com/jsonapi?q=${encodeURIComponent(word)}&dicts=ec&doctype=json`),
+    api.get('/api/dictionary/lookup', { params: { word } }),
 }
 
 export default api
