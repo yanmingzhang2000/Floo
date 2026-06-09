@@ -63,7 +63,7 @@ const showProfile = ref(false)
 
 const tabs = [
   { path: '/daily', label: '每日学习', icon: '📖' },
-  { path: '/dictation', label: '默写', icon: '✏️' },
+  { path: '/favorites', label: '单词书', icon: '📚' },
   { path: '/review', label: '复习', icon: '🔄' },
   { path: '/checkin', label: '打卡', icon: '📅' },
 ]
