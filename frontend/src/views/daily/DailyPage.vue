@@ -88,7 +88,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { dailyApi, generationLimitApi, favoritesApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { dictionaryApi } from '@/api'
@@ -104,6 +104,19 @@ const expandedTranslations = ref(new Set<number>())
 const wordPopup = ref<{ word: string; phonetic?: string; meaning: string; usage?: string; isFavorite?: boolean } | null>(null)
 const remainingCount = ref(3)
 const { readState } = useReadingState()
+
+// 单词弹窗5秒自动收起
+let wordPopupTimer: ReturnType<typeof setTimeout> | null = null
+function clearWordPopupTimer() {
+  if (wordPopupTimer) { clearTimeout(wordPopupTimer); wordPopupTimer = null }
+}
+watch(wordPopup, (val) => {
+  clearWordPopupTimer()
+  if (val) {
+    wordPopupTimer = setTimeout(() => { wordPopup.value = null }, 5000)
+  }
+})
+onUnmounted(clearWordPopupTimer)
 
 const themeLabels: Record<string, string> = {
   ai_tech: 'AI科技', product_tech: '产品技术', business: '财经商业',

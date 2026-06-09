@@ -35,9 +35,6 @@
               <span class="username">{{ auth.username || '未登录' }}</span>
             </div>
             <div class="sheet-body">
-              <router-link to="/dictionary" class="sheet-item" @click="showProfile = false">
-                📚 我的收藏
-              </router-link>
               <router-link to="/shop" class="sheet-item" @click="showProfile = false">
                 🎁 积分商城
               </router-link>

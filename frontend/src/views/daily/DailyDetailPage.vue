@@ -57,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { dailyApi, dictionaryApi } from '@/api'
 import { speakWord, initVoices } from '@/composables/useSpeech'
@@ -67,6 +67,19 @@ const route = useRoute()
 const loading = ref(true)
 const content = ref<LearningContent | null>(null)
 const wordPopup = ref<{ word: string; phonetic?: string; meaning: string; usage?: string } | null>(null)
+
+// 单词弹窗5秒自动收起
+let wordPopupTimer: ReturnType<typeof setTimeout> | null = null
+function clearWordPopupTimer() {
+  if (wordPopupTimer) { clearTimeout(wordPopupTimer); wordPopupTimer = null }
+}
+watch(wordPopup, (val) => {
+  clearWordPopupTimer()
+  if (val) {
+    wordPopupTimer = setTimeout(() => { wordPopup.value = null }, 5000)
+  }
+})
+onUnmounted(clearWordPopupTimer)
 
 onMounted(async () => {
   initVoices()

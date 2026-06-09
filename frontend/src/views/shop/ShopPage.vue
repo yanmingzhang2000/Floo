@@ -1,7 +1,6 @@
 <template>
   <div class="page-container">
     <div class="page-header">
-      <button class="back-btn" @click="$router.back()">← 返回</button>
       <h1>积分商城</h1>
       <div class="points-badge">⭐ {{ balance }}</div>
     </div>
@@ -181,16 +180,6 @@ async function openBox(count: number) {
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  gap: 12px;
-}
-
-.back-btn {
-  background: none;
-  border: none;
-  color: var(--primary);
-  font-size: 14px;
-  cursor: pointer;
-  padding: 4px 8px;
 }
 
 .points-badge {
