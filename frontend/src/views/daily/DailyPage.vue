@@ -38,6 +38,9 @@
               <div class="card-header">
                 <span class="tag tag-primary">{{ item.content_type === 'overview' ? '今日总览' : `文章 ${idx + 1}` }}</span>
                 <span class="tag tag-success">{{ item.difficulty_level }}</span>
+                <button class="read-btn" @click.stop="toggleReading(item.article)" :class="{ active: readState === 'playing' }">
+                  {{ readState === 'playing' ? '⏸ 暂停' : readState === 'paused' ? '▶ 继续' : '🔊 朗读' }}
+                </button>
               </div>
               <h3 class="card-title">{{ item.title }}</h3>
 
@@ -101,7 +104,7 @@ import { ref, computed, onMounted } from 'vue'
 import { dailyApi, generationLimitApi, favoritesApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { dictionaryApi } from '@/api'
-import { speakWord, initVoices } from '@/composables/useSpeech'
+import { speakWord, initVoices, toggleReading, stopReading, useReadingState } from '@/composables/useSpeech'
 import OnboardingGuide from '@/components/OnboardingGuide.vue'
 import type { LearningContent, WordItem } from '@/types'
 
@@ -114,6 +117,7 @@ const wordPopup = ref<{ word: string; phonetic?: string; meaning: string; usage?
 const remainingCount = ref(3)
 const currentSlide = ref(0)
 const swiperRef = ref<HTMLElement | null>(null)
+const { readState } = useReadingState()
 let touchStartX = 0
 let touchStartY = 0
 
@@ -273,8 +277,30 @@ async function toggleFavorite() {
 
 <style scoped>
 .content-card { margin-top: 16px; }
-.card-header { display: flex; gap: 8px; margin-bottom: 10px; }
+.card-header { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
 .card-title { font-size: 17px; font-weight: 700; margin-bottom: 12px; }
+
+.read-btn {
+  margin-left: auto;
+  padding: 4px 10px;
+  border: none;
+  border-radius: 16px;
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.read-btn:hover { background: var(--primary); color: white; }
+.read-btn.active { background: var(--primary); color: white; animation: pulse 1.5s infinite; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
 
 .article-body {
   font-size: 15px;
