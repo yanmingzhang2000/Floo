@@ -201,6 +201,25 @@ class ReviewListResponse(BaseModel):
     tasks: list[ReviewTaskOut]
 
 
+class MemoryProgressOut(BaseModel):
+    """单条内容的记忆进度。"""
+    content_id: int
+    title: str
+    review_stage: int
+    last_accuracy: float
+    next_review_at: Optional[datetime] = None
+    is_mastered: bool
+    total_review_count: int
+
+
+class MemoryProgressListResponse(BaseModel):
+    """用户全部记忆进度列表。"""
+    user_id: int
+    total_count: int
+    mastered_count: int
+    items: list[MemoryProgressOut]
+
+
 # ============== 周报相关 ==============
 
 class WeeklySummaryOut(BaseModel):

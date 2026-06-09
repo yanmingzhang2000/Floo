@@ -16,6 +16,8 @@ from app.schemas import (
     GenerateContentRequest,
     GenerateContentResult,
     LearningContentOut,
+    MemoryProgressListResponse,
+    MemoryProgressOut,
     ReviewListResponse,
     ReviewTaskOut,
     TodayContentListResponse,
@@ -278,6 +280,44 @@ def get_review_tasks(user_id: int = 1, db: Session = Depends(get_db)):
     ]
     log.debug("待复习任务数 user_id=%s count=%s", user_id, len(tasks))
     return ReviewListResponse(user_id=user_id, total_count=len(tasks), tasks=tasks)
+
+
+@router.get("/progress", response_model=MemoryProgressListResponse)
+def get_all_progress(user_id: int = 1, db: Session = Depends(get_db)):
+    """查询用户全部内容的记忆进度（用于复习页展示）。"""
+    from sqlalchemy import and_
+    from app.models import UserMemoryProgress, LearningContent as LC
+
+    log.debug("查询全部记忆进度 user_id=%s", user_id)
+    rows = (
+        db.query(UserMemoryProgress, LC)
+        .join(LC, LC.content_id == UserMemoryProgress.content_id)
+        .filter(
+            and_(
+                UserMemoryProgress.user_id == user_id,
+                LC.is_active == True,
+            )
+        )
+        .order_by(UserMemoryProgress.next_review_at.asc())
+        .all()
+    )
+    items = [
+        MemoryProgressOut(
+            content_id=c.content_id,
+            title=c.title,
+            review_stage=p.review_stage,
+            last_accuracy=float(p.last_accuracy or 0),
+            next_review_at=p.next_review_at,
+            is_mastered=p.is_mastered,
+            total_review_count=p.total_review_count,
+        )
+        for p, c in rows
+    ]
+    mastered = sum(1 for i in items if i.is_mastered)
+    log.debug("全部记忆进度 user_id=%s total=%s mastered=%s", user_id, len(items), mastered)
+    return MemoryProgressListResponse(
+        user_id=user_id, total_count=len(items), mastered_count=mastered, items=items,
+    )
 
 
 @router.get("/generation-limit")

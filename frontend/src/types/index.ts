@@ -46,6 +46,16 @@ export interface ReviewTask {
   next_review_at: string
 }
 
+export interface MemoryProgress {
+  content_id: number
+  title: string
+  review_stage: number
+  last_accuracy: number
+  next_review_at: string | null
+  is_mastered: boolean
+  total_review_count: number
+}
+
 export interface DictationDiff {
   type: 'missing' | 'wrong' | 'extra'
   expected: string

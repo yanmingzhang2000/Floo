@@ -44,6 +44,8 @@ export const dailyApi = {
     api.get(`/api/daily/content/${contentId}`),
   getReviewTasks: (userId: number) =>
     api.get('/api/daily/review', { params: { user_id: userId } }),
+  getAllProgress: (userId: number) =>
+    api.get('/api/daily/progress', { params: { user_id: userId } }),
 }
 
 // ===== 默写 =====
