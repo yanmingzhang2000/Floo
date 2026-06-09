@@ -398,3 +398,27 @@ def cleanup_excess_content(db: Session = Depends(get_db)):
     db.commit()
     log.debug("清理完成，软删除 %s 条多余内容", total_deleted)
     return {"deleted_count": total_deleted}
+
+
+@router.post("/clear-all")
+def clear_all_ai_content(db: Session = Depends(get_db)):
+    """清除所有AI生成的内容（软删除），用于重新生成。"""
+    from app.models import LearningContent, UserMemoryProgress, DailyGenerationLimit
+
+    # 软删除所有AI生成内容
+    contents = db.query(LearningContent).filter(LearningContent.creator_type == 0).all()
+    count = 0
+    for c in contents:
+        if c.is_active:
+            c.is_active = False
+            count += 1
+
+    # 清除所有记忆进度（因为内容被删除了）
+    progress_count = db.query(UserMemoryProgress).delete()
+
+    # 清除生成次数限制（让用户可以重新生成）
+    limit_count = db.query(DailyGenerationLimit).delete()
+
+    db.commit()
+    log.info("已清除 %s 条AI内容、%s 条记忆进度、%s 条生成限制", count, progress_count, limit_count)
+    return {"deleted_contents": count, "deleted_progress": progress_count, "deleted_limits": limit_count}
