@@ -25,44 +25,32 @@
     </div>
 
     <div v-else>
-      <!-- 分页指示器 -->
-      <div class="page-indicator" v-if="visibleContents.length > 1">
-        <span v-for="(item, idx) in visibleContents" :key="item.id" class="indicator-dot" :class="{ active: currentSlide === idx }"></span>
-      </div>
+      <div v-for="(item, idx) in visibleContents" :key="item.id" class="content-card card">
+        <div class="card-header">
+          <span class="tag tag-primary">{{ item.content_type === 'overview' ? '今日总览' : `文章 ${idx + 1}` }}</span>
+          <span class="tag tag-success">{{ item.difficulty_level }}</span>
+          <button class="read-btn" @click.stop="toggleReading(item.article)" :class="{ active: readState === 'playing' }">
+            {{ readState === 'playing' ? '⏸ 暂停' : readState === 'paused' ? '▶ 继续' : '🔊 朗读' }}
+          </button>
+        </div>
+        <h3 class="card-title">{{ item.title }}</h3>
 
-      <!-- 滑动容器 -->
-      <div class="swiper-container" ref="swiperRef" @touchstart="handleTouchStart" @touchmove="handleTouchMove" @touchend="handleTouchEnd">
-        <div class="swiper-wrapper" :style="{ transform: `translateX(-${currentSlide * 100}%)` }">
-          <div v-for="(item, idx) in visibleContents" :key="item.id" class="swiper-slide">
-            <div class="content-card card">
-              <div class="card-header">
-                <span class="tag tag-primary">{{ item.content_type === 'overview' ? '今日总览' : `文章 ${idx + 1}` }}</span>
-                <span class="tag tag-success">{{ item.difficulty_level }}</span>
-                <button class="read-btn" @click.stop="toggleReading(item.article)" :class="{ active: readState === 'playing' }">
-                  {{ readState === 'playing' ? '⏸ 暂停' : readState === 'paused' ? '▶ 继续' : '🔊 朗读' }}
-                </button>
-              </div>
-              <h3 class="card-title">{{ item.title }}</h3>
+        <div class="article-body" v-html="renderArticle(item)" @click="handleWordClick($event, item)"></div>
 
-              <div class="article-body" v-html="renderArticle(item)" @click="handleWordClick($event, item)"></div>
+        <div v-if="item.translation" class="translation-toggle" @click="toggleTranslation(item.id)">
+          {{ expandedTranslations.has(item.id) ? '收起译文 ▲' : '查看译文 ▼' }}
+        </div>
+        <div v-if="expandedTranslations.has(item.id) && item.translation" class="translation">
+          {{ item.translation }}
+        </div>
 
-              <div v-if="item.translation" class="translation-toggle" @click="toggleTranslation(item.id)">
-                {{ expandedTranslations.has(item.id) ? '收起译文 ▲' : '查看译文 ▼' }}
-              </div>
-              <div v-if="expandedTranslations.has(item.id) && item.translation" class="translation">
-                {{ item.translation }}
-              </div>
-
-              <div v-if="item.words?.length" class="words-section">
-                <h4>核心词汇</h4>
-                <div class="words-wrap">
-                  <div v-for="w in item.words" :key="w.word" class="word-chip" @click="showWordDetail(w)">
-                    <span class="word-text">{{ w.word }}</span>
-                    <span class="word-phonetic" v-if="w.phonetic">{{ w.phonetic }}</span>
-                    <span class="word-meaning">{{ w.meaning }}</span>
-                  </div>
-                </div>
-              </div>
+        <div v-if="item.words?.length" class="words-section">
+          <h4>核心词汇</h4>
+          <div class="words-wrap">
+            <div v-for="w in item.words" :key="w.word" class="word-chip" @click="showWordDetail(w)">
+              <span class="word-text">{{ w.word }}</span>
+              <span class="word-phonetic" v-if="w.phonetic">{{ w.phonetic }}</span>
+              <span class="word-meaning">{{ w.meaning }}</span>
             </div>
           </div>
         </div>
@@ -115,11 +103,7 @@ const contents = ref<LearningContent[]>([])
 const expandedTranslations = ref(new Set<number>())
 const wordPopup = ref<{ word: string; phonetic?: string; meaning: string; usage?: string; isFavorite?: boolean } | null>(null)
 const remainingCount = ref(3)
-const currentSlide = ref(0)
-const swiperRef = ref<HTMLElement | null>(null)
 const { readState } = useReadingState()
-let touchStartX = 0
-let touchStartY = 0
 
 const themeLabels: Record<string, string> = {
   ai_tech: 'AI科技', product_tech: '产品技术', business: '财经商业',
@@ -134,41 +118,6 @@ const visibleContents = computed(() => {
   if (goal <= 40) return contents.value.slice(0, 2)
   return contents.value
 })
-
-function handleTouchStart(e: TouchEvent) {
-  touchStartX = e.touches[0].clientX
-  touchStartY = e.touches[0].clientY
-}
-
-function handleTouchMove(e: TouchEvent) {
-  if (!touchStartX) return
-  const diffX = e.touches[0].clientX - touchStartX
-  const diffY = e.touches[0].clientY - touchStartY
-  // 垂直滑动不处理
-  if (Math.abs(diffY) > Math.abs(diffX)) return
-  // 只有水平移动超过10px才阻止默认行为（避免误拦点击）
-  if (Math.abs(diffX) > 10) {
-    e.preventDefault()
-  }
-}
-
-function handleTouchEnd(e: TouchEvent) {
-  if (!touchStartX) return
-  const diffX = e.changedTouches[0].clientX - touchStartX
-  const diffY = e.changedTouches[0].clientY - touchStartY
-  // 忽略垂直滑动
-  if (Math.abs(diffY) > Math.abs(diffX)) {
-    touchStartX = 0
-    return
-  }
-  const threshold = 50
-  if (diffX < -threshold && currentSlide.value < visibleContents.value.length - 1) {
-    currentSlide.value++
-  } else if (diffX > threshold && currentSlide.value > 0) {
-    currentSlide.value--
-  }
-  touchStartX = 0
-}
 
 onMounted(() => {
   initVoices()
@@ -282,43 +231,6 @@ async function toggleFavorite() {
 .content-card { margin-top: 16px; }
 .card-header { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
 .card-title { font-size: 17px; font-weight: 700; margin-bottom: 12px; }
-
-.page-indicator {
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 0;
-}
-
-.indicator-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--surface-container-high);
-  transition: all 0.3s;
-}
-
-.indicator-dot.active {
-  background: var(--primary);
-  width: 20px;
-  border-radius: 4px;
-}
-
-.swiper-container {
-  overflow: hidden;
-  touch-action: pan-y;
-}
-
-.swiper-wrapper {
-  display: flex;
-  transition: transform 0.3s ease;
-}
-
-.swiper-slide {
-  min-width: 100%;
-  flex-shrink: 0;
-  padding: 0 16px;
-}
 
 .read-btn {
   margin-left: auto;
