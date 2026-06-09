@@ -347,3 +347,54 @@ def get_generation_limit(user_id: int = 1, db: Session = Depends(get_db)):
         "remaining_count": remaining,
         "max_count": 3
     }
+
+
+@router.post("/cleanup")
+def cleanup_excess_content(db: Session = Depends(get_db)):
+    """
+    清理多余的学习内容：每个 (日期, 主题) 最多保留 4 条。
+    为什么是 4：用户最大每日时长 45-60 分钟，对应 4 篇内容。
+    """
+    from datetime import date
+    from sqlalchemy import func, and_
+    from app.models import LearningContent
+
+    # 按 (created_at日期, theme_type) 分组，统计每组数量
+    subq = (
+        db.query(
+            func.date(LearningContent.created_at).label("day"),
+            LearningContent.theme_type,
+            func.count().label("cnt"),
+        )
+        .filter(LearningContent.creator_type == 0, LearningContent.is_active == True)
+        .group_by(func.date(LearningContent.created_at), LearningContent.theme_type)
+        .having(func.count() > 4)
+        .subquery()
+    )
+
+    # 找出需要删除的内容（每组保留最早创建的 4 条，删除其余）
+    rows = db.query(subq).all()
+    total_deleted = 0
+    for day, theme_type, cnt in rows:
+        # 该组所有内容，按创建时间排序
+        items = (
+            db.query(LearningContent)
+            .filter(
+                and_(
+                    func.date(LearningContent.created_at) == day,
+                    LearningContent.theme_type == theme_type,
+                    LearningContent.creator_type == 0,
+                    LearningContent.is_active == True,
+                )
+            )
+            .order_by(LearningContent.created_at.asc())
+            .all()
+        )
+        # 保留前 4 条，软删除其余
+        for item in items[4:]:
+            item.is_active = False
+            total_deleted += 1
+
+    db.commit()
+    log.debug("清理完成，软删除 %s 条多余内容", total_deleted)
+    return {"deleted_count": total_deleted}
