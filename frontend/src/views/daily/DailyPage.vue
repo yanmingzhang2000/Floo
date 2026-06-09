@@ -66,6 +66,13 @@
             <div class="popup-header">
               <h3>{{ wordPopup.word }}</h3>
               <button class="speak-btn" @click="speakWord(wordPopup!.word)">🔊</button>
+              <button
+                class="fav-btn"
+                :class="{ 'is-fav': wordPopup.isFavorite }"
+                @click="toggleFavorite"
+              >
+                {{ wordPopup.isFavorite ? '★' : '☆' }}
+              </button>
             </div>
             <p v-if="wordPopup.phonetic" class="phonetic">{{ wordPopup.phonetic }}</p>
             <p class="meaning">{{ wordPopup.meaning }}</p>
@@ -79,7 +86,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { dailyApi, generationLimitApi } from '@/api'
+import { dailyApi, generationLimitApi, favoritesApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { dictionaryApi } from '@/api'
 import { speakWord, initVoices } from '@/composables/useSpeech'
@@ -90,7 +97,7 @@ const loading = ref(true)
 const generating = ref(false)
 const contents = ref<LearningContent[]>([])
 const expandedTranslations = ref(new Set<number>())
-const wordPopup = ref<{ word: string; phonetic?: string; meaning: string; usage?: string } | null>(null)
+const wordPopup = ref<{ word: string; phonetic?: string; meaning: string; usage?: string; isFavorite?: boolean } | null>(null)
 const remainingCount = ref(3)
 
 const themeLabels: Record<string, string> = {
@@ -183,7 +190,9 @@ async function handleWordClick(e: Event, item: LearningContent) {
     const trs = ec?.trs || []
     const meaning = trs.map((t: any) => t?.tr?.[0]?.l?.i?.[0]).filter(Boolean).join('；')
     if (meaning) {
-      wordPopup.value = { word, phonetic: phonetic ? `/${phonetic}/` : undefined, meaning }
+      // 检查是否已收藏
+      const { data: favData } = await favoritesApi.check(auth.currentUserId, word)
+      wordPopup.value = { word, phonetic: phonetic ? `/${phonetic}/` : undefined, meaning, isFavorite: favData.is_favorite }
     } else {
       wordPopup.value = { word, meaning: '未找到释义' }
     }
@@ -195,6 +204,21 @@ async function handleWordClick(e: Event, item: LearningContent) {
 
 function showWordDetail(w: WordItem) {
   wordPopup.value = { word: w.word, phonetic: w.phonetic, meaning: w.meaning, usage: w.usage }
+}
+
+async function toggleFavorite() {
+  if (!wordPopup.value || !auth.currentUserId) return
+  const { word, phonetic, meaning, isFavorite } = wordPopup.value
+
+  try {
+    if (isFavorite) {
+      await favoritesApi.remove(auth.currentUserId, word)
+      wordPopup.value = { ...wordPopup.value, isFavorite: false }
+    } else {
+      await favoritesApi.add(auth.currentUserId, word, phonetic, meaning)
+      wordPopup.value = { ...wordPopup.value, isFavorite: true }
+    }
+  } catch { /* ignore */ }
 }
 </script>
 
@@ -315,6 +339,24 @@ function showWordDetail(w: WordItem) {
 }
 
 .speak-btn:hover { background: var(--primary); }
+
+.fav-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: var(--surface-container);
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  margin-left: auto;
+}
+
+.fav-btn:hover { background: var(--primary-container); }
+.fav-btn.is-fav { color: #f59e0b; }
 
 .word-popup .phonetic { color: var(--on-surface-variant); margin-top: 4px; }
 .word-popup .meaning { margin-top: 10px; font-size: 16px; }

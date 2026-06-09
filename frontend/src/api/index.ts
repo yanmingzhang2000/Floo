@@ -76,4 +76,16 @@ export const generationLimitApi = {
     api.get('/api/daily/generation-limit', { params: { user_id: userId } }),
 }
 
+// ===== 词汇收藏夹 =====
+export const favoritesApi = {
+  add: (userId: number, word: string, phonetic?: string, meaning?: string, source?: string, contentId?: number) =>
+    api.post('/api/favorites/add', { user_id: userId, word, phonetic, meaning, source, source_content_id: contentId }),
+  remove: (userId: number, word: string) =>
+    api.delete('/api/favorites/remove', { params: { user_id: userId, word } }),
+  list: (userId: number, limit = 100) =>
+    api.get('/api/favorites/list', { params: { user_id: userId, limit } }),
+  check: (userId: number, word: string) =>
+    api.get('/api/favorites/check', { params: { user_id: userId, word } }),
+}
+
 export default api

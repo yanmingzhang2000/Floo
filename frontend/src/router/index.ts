@@ -22,6 +22,7 @@ const router = createRouter({
     { path: '/daily/list', name: 'daily-list', component: () => import('@/views/daily/DailyListPage.vue') },
     { path: '/daily/content/:id', name: 'daily-detail', component: () => import('@/views/daily/DailyDetailPage.vue') },
     { path: '/weekly', name: 'weekly', component: () => import('@/views/weekly/WeeklyPage.vue') },
+    { path: '/favorites', name: 'favorites', component: () => import('@/views/FavoritesPage.vue') },
     { path: '/preference', name: 'preference', component: () => import('@/views/profile/PreferencePage.vue') },
   ],
 })

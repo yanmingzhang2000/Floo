@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.logging import setup_logging
 from app.database import Base, engine
-from app.routers import checkin, daily, dictation, dictionary
+from app.routers import checkin, daily, dictation, dictionary, favorites
 from app.routers import user
 
 setup_logging()
@@ -35,6 +35,7 @@ app.include_router(daily.router)
 app.include_router(dictation.router)
 app.include_router(dictionary.router)
 app.include_router(checkin.router)
+app.include_router(favorites.router)
 
 
 @app.get("/")

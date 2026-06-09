@@ -225,6 +225,23 @@ class DailyGenerationLimit(Base):
     generation_count = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
+
+class UserFavoriteWord(Base):
+    """用户收藏词汇表 - 用户可收藏任意单词。"""
+    __tablename__ = "user_favorite_words"
+    __table_args__ = (
+        UniqueConstraint("user_id", "word", name="uq_user_favorite_word"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("user_main.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    word = Column(String(128), nullable=False, index=True)
+    phonetic = Column(String(128), nullable=True)
+    meaning = Column(String(512), nullable=True)
+    source = Column(String(32), nullable=True)  # 从哪里收藏的：daily/dictation/review
+    source_content_id = Column(Integer, nullable=True)  # 来源内容ID
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
 class UserPointAccount(Base):
     """用户积分账户表 - 全局积分资产，余额变更必须同步写 point_log_history 流水。"""
     __tablename__ = "user_point_account"

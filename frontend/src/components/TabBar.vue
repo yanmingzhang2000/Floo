@@ -35,6 +35,9 @@
               <span class="username">{{ auth.username || '未登录' }}</span>
             </div>
             <div class="sheet-body">
+              <router-link to="/favorites" class="sheet-item" @click="showProfile = false">
+                📚 我的收藏
+              </router-link>
               <router-link to="/preference" class="sheet-item" @click="showProfile = false">
                 ⚙️ 学习偏好设置
               </router-link>
