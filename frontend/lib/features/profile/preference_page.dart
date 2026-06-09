@@ -69,14 +69,6 @@ class _PreferencePageState extends ConsumerState<PreferencePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('学习偏好设置'),
-        actions: [
-          TextButton(
-            onPressed: _saving ? null : _save,
-            child: _saving
-                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('保存'),
-          ),
-        ],
       ),
       body: !_loaded
           ? const Center(child: CircularProgressIndicator())
@@ -130,6 +122,19 @@ class _PreferencePageState extends ConsumerState<PreferencePage> {
                     Text('5分钟', style: TextStyle(color: cs.onSurfaceVariant, fontSize: 11)),
                     Text('60分钟', style: TextStyle(color: cs.onSurfaceVariant, fontSize: 11)),
                   ],
+                ),
+                const SizedBox(height: 40),
+
+                // 保存按钮
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: FilledButton(
+                    onPressed: _saving ? null : _save,
+                    child: _saving
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('保存设置', style: TextStyle(fontSize: 16)),
+                  ),
                 ),
               ],
             ),
