@@ -117,16 +117,19 @@
           <p>暂无学习内容</p>
         </div>
         <div v-else class="content-list">
-          <div v-for="item in visibleContents" :key="item.id" class="card content-item" @click="startDictation(item)">
+          <div v-for="item in visibleContents" :key="item.id" class="card content-item">
             <div class="content-left">
               <div class="content-title">{{ item.title }}</div>
               <div class="content-meta">
                 <span>{{ item.content_date }}</span>
                 <span class="tag tag-primary" style="margin-left:8px;font-size:11px">{{ item.difficulty_level }}</span>
-                <span v-if="item.lexicon?.length" class="tag tag-success" style="margin-left:4px;font-size:11px">{{ item.lexicon.length }}词</span>
+                <span v-if="item.words?.length" style="margin-left:8px;font-size:11px;color:var(--primary)">重点词汇 {{ item.words.length }} 个</span>
               </div>
             </div>
-            <span class="arrow">›</span>
+            <div class="content-actions">
+              <button class="btn btn-sm btn-outline" @click="startDictation(item)">默写全文</button>
+              <button v-if="item.words?.length" class="btn btn-sm btn-primary" @click="startWordDictation(item)">默写词汇</button>
+            </div>
           </div>
         </div>
       </div>
@@ -141,69 +144,27 @@
                 <button class="close-btn" @click="dictatingContent = null">✕</button>
               </div>
 
-              <!-- 模式切换 -->
-              <div class="mode-switch" v-if="dictatingContent.lexicon?.length">
-                <button :class="['mode-btn', { active: dictationMode === 'full' }]" @click="dictationMode = 'full'">
-                  📝 全文默写
-                </button>
-                <button :class="['mode-btn', { active: dictationMode === 'vocab' }]" @click="dictationMode = 'vocab'">
-                  📚 词汇默写
+              <div class="card" style="margin:12px 16px">
+                <h4 style="margin-bottom:8px;color:var(--on-surface-variant)">中文翻译提示</h4>
+                <p style="line-height:1.6">{{ dictatingContent.translation || '暂无翻译' }}</p>
+              </div>
+
+              <Transition name="slide-up">
+                <div v-if="showOriginal" class="card" style="margin:0 16px;background:var(--primary-container)">
+                  <h4 style="margin-bottom:8px;color:var(--on-primary-container)">英文原文</h4>
+                  <p style="line-height:1.8;font-size:15px">{{ dictatingContent.article }}</p>
+                </div>
+              </Transition>
+
+              <div style="padding:8px 16px">
+                <button class="btn btn-sm btn-outline" @click="showOriginal = !showOriginal" style="margin-bottom:8px">
+                  {{ showOriginal ? '🙈 隐藏原文' : '👁️ 显示原文' }}
                 </button>
               </div>
 
-              <!-- 全文默写模式 -->
-              <template v-if="dictationMode === 'full'">
-                <div class="card" style="margin:12px 16px">
-                  <h4 style="margin-bottom:8px;color:var(--on-surface-variant)">中文翻译提示</h4>
-                  <p style="line-height:1.6">{{ dictatingContent.translation || '暂无翻译' }}</p>
-                </div>
-
-                <Transition name="slide-up">
-                  <div v-if="showOriginal" class="card" style="margin:0 16px;background:var(--primary-container)">
-                    <h4 style="margin-bottom:8px;color:var(--on-primary-container)">英文原文</h4>
-                    <p style="line-height:1.8;font-size:15px">{{ dictatingContent.article }}</p>
-                  </div>
-                </Transition>
-
-                <div style="padding:8px 16px">
-                  <button class="btn btn-sm btn-outline" @click="showOriginal = !showOriginal" style="margin-bottom:8px">
-                    {{ showOriginal ? '🙈 隐藏原文' : '👁️ 显示原文' }}
-                  </button>
-                </div>
-
-                <div class="card" style="margin:0 16px">
-                  <textarea v-model="userInput" rows="8" placeholder="在这里输入你默写的英文内容..." class="dictation-input"></textarea>
-                </div>
-              </template>
-
-              <!-- 词汇默写模式 -->
-              <template v-else>
-                <div class="card vocab-hint-card" style="margin:12px 16px">
-                  <h4 style="margin-bottom:8px;color:var(--on-surface-variant)">中文词汇提示</h4>
-                  <div class="vocab-hint-list">
-                    <span v-for="(word, idx) in vocabHintList" :key="idx" class="vocab-hint-item">{{ word }}</span>
-                  </div>
-                </div>
-
-                <Transition name="slide-up">
-                  <div v-if="showOriginal" class="card" style="margin:0 16px;background:var(--primary-container)">
-                    <h4 style="margin-bottom:8px;color:var(--on-primary-container)">英文词汇</h4>
-                    <div class="vocab-answer-list">
-                      <span v-for="(word, idx) in vocabAnswerList" :key="idx" class="vocab-answer-item">{{ word }}</span>
-                    </div>
-                  </div>
-                </Transition>
-
-                <div style="padding:8px 16px">
-                  <button class="btn btn-sm btn-outline" @click="showOriginal = !showOriginal" style="margin-bottom:8px">
-                    {{ showOriginal ? '🙈 隐藏答案' : '👁️ 显示答案' }}
-                  </button>
-                </div>
-
-                <div class="card" style="margin:0 16px">
-                  <textarea v-model="userInput" rows="6" placeholder="请按顺序输入对应的英文词汇，用空格或逗号分隔..." class="dictation-input"></textarea>
-                </div>
-              </template>
+              <div class="card" style="margin:0 16px">
+                <textarea v-model="userInput" rows="8" placeholder="在这里输入你默写的英文内容..." class="dictation-input"></textarea>
+              </div>
 
               <div style="padding:12px 16px;display:flex;gap:10px">
                 <button class="btn btn-primary btn-block" @click="handleSubmit" :disabled="submitting || !userInput.trim()">
@@ -250,6 +211,83 @@
           </div>
         </Transition>
       </Teleport>
+
+      <!-- 词汇默写弹窗 -->
+      <Teleport to="body">
+        <Transition name="fade">
+          <div v-if="wordDictationContent" class="modal-overlay" @click.self="wordDictationContent = null">
+            <div class="dictation-sheet">
+              <div class="sheet-header">
+                <span class="tag tag-primary">词汇默写</span>
+                <span class="word-progress">{{ wordDictationIdx + 1 }} / {{ wordDictationWords.length }}</span>
+                <button class="close-btn" @click="wordDictationContent = null">✕</button>
+              </div>
+
+              <!-- 中文提示 -->
+              <div class="card" style="margin:12px 16px">
+                <div class="word-hint-label">中文释义</div>
+                <div class="word-hint-meaning">{{ currentWordMeaning }}</div>
+                <div v-if="currentWordPhonetic" class="word-hint-phonetic">{{ currentWordPhonetic }}</div>
+              </div>
+
+              <!-- 输入框 -->
+              <div class="card" style="margin:0 16px">
+                <input v-model="wordInput" type="text" placeholder="输入英文单词..." class="word-input"
+                  @keyup.enter="handleSubmitWord" :disabled="showWordResult" />
+              </div>
+
+              <!-- 操作按钮 -->
+              <div style="padding:12px 16px;display:flex;gap:10px">
+                <button v-if="!showWordResult" class="btn btn-primary btn-block" @click="handleSubmitWord"
+                  :disabled="!wordInput.trim()">
+                  确认
+                </button>
+                <button v-if="!showWordResult" class="btn btn-outline" @click="showWordResult = true; wordResultCorrect = false">
+                  不会，看答案
+                </button>
+                <button v-if="showWordResult" class="btn btn-primary btn-block" @click="nextWord">
+                  {{ wordDictationIdx < wordDictationWords.length - 1 ? '下一个' : '完成' }}
+                </button>
+              </div>
+
+              <!-- 结果展示 -->
+              <Transition name="slide-up">
+                <div v-if="showWordResult" class="card word-result-card" style="margin:0 16px 16px">
+                  <div class="word-result-status" :class="{ correct: wordResultCorrect, wrong: !wordResultCorrect }">
+                    {{ wordResultCorrect ? '✅ 正确' : '❌ 错误' }}
+                  </div>
+                  <div v-if="!wordResultCorrect" class="word-result-correct">
+                    正确答案：<strong>{{ currentWord }}</strong>
+                  </div>
+                  <div class="word-result-usage" v-if="currentWordUsage">
+                    用法：{{ currentWordUsage }}
+                  </div>
+                </div>
+              </Transition>
+
+              <!-- 完成统计 -->
+              <div v-if="wordDictationDone" class="card word-done-card" style="margin:0 16px 16px">
+                <div class="word-done-title">🎉 默写完成</div>
+                <div class="word-done-stats">
+                  <div class="word-stat">
+                    <span class="word-stat-num" style="color:var(--success)">{{ wordCorrectCount }}</span>
+                    <span class="word-stat-label">正确</span>
+                  </div>
+                  <div class="word-stat">
+                    <span class="word-stat-num" style="color:var(--error)">{{ wordDictationWords.length - wordCorrectCount }}</span>
+                    <span class="word-stat-label">错误</span>
+                  </div>
+                  <div class="word-stat">
+                    <span class="word-stat-num" style="color:var(--primary)">{{ Math.round(wordCorrectCount / wordDictationWords.length * 100) }}%</span>
+                    <span class="word-stat-label">正确率</span>
+                  </div>
+                </div>
+                <button class="btn btn-primary btn-block" @click="wordDictationContent = null">返回</button>
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </Teleport>
     </template>
   </div>
 </template>
@@ -273,23 +311,26 @@ const masteredCount = ref(0)
 const todayContents = ref<LearningContent[]>([])
 const history = ref<DictationHistory[]>([])
 const dictatingContent = ref<LearningContent | null>(null)
-const dictationMode = ref<'full' | 'vocab'>('full')
 const showOriginal = ref(false)
 const userInput = ref('')
 const submitting = ref(false)
 const result = ref<DictationResult | null>(null)
 
-// 词汇默写的中文提示列表
-const vocabHintList = computed(() => {
-  if (!dictatingContent.value?.lexicon) return []
-  return dictatingContent.value.lexicon.map((w: any) => w.meaning || w.word)
-})
+// 词汇默写
+const wordDictationContent = ref<LearningContent | null>(null)
+const wordDictationIdx = ref(0)
+const wordInput = ref('')
+const showWordResult = ref(false)
+const wordResultCorrect = ref(false)
+const wordDictationDone = ref(false)
+const wordCorrectCount = ref(0)
 
-// 词汇默写的英文答案列表
-const vocabAnswerList = computed(() => {
-  if (!dictatingContent.value?.lexicon) return []
-  return dictatingContent.value.lexicon.map((w: any) => w.word)
-})
+// 词汇默写相关计算
+const wordDictationWords = computed(() => wordDictationContent.value?.words || [])
+const currentWord = computed(() => wordDictationWords.value[wordDictationIdx.value]?.word || '')
+const currentWordMeaning = computed(() => wordDictationWords.value[wordDictationIdx.value]?.meaning || '')
+const currentWordPhonetic = computed(() => wordDictationWords.value[wordDictationIdx.value]?.phonetic || '')
+const currentWordUsage = computed(() => wordDictationWords.value[wordDictationIdx.value]?.usage || '')
 
 const stageColors: Record<number, string> = {
   0: '#9E9E9E', 1: '#F44336', 2: '#FF9800',
@@ -362,7 +403,6 @@ function getAccuracyColor(acc: number): string {
 
 function startDictation(item: LearningContent) {
   dictatingContent.value = item
-  dictationMode.value = 'full'
   showOriginal.value = false
   userInput.value = ''
   result.value = null
@@ -386,6 +426,36 @@ async function handleSubmit() {
     history.value = histRes.data?.slice(0, 20) || []
   } catch { /* ignore */ }
   submitting.value = false
+}
+
+function startWordDictation(item: LearningContent) {
+  wordDictationContent.value = item
+  wordDictationIdx.value = 0
+  wordInput.value = ''
+  showWordResult.value = false
+  wordResultCorrect.value = false
+  wordDictationDone.value = false
+  wordCorrectCount.value = 0
+}
+
+function handleSubmitWord() {
+  if (!wordInput.value.trim()) return
+  const input = wordInput.value.trim().toLowerCase()
+  const correct = currentWord.value.toLowerCase()
+  wordResultCorrect.value = input === correct
+  if (wordResultCorrect.value) wordCorrectCount.value++
+  showWordResult.value = true
+}
+
+function nextWord() {
+  if (wordDictationIdx.value < wordDictationWords.value.length - 1) {
+    wordDictationIdx.value++
+    wordInput.value = ''
+    showWordResult.value = false
+    wordResultCorrect.value = false
+  } else {
+    wordDictationDone.value = true
+  }
 }
 </script>
 
@@ -478,12 +548,12 @@ async function handleSubmit() {
 .content-list { display: flex; flex-direction: column; gap: 6px; }
 .content-item {
   display: flex; align-items: center; gap: 12px;
-  padding: 12px 14px; cursor: pointer; transition: background 0.15s;
+  padding: 12px 14px; transition: background 0.15s;
 }
-.content-item:hover { background: var(--surface-container); }
 .content-left { flex: 1; }
 .content-title { font-weight: 600; font-size: 15px; }
 .content-meta { font-size: 13px; color: var(--on-surface-variant); margin-top: 3px; }
+.content-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .arrow { font-size: 20px; color: var(--on-surface-variant); }
 
 .history-card { padding: 0 14px; }
@@ -522,50 +592,37 @@ async function handleSubmit() {
   align-items: center; justify-content: center;
 }
 
-.mode-switch {
-  display: flex; gap: 8px; padding: 12px 16px 0;
-}
-
-.mode-btn {
-  flex: 1; padding: 10px; border: 1.5px solid var(--outline);
-  background: white; border-radius: 10px; font-size: 13px;
-  font-weight: 500; cursor: pointer; transition: all 0.2s;
-}
-
-.mode-btn.active {
-  border-color: var(--primary); background: var(--primary-container);
-  color: var(--primary); font-weight: 600;
-}
-
-.vocab-hint-card {
-  background: linear-gradient(135deg, #FFF8E1 0%, #FFFFFF 100%);
-  border: 1px solid #FFE082;
-}
-
-.vocab-hint-list {
-  display: flex; flex-wrap: wrap; gap: 8px;
-}
-
-.vocab-hint-item {
-  padding: 6px 12px; background: #FFECB3; border-radius: 8px;
-  font-size: 14px; color: #F57F17; font-weight: 500;
-}
-
-.vocab-answer-list {
-  display: flex; flex-wrap: wrap; gap: 8px;
-}
-
-.vocab-answer-item {
-  padding: 6px 12px; background: var(--primary-container); border-radius: 8px;
-  font-size: 14px; color: var(--primary); font-weight: 600;
-}
-
 .dictation-input {
   width: 100%; border: 1.5px solid var(--outline); border-radius: var(--radius-sm);
   padding: 12px; font-size: 15px; line-height: 1.6; resize: vertical;
   outline: none; font-family: inherit;
 }
 .dictation-input:focus { border-color: var(--primary); }
+
+/* 词汇默写 */
+.word-progress { font-size: 13px; color: var(--on-surface-variant); }
+.word-hint-label { font-size: 12px; color: var(--on-surface-variant); margin-bottom: 6px; }
+.word-hint-meaning { font-size: 18px; font-weight: 600; line-height: 1.4; }
+.word-hint-phonetic { font-size: 13px; color: var(--on-surface-variant); margin-top: 4px; }
+.word-input {
+  width: 100%; border: 1.5px solid var(--outline); border-radius: var(--radius-sm);
+  padding: 14px; font-size: 18px; outline: none; font-family: inherit;
+  text-align: center; letter-spacing: 1px;
+}
+.word-input:focus { border-color: var(--primary); }
+.word-input:disabled { background: var(--surface-container); }
+.word-result-card { text-align: center; padding: 16px; }
+.word-result-status { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.word-result-status.correct { color: var(--success); }
+.word-result-status.wrong { color: var(--error); }
+.word-result-correct { font-size: 15px; margin-bottom: 8px; }
+.word-result-usage { font-size: 13px; color: var(--on-surface-variant); margin-top: 8px; line-height: 1.5; }
+.word-done-card { text-align: center; padding: 20px 16px; }
+.word-done-title { font-size: 20px; font-weight: 700; margin-bottom: 16px; }
+.word-done-stats { display: flex; justify-content: center; gap: 24px; margin-bottom: 16px; }
+.word-stat { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.word-stat-num { font-size: 28px; font-weight: 800; }
+.word-stat-label { font-size: 12px; color: var(--on-surface-variant); }
 
 .result-card { border-left: 4px solid var(--primary); }
 .score-area { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
