@@ -25,7 +25,14 @@
     </div>
 
     <div v-else>
-      <div v-for="(item, idx) in visibleContents" :key="item.id" class="content-card card">
+      <!-- 快速跳转锚点 -->
+      <div v-if="visibleContents.length > 1" class="anchor-nav">
+        <button v-for="(item, idx) in visibleContents" :key="item.id" class="anchor-btn" :class="{ active: activeAnchor === idx }" @click="scrollToCard(idx)">
+          {{ idx + 1 }}
+        </button>
+      </div>
+
+      <div v-for="(item, idx) in visibleContents" :key="item.id" :ref="el => cardRefs[idx] = el" class="content-card card">
         <div class="card-header">
           <span class="tag tag-primary">{{ item.content_type === 'overview' ? '今日总览' : `文章 ${idx + 1}` }}</span>
           <span class="tag tag-success">{{ item.difficulty_level }}</span>
@@ -104,6 +111,16 @@ const expandedTranslations = ref(new Set<number>())
 const wordPopup = ref<{ word: string; phonetic?: string; meaning: string; usage?: string; isFavorite?: boolean } | null>(null)
 const remainingCount = ref(3)
 const { readState } = useReadingState()
+const cardRefs = ref<(Element | null)[]>([])
+const activeAnchor = ref(0)
+
+function scrollToCard(idx: number) {
+  const el = cardRefs.value[idx]
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    activeAnchor.value = idx
+  }
+}
 
 // 单词弹窗5秒自动收起
 let wordPopupTimer: ReturnType<typeof setTimeout> | null = null
@@ -134,7 +151,24 @@ const visibleContents = computed(() => {
 onMounted(() => {
   initVoices()
   loadData()
+  // 监听滚动，自动高亮当前卡片对应的锚点
+  window.addEventListener('scroll', handleScroll)
 })
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
+})
+
+function handleScroll() {
+  const scrollY = window.scrollY + 120
+  for (let i = cardRefs.value.length - 1; i >= 0; i--) {
+    const el = cardRefs.value[i]
+    if (el && (el as HTMLElement).offsetTop <= scrollY) {
+      activeAnchor.value = i
+      break
+    }
+  }
+}
 
 async function loadData() {
   loading.value = true
@@ -242,6 +276,35 @@ async function toggleFavorite() {
 <style scoped>
 .content-card { margin-top: 16px; }
 .card-header { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+
+.anchor-nav {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 0;
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 10;
+}
+
+.anchor-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1.5px solid var(--primary);
+  background: transparent;
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.anchor-btn.active, .anchor-btn:hover {
+  background: var(--primary);
+  color: white;
+}
 .card-title { font-size: 17px; font-weight: 700; margin-bottom: 12px; }
 
 .read-btn {
