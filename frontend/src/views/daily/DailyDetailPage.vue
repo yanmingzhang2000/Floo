@@ -13,7 +13,7 @@
 
     <div v-else-if="content" class="detail-content">
       <div class="card">
-        <h3 class="card-title">{{ content.title }}</h3>
+        <h3 class="card-title clickable-title" v-html="renderTitle(content)" @click="handleWordClick($event, content)"></h3>
         <div class="article-body" v-html="renderArticle(content)" @click="handleWordClick($event, content)"></div>
       </div>
 
@@ -118,6 +118,17 @@ onMounted(async () => {
   loading.value = false
 })
 
+function renderTitle(item: LearningContent) {
+  const words = item.words || []
+  return item.title.replace(/\b([a-zA-Z]+(?:'[a-zA-Z]+)?)\b/g, (match, word) => {
+    const isKey = words.some(w => w.word.toLowerCase() === word.toLowerCase())
+    if (isKey) {
+      return `<mark class="keyword" data-word="${word}"><strong>${word}</strong></mark>`
+    }
+    return `<span class="clickable-word" data-word="${word}">${word}</span>`
+  })
+}
+
 function renderArticle(item: LearningContent) {
   const words = item.words || []
   let html = item.article.replace(/<[^>]+>/g, (tag) => `___TAG${tag}___`)
@@ -161,6 +172,9 @@ async function handleWordClick(e: Event, item: LearningContent) {
 <style scoped>
 .detail-content { padding-bottom: 20px; }
 .card-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+.clickable-title :deep(mark.keyword) { background: var(--primary-container); color: var(--on-primary-container); padding: 1px 3px; border-radius: 3px; cursor: pointer; }
+.clickable-title :deep(.clickable-word) { cursor: pointer; border-bottom: 1px dashed var(--primary-light); transition: background 0.15s; }
+.clickable-title :deep(.clickable-word):hover { background: var(--primary-container); border-radius: 2px; }
 .article-body { font-size: 15px; line-height: 1.8; }
 .article-body :deep(mark.keyword) { background: var(--primary-container); color: var(--on-primary-container); padding: 1px 3px; border-radius: 3px; cursor: pointer; }
 .article-body :deep(.clickable-word) { cursor: pointer; border-bottom: 1px dashed var(--primary-light); transition: background 0.15s; }

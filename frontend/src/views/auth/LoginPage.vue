@@ -32,7 +32,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { userApi } from '@/api'
 import { useAuthStore } from '@/stores'
@@ -45,6 +45,26 @@ const loading = ref(false)
 const error = ref('')
 const form = reactive({ username: '', password: '' })
 
+// 页面加载时读取保存的账号密码
+onMounted(() => {
+  const saved = localStorage.getItem('floo_saved_credentials')
+  if (saved) {
+    try {
+      const { username, password } = JSON.parse(saved)
+      form.username = username || ''
+      form.password = password || ''
+    } catch { /* ignore */ }
+  }
+})
+
+// 保存账号密码到本地
+function saveCredentials() {
+  localStorage.setItem('floo_saved_credentials', JSON.stringify({
+    username: form.username,
+    password: form.password,
+  }))
+}
+
 async function handleSubmit() {
   loading.value = true
   error.value = ''
@@ -52,6 +72,8 @@ async function handleSubmit() {
     const { data } = isRegister.value
       ? await userApi.register(form)
       : await userApi.login(form)
+    // 登录/注册成功后保存账号密码
+    saveCredentials()
     auth.setSession(data.user_id, data.username)
     router.push('/learning')
   } catch (e: any) {
