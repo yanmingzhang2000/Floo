@@ -197,6 +197,12 @@ async function handleWordClick(e: Event, item: LearningContent) {
     if (m) word = m[0]
   }
   
+  // 5. 还是没有 → 弹出输入框让用户手动输入
+  if (!word) {
+    const input = prompt('输入想查询的单词：')
+    if (input && input.trim()) word = input.trim()
+  }
+  
   if (!word) return
   
   speakWord(word)
