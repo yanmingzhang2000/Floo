@@ -49,6 +49,18 @@
         </button>
       </div>
 
+      <!-- 打卡成功提示 -->
+      <Transition name="fade">
+        <div v-if="showSuccess && checkinResult" class="checkin-success">
+          <div class="success-icon">🎉</div>
+          <div class="success-title">打卡成功！</div>
+          <div class="success-message">
+            你今天学习了 <strong>{{ checkinResult.completed_count }}</strong> 个内容，获得了 <strong>+{{ checkinResult.earned_points }}</strong> 积分
+          </div>
+          <div class="success-encourage">你真棒！继续加油哦～</div>
+        </div>
+      </Transition>
+
       <div class="card" style="margin:0 16px 16px">
         <router-link to="/weekly" class="weekly-link">
           📊 查看每周学习报告 →
@@ -70,6 +82,8 @@ const checking = ref(false)
 const calendar = ref<CheckinCalendar | null>(null)
 const currentYear = ref(new Date().getFullYear())
 const currentMonth = ref(new Date().getMonth() + 1)
+const checkinResult = ref<{ completed_count: number; earned_points: number } | null>(null)
+const showSuccess = ref(false)
 
 const checkedDays = computed(() => calendar.value?.checked_dates?.length || 0)
 const todayChecked = computed(() => {
@@ -128,8 +142,16 @@ async function loadCalendar() {
 async function handleCheckin() {
   checking.value = true
   try {
-    await checkinApi.doCheckin(auth.currentUserId)
+    const { data } = await checkinApi.doCheckin(auth.currentUserId)
     await loadCalendar()
+    // 显示成功提示
+    checkinResult.value = {
+      completed_count: data.checkin.completed_count,
+      earned_points: data.checkin.earned_points,
+    }
+    showSuccess.value = true
+    // 3秒后自动关闭
+    setTimeout(() => { showSuccess.value = false }, 3000)
   } catch { /* ignore */ }
   checking.value = false
 }
@@ -182,5 +204,28 @@ async function handleCheckin() {
   text-decoration: none;
   font-weight: 600;
   padding: 8px 0;
+}
+
+/* 打卡成功提示 */
+.checkin-success {
+  margin: 0 16px 16px;
+  padding: 20px;
+  background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+  border-radius: 16px;
+  text-align: center;
+  animation: bounce-in 0.5s ease;
+}
+.success-icon { font-size: 48px; margin-bottom: 8px; }
+.success-title { font-size: 20px; font-weight: 700; color: var(--success); margin-bottom: 8px; }
+.success-message { font-size: 15px; color: #2E7D32; line-height: 1.6; }
+.success-encourage { font-size: 16px; font-weight: 600; color: var(--success); margin-top: 12px; }
+
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+@keyframes bounce-in {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
 }
 </style>
