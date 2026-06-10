@@ -3,7 +3,7 @@
     <OnboardingGuide />
     <div class="page-header">
       <h1>今日英语 · {{ themeLabel }}</h1>
-      <p class="subtitle">已完成 {{ visibleCount }}/{{ totalCount }} 篇</p>
+      <p class="subtitle">共 {{ totalCount }} 篇</p>
       <div class="actions">
         <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white" @click="handleGenerate" :disabled="generating || remainingCount <= 0">
           {{ generating ? '生成中...' : remainingCount > 0 ? `✨ 生成新内容 (${remainingCount}次)` : '今日已用完' }}
@@ -26,13 +26,13 @@
 
     <div v-else>
       <!-- 快速跳转锚点 -->
-      <div v-if="visibleContents.length > 1" class="anchor-nav">
-        <button v-for="(item, idx) in visibleContents" :key="item.id" class="anchor-btn" :class="{ active: activeAnchor === idx }" @click="scrollToCard(idx)">
+      <div v-if="contents.length > 1" class="anchor-nav">
+        <button v-for="(item, idx) in contents" :key="item.id" class="anchor-btn" :class="{ active: activeAnchor === idx }" @click="scrollToCard(idx)">
           {{ idx + 1 }}
         </button>
       </div>
 
-      <div v-for="(item, idx) in visibleContents" :key="item.id" :ref="setCardRef(idx)" class="content-card card">
+      <div v-for="(item, idx) in contents" :key="item.id" :ref="setCardRef(idx)" class="content-card card">
         <div class="card-header">
           <span class="tag tag-primary">{{ item.content_type === 'overview' ? '今日总览' : `文章 ${idx + 1}` }}</span>
           <span class="tag tag-success">{{ item.difficulty_level }}</span>
@@ -139,7 +139,6 @@ watch(wordPopup, (val) => {
     wordPopupTimer = setTimeout(() => { wordPopup.value = null }, 5000)
   }
 })
-onUnmounted(clearWordPopupTimer)
 
 const themeLabels: Record<string, string> = {
   ai_tech: 'AI科技', product_tech: '产品技术', business: '财经商业',
@@ -157,11 +156,11 @@ const visibleContents = computed(() => {
 onMounted(() => {
   initVoices()
   loadData()
-  // 监听滚动，自动高亮当前卡片对应的锚点
   window.addEventListener('scroll', handleScroll)
 })
 
 onUnmounted(() => {
+  clearWordPopupTimer()
   window.removeEventListener('scroll', handleScroll)
 })
 
