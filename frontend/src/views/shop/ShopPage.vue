@@ -47,7 +47,7 @@
         <div class="section-title">角色图鉴</div>
         <div class="character-grid">
           <div v-for="char in characters" :key="char.character_id" class="character-card" :class="[char.rarity, { collected: char.count > 0 }]">
-            <div class="char-icon">{{ getCharIcon(char.name) }}</div>
+            <img :src="getCharIcon(char.name)" class="char-img" :alt="char.meaning">
             <div class="char-name">{{ char.meaning }}</div>
             <div class="char-word">{{ char.name }}</div>
             <div class="char-count" v-if="char.count > 0">×{{ char.count }}</div>
@@ -63,7 +63,7 @@
         </div>
         <div v-else class="collection-grid">
           <div v-for="item in collection" :key="item.collection_id" class="collection-card" :class="item.rarity">
-            <div class="col-icon">{{ getCharIcon(item.name) }}</div>
+            <img :src="getCharIcon(item.name)" class="col-img" :alt="item.meaning">
             <div class="col-info">
               <div class="col-name">{{ item.meaning }}</div>
               <div class="col-word">{{ item.name }}</div>
@@ -81,7 +81,7 @@
         <div class="result-title">✨ 恭喜获得</div>
         <div class="result-list">
           <div v-for="(item, idx) in resultItems" :key="idx" class="result-item" :class="item.rarity">
-            <div class="result-icon">{{ getCharIcon(item.name) }}</div>
+            <img :src="getCharIcon(item.name)" class="result-img" :alt="item.meaning">
             <div class="result-info">
               <div class="result-name">{{ item.meaning }}</div>
               <div class="result-word">{{ item.name }}</div>
@@ -119,20 +119,20 @@ const remainingPoints = ref(0)
 
 // 角色图标映射
 const charIcons: Record<string, string> = {
-  Wisdom: '🧠',
-  Courage: '💪',
-  Hope: '🌟',
-  Faith: '🙏',
-  Grace: '🦋',
-  Peace: '☮️',
-  Love: '❤️',
-  Serenity: '🌊',
-  Brilliance: '💎',
-  Infinity: '∞',
+  Wisdom: '/characters/wisdom.svg',
+  Courage: '/characters/courage.svg',
+  Hope: '/characters/hope.svg',
+  Faith: '/characters/faith.svg',
+  Grace: '/characters/grace.svg',
+  Peace: '/characters/peace.svg',
+  Love: '/characters/love.svg',
+  Serenity: '/characters/serenity.svg',
+  Brilliance: '/characters/brilliance.svg',
+  Infinity: '/characters/infinity.svg',
 }
 
 function getCharIcon(name: string) {
-  return charIcons[name] || '✨'
+  return charIcons[name] || '/characters/wisdom.svg'
 }
 
 onMounted(loadData)
@@ -332,8 +332,9 @@ async function openBox(count: number) {
   background: linear-gradient(135deg, #FFF8E1, #FFFFFF);
 }
 
-.char-icon {
-  font-size: 32px;
+.char-img {
+  width: 48px;
+  height: 48px;
   margin-bottom: 4px;
 }
 
@@ -403,8 +404,10 @@ async function openBox(count: number) {
   background: linear-gradient(90deg, #FFF8E1, var(--surface-container));
 }
 
-.col-icon {
-  font-size: 32px;
+.col-img {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
 }
 
 .col-info {
@@ -493,8 +496,10 @@ async function openBox(count: number) {
   background: linear-gradient(135deg, #FFF8E1, #FFFFFF);
 }
 
-.result-icon {
-  font-size: 32px;
+.result-img {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
 }
 
 .result-name {

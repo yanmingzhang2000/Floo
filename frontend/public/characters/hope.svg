@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <!-- 身体 -->
+  <ellipse cx="60" cy="75" rx="25" ry="20" fill="#F5F5F5" stroke="#E0E0E0" stroke-width="2"/>
+  <!-- 头 -->
+  <circle cx="60" cy="45" r="28" fill="#F5F5F5" stroke="#E0E0E0" stroke-width="2"/>
+  <!-- 左耳 -->
+  <polygon points="38,25 48,5 58,25" fill="#F5F5F5" stroke="#E0E0E0" stroke-width="2"/>
+  <polygon points="42,22 48,10 54,22" fill="#FFB6C1"/>
+  <!-- 右耳 -->
+  <polygon points="62,25 72,5 82,25" fill="#F5F5F5" stroke="#E0E0E0" stroke-width="2"/>
+  <polygon points="66,22 72,10 78,22" fill="#FFB6C1"/>
+  <!-- 眼睛 - 星星眼 -->
+  <polygon points="50,42 51,39 52,42 55,42 53,44 54,47 50,45 46,47 47,44 45,42" fill="#FFD700"/>
+  <polygon points="70,42 71,39 72,42 75,42 73,44 74,47 70,45 66,47 67,44 65,42" fill="#FFD700"/>
+  <!-- 鼻子 -->
+  <ellipse cx="60" cy="50" rx="2" ry="1.5" fill="#FFB6C1"/>
+  <!-- 嘴巴 -->
+  <path d="M55,53 Q60,58 65,53" fill="none" stroke="#333" stroke-width="1.5"/>
+  <!-- 胡须 -->
+  <line x1="35" y1="48" x2="48" y2="50" stroke="#CCC" stroke-width="1"/>
+  <line x1="35" y1="52" x2="48" y2="52" stroke="#CCC" stroke-width="1"/>
+  <line x1="72" y1="50" x2="85" y2="48" stroke="#CCC" stroke-width="1"/>
+  <line x1="72" y1="52" x2="85" y2="52" stroke="#CCC" stroke-width="1"/>
+  <!-- 星星头饰 -->
+  <polygon points="60,8 62,14 68,14 63,18 65,24 60,20 55,24 57,18 52,14 58,14" fill="#FFD700" stroke="#FFA500" stroke-width="1"/>
+  <!-- 尾巴 -->
+  <path d="M85,75 Q95,65 90,50" fill="none" stroke="#E0E0E0" stroke-width="4" stroke-linecap="round"/>
+</svg>

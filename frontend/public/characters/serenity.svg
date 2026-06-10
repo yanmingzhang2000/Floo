@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <!-- 身体 - 淡蓝色 -->
+  <ellipse cx="60" cy="75" rx="25" ry="20" fill="#E8F4FD" stroke="#B3D9F2" stroke-width="2"/>
+  <!-- 头 -->
+  <circle cx="60" cy="45" r="28" fill="#E8F4FD" stroke="#B3D9F2" stroke-width="2"/>
+  <!-- 左耳 -->
+  <polygon points="38,25 48,5 58,25" fill="#E8F4FD" stroke="#B3D9F2" stroke-width="2"/>
+  <polygon points="42,22 48,10 54,22" fill="#FFB6C1"/>
+  <!-- 右耳 -->
+  <polygon points="62,25 72,5 82,25" fill="#E8F4FD" stroke="#B3D9F2" stroke-width="2"/>
+  <polygon points="66,22 72,10 78,22" fill="#FFB6C1"/>
+  <!-- 眼睛 - 宁静的闭眼 -->
+  <path d="M47,42 Q50,39 53,42" fill="none" stroke="#333" stroke-width="2"/>
+  <path d="M67,42 Q70,39 73,42" fill="none" stroke="#333" stroke-width="2"/>
+  <!-- 鼻子 -->
+  <ellipse cx="60" cy="50" rx="2" ry="1.5" fill="#FFB6C1"/>
+  <!-- 嘴巴 - 安详微笑 -->
+  <path d="M55,53 Q60,56 65,53" fill="none" stroke="#333" stroke-width="1.5"/>
+  <!-- 胡须 -->
+  <line x1="35" y1="48" x2="48" y2="50" stroke="#B3D9F2" stroke-width="1"/>
+  <line x1="35" y1="52" x2="48" y2="52" stroke="#B3D9F2" stroke-width="1"/>
+  <line x1="72" y1="50" x2="85" y2="48" stroke="#B3D9F2" stroke-width="1"/>
+  <line x1="72" y1="52" x2="85" y2="52" stroke="#B3D9F2" stroke-width="1"/>
+  <!-- 月亮头饰 -->
+  <path d="M55,10 Q65,5 65,15 Q55,20 55,10" fill="#FFD700" stroke="#FFA500" stroke-width="1"/>
+  <!-- 星星装饰 -->
+  <polygon points="75,12 76,15 79,15 77,17 78,20 75,18 72,20 73,17 71,15 74,15" fill="#FFD700"/>
+  <!-- 尾巴 -->
+  <path d="M85,75 Q95,65 90,50" fill="none" stroke="#B3D9F2" stroke-width="4" stroke-linecap="round"/>
+</svg>
