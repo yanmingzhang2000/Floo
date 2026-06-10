@@ -8,12 +8,6 @@
         <span class="tag" style="background:rgba(255,255,255,0.2);color:white">{{ content.theme_type }}</span>
       </div>
     </div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <span class="tag" style="background:rgba(255,255,255,0.2);color:white">{{ content.content_date }}</span>
-        <span class="tag" style="background:rgba(255,255,255,0.2);color:white">{{ content.difficulty_level }}</span>
-        <span class="tag" style="background:rgba(255,255,255,0.2);color:white">{{ content.theme_type }}</span>
-      </div>
-    </div>
 
     <div v-if="loading" class="loading"><div class="spinner"></div></div>
 
