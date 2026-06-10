@@ -123,6 +123,7 @@
               <div class="content-meta">
                 <span>{{ item.content_date }}</span>
                 <span class="tag tag-primary" style="margin-left:8px;font-size:11px">{{ item.difficulty_level }}</span>
+                <span v-if="item.lexicon?.length" class="tag tag-success" style="margin-left:4px;font-size:11px">{{ item.lexicon.length }}词</span>
               </div>
             </div>
             <span class="arrow">›</span>
@@ -140,27 +141,69 @@
                 <button class="close-btn" @click="dictatingContent = null">✕</button>
               </div>
 
-              <div class="card" style="margin:12px 16px">
-                <h4 style="margin-bottom:8px;color:var(--on-surface-variant)">中文翻译提示</h4>
-                <p style="line-height:1.6">{{ dictatingContent.translation || '暂无翻译' }}</p>
-              </div>
-
-              <Transition name="slide-up">
-                <div v-if="showOriginal" class="card" style="margin:0 16px;background:var(--primary-container)">
-                  <h4 style="margin-bottom:8px;color:var(--on-primary-container)">英文原文</h4>
-                  <p style="line-height:1.8;font-size:15px">{{ dictatingContent.article }}</p>
-                </div>
-              </Transition>
-
-              <div style="padding:8px 16px">
-                <button class="btn btn-sm btn-outline" @click="showOriginal = !showOriginal" style="margin-bottom:8px">
-                  {{ showOriginal ? '🙈 隐藏原文' : '👁️ 显示原文' }}
+              <!-- 模式切换 -->
+              <div class="mode-switch" v-if="dictatingContent.lexicon?.length">
+                <button :class="['mode-btn', { active: dictationMode === 'full' }]" @click="dictationMode = 'full'">
+                  📝 全文默写
+                </button>
+                <button :class="['mode-btn', { active: dictationMode === 'vocab' }]" @click="dictationMode = 'vocab'">
+                  📚 词汇默写
                 </button>
               </div>
 
-              <div class="card" style="margin:0 16px">
-                <textarea v-model="userInput" rows="8" placeholder="在这里输入你默写的英文内容..." class="dictation-input"></textarea>
-              </div>
+              <!-- 全文默写模式 -->
+              <template v-if="dictationMode === 'full'">
+                <div class="card" style="margin:12px 16px">
+                  <h4 style="margin-bottom:8px;color:var(--on-surface-variant)">中文翻译提示</h4>
+                  <p style="line-height:1.6">{{ dictatingContent.translation || '暂无翻译' }}</p>
+                </div>
+
+                <Transition name="slide-up">
+                  <div v-if="showOriginal" class="card" style="margin:0 16px;background:var(--primary-container)">
+                    <h4 style="margin-bottom:8px;color:var(--on-primary-container)">英文原文</h4>
+                    <p style="line-height:1.8;font-size:15px">{{ dictatingContent.article }}</p>
+                  </div>
+                </Transition>
+
+                <div style="padding:8px 16px">
+                  <button class="btn btn-sm btn-outline" @click="showOriginal = !showOriginal" style="margin-bottom:8px">
+                    {{ showOriginal ? '🙈 隐藏原文' : '👁️ 显示原文' }}
+                  </button>
+                </div>
+
+                <div class="card" style="margin:0 16px">
+                  <textarea v-model="userInput" rows="8" placeholder="在这里输入你默写的英文内容..." class="dictation-input"></textarea>
+                </div>
+              </template>
+
+              <!-- 词汇默写模式 -->
+              <template v-else>
+                <div class="card vocab-hint-card" style="margin:12px 16px">
+                  <h4 style="margin-bottom:8px;color:var(--on-surface-variant)">中文词汇提示</h4>
+                  <div class="vocab-hint-list">
+                    <span v-for="(word, idx) in vocabHintList" :key="idx" class="vocab-hint-item">{{ word }}</span>
+                  </div>
+                </div>
+
+                <Transition name="slide-up">
+                  <div v-if="showOriginal" class="card" style="margin:0 16px;background:var(--primary-container)">
+                    <h4 style="margin-bottom:8px;color:var(--on-primary-container)">英文词汇</h4>
+                    <div class="vocab-answer-list">
+                      <span v-for="(word, idx) in vocabAnswerList" :key="idx" class="vocab-answer-item">{{ word }}</span>
+                    </div>
+                  </div>
+                </Transition>
+
+                <div style="padding:8px 16px">
+                  <button class="btn btn-sm btn-outline" @click="showOriginal = !showOriginal" style="margin-bottom:8px">
+                    {{ showOriginal ? '🙈 隐藏答案' : '👁️ 显示答案' }}
+                  </button>
+                </div>
+
+                <div class="card" style="margin:0 16px">
+                  <textarea v-model="userInput" rows="6" placeholder="请按顺序输入对应的英文词汇，用空格或逗号分隔..." class="dictation-input"></textarea>
+                </div>
+              </template>
 
               <div style="padding:12px 16px;display:flex;gap:10px">
                 <button class="btn btn-primary btn-block" @click="handleSubmit" :disabled="submitting || !userInput.trim()">
@@ -230,10 +273,23 @@ const masteredCount = ref(0)
 const todayContents = ref<LearningContent[]>([])
 const history = ref<DictationHistory[]>([])
 const dictatingContent = ref<LearningContent | null>(null)
+const dictationMode = ref<'full' | 'vocab'>('full')
 const showOriginal = ref(false)
 const userInput = ref('')
 const submitting = ref(false)
 const result = ref<DictationResult | null>(null)
+
+// 词汇默写的中文提示列表
+const vocabHintList = computed(() => {
+  if (!dictatingContent.value?.lexicon) return []
+  return dictatingContent.value.lexicon.map((w: any) => w.meaning || w.word)
+})
+
+// 词汇默写的英文答案列表
+const vocabAnswerList = computed(() => {
+  if (!dictatingContent.value?.lexicon) return []
+  return dictatingContent.value.lexicon.map((w: any) => w.word)
+})
 
 const stageColors: Record<number, string> = {
   0: '#9E9E9E', 1: '#F44336', 2: '#FF9800',
@@ -306,6 +362,7 @@ function getAccuracyColor(acc: number): string {
 
 function startDictation(item: LearningContent) {
   dictatingContent.value = item
+  dictationMode.value = 'full'
   showOriginal.value = false
   userInput.value = ''
   result.value = null
@@ -463,6 +520,44 @@ async function handleSubmit() {
   width: 32px; height: 32px; border: none; background: var(--surface-container);
   border-radius: 50%; font-size: 16px; cursor: pointer; display: flex;
   align-items: center; justify-content: center;
+}
+
+.mode-switch {
+  display: flex; gap: 8px; padding: 12px 16px 0;
+}
+
+.mode-btn {
+  flex: 1; padding: 10px; border: 1.5px solid var(--outline);
+  background: white; border-radius: 10px; font-size: 13px;
+  font-weight: 500; cursor: pointer; transition: all 0.2s;
+}
+
+.mode-btn.active {
+  border-color: var(--primary); background: var(--primary-container);
+  color: var(--primary); font-weight: 600;
+}
+
+.vocab-hint-card {
+  background: linear-gradient(135deg, #FFF8E1 0%, #FFFFFF 100%);
+  border: 1px solid #FFE082;
+}
+
+.vocab-hint-list {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+
+.vocab-hint-item {
+  padding: 6px 12px; background: #FFECB3; border-radius: 8px;
+  font-size: 14px; color: #F57F17; font-weight: 500;
+}
+
+.vocab-answer-list {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+
+.vocab-answer-item {
+  padding: 6px 12px; background: var(--primary-container); border-radius: 8px;
+  font-size: 14px; color: var(--primary); font-weight: 600;
 }
 
 .dictation-input {
