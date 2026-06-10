@@ -145,13 +145,7 @@ const themeLabels: Record<string, string> = {
   daily_news: '日常新闻', self_growth: '个人成长', all_random: '随机主题',
 }
 const themeLabel = computed(() => themeLabels[contents.value[0]?.theme_type] || '每日学习')
-const visibleCount = computed(() => visibleContents.value.length)
 const totalCount = computed(() => contents.value.length)
-const visibleContents = computed(() => {
-  const goal = auth.preference?.daily_goal_minutes || 15
-  const limit = goal <= 15 ? 1 : goal <= 30 ? 2 : goal <= 45 ? 3 : 4
-  return contents.value.slice(0, limit)
-})
 
 onMounted(() => {
   initVoices()
