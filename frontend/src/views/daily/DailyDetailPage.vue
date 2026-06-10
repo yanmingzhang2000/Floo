@@ -1,7 +1,7 @@
 <template>
   <div class="page-container">
     <div class="page-header" v-if="content">
-      <h1 class="clickable-title" v-html="renderTitle(content)" @click.stop="handleWordClick($event, content)"></h1>
+      <h1>{{ content.title }}</h1>
       <div style="display:flex;gap:8px;margin-top:8px">
         <span class="tag" style="background:rgba(255,255,255,0.2);color:white">{{ content.content_date }}</span>
         <span class="tag" style="background:rgba(255,255,255,0.2);color:white">{{ content.difficulty_level }}</span>
@@ -13,7 +13,13 @@
 
     <div v-else-if="content" class="detail-content">
       <div class="card">
-        <h3 class="card-title clickable-title" v-html="renderTitle(content)" @click="handleWordClick($event, content)"></h3>
+        <h3 class="card-title">
+          <span v-for="(part, i) in titleParts" :key="i"
+            :class="part.isWord ? 'clickable-word' : ''"
+            :data-word="part.isWord ? part.text : undefined"
+            @click="part.isWord && handleWordClick($event, content)"
+          >{{ part.text }}</span>
+        </h3>
         <div class="article-body" v-html="renderArticle(content)" @click="handleWordClick($event, content)"></div>
       </div>
 
@@ -112,6 +118,24 @@ const currentIndex = computed(() => todayContents.value.findIndex(c => c.id === 
 const hasPrev = computed(() => currentIndex.value > 0)
 const hasNext = computed(() => currentIndex.value < todayContents.value.length - 1 && currentIndex.value >= 0)
 
+// 把标题拆成可点击的片段
+const titleParts = computed(() => {
+  if (!content.value) return []
+  const title = content.value.title
+  const words = content.value.words || []
+  const result: { text: string; isWord: boolean }[] = []
+  // 匹配英文单词和非英文部分
+  title.replace(/([a-zA-Z]+(?:'[a-zA-Z]+)?)|([^a-zA-Z]+)/g, (match, english, other) => {
+    if (english) {
+      result.push({ text: english, isWord: true })
+    } else {
+      result.push({ text: other, isWord: false })
+    }
+    return match
+  })
+  return result
+})
+
 function goToContent(id: number) {
   router.push(`/learning/content/${id}`)
 }
@@ -143,17 +167,6 @@ onMounted(async () => {
   loading.value = false
 })
 
-function renderTitle(item: LearningContent) {
-  const words = item.words || []
-  return item.title.replace(/\b([a-zA-Z]+(?:'[a-zA-Z]+)?)\b/g, (match, word) => {
-    const isKey = words.some(w => w.word.toLowerCase() === word.toLowerCase())
-    if (isKey) {
-      return `<mark class="keyword" data-word="${word}"><strong>${word}</strong></mark>`
-    }
-    return `<span class="clickable-word" data-word="${word}">${word}</span>`
-  })
-}
-
 function renderArticle(item: LearningContent) {
   const words = item.words || []
   let html = item.article.replace(/<[^>]+>/g, (tag) => `___TAG${tag}___`)
@@ -175,29 +188,21 @@ async function handleWordClick(e: Event, item: LearningContent) {
   const target = e.target as HTMLElement
   let word = ''
   
-  // 1. 优先从 data-word 属性取
+  // 从 data-word 属性取
   if (target.dataset.word) {
     word = target.dataset.word
   }
-  // 2. 向上查找最近的有 data-word 的父元素
+  // 向上查找
   else if (target.closest('[data-word]')) {
     word = (target.closest('[data-word]') as HTMLElement).dataset.word || ''
   }
-  // 3. 从点击文本中提取第一个英文单词
+  // 从文本提取
   else {
-    const text = target.textContent || ''
-    const m = text.match(/[a-zA-Z]+/)
+    const m = (target.textContent || '').match(/[a-zA-Z]+/)
     if (m) word = m[0]
   }
   
-  // 4. 再不行，从整行文本中找
-  if (!word) {
-    const fullText = item.title || ''
-    const m = fullText.match(/[a-zA-Z]+/)
-    if (m) word = m[0]
-  }
-  
-  // 5. 还是没有 → 弹出输入框让用户手动输入
+  // 弹出输入框兜底
   if (!word) {
     const input = prompt('输入想查询的单词：')
     if (input && input.trim()) word = input.trim()
@@ -224,16 +229,18 @@ async function handleWordClick(e: Event, item: LearningContent) {
 
 <style scoped>
 .detail-content { padding-bottom: 20px; }
-.clickable-title { cursor: pointer; user-select: none; }
-.clickable-title:hover { opacity: 0.8; }
-.clickable-title :deep(mark.keyword) { background: rgba(255,255,255,0.3); color: white; padding: 2px 4px; border-radius: 4px; cursor: pointer; }
-.clickable-title :deep(.clickable-word) { cursor: pointer; border-bottom: 1.5px dashed rgba(255,255,255,0.6); transition: all 0.15s; }
-.clickable-title :deep(.clickable-word):hover { background: rgba(255,255,255,0.2); border-radius: 3px; }
-.card-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
-.card-title.clickable-title { cursor: pointer; }
-.card-title.clickable-title :deep(mark.keyword) { background: var(--primary-container); color: var(--on-primary-container); padding: 2px 4px; border-radius: 4px; }
-.card-title.clickable-title :deep(.clickable-word) { cursor: pointer; border-bottom: 1.5px dashed var(--primary-light); }
-.card-title.clickable-title :deep(.clickable-word):hover { background: var(--primary-container); border-radius: 3px; }
+.card-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; line-height: 1.6; }
+.clickable-word {
+  cursor: pointer;
+  color: var(--primary);
+  border-bottom: 1.5px dashed var(--primary);
+  padding: 0 2px;
+  transition: all 0.15s;
+}
+.clickable-word:hover {
+  background: var(--primary-container);
+  border-radius: 3px;
+}
 .article-body { font-size: 15px; line-height: 1.8; }
 .article-body :deep(mark.keyword) { background: var(--primary-container); color: var(--on-primary-container); padding: 1px 3px; border-radius: 3px; cursor: pointer; }
 .article-body :deep(.clickable-word) { cursor: pointer; border-bottom: 1px dashed var(--primary-light); transition: background 0.15s; }
