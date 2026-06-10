@@ -36,6 +36,17 @@
       <div style="padding:16px">
         <router-link :to="`/dictation?content_id=${content.id}`" class="btn btn-primary btn-block">去默写</router-link>
       </div>
+
+      <!-- 上一篇/下一篇导航 -->
+      <div v-if="todayContents.length > 1" class="nav-buttons">
+        <button class="btn btn-outline" :disabled="!hasPrev" @click="goToContent(todayContents[currentIndex - 1].id)">
+          ← 上一篇
+        </button>
+        <span class="nav-index">{{ currentIndex + 1 }} / {{ todayContents.length }}</span>
+        <button class="btn btn-outline" :disabled="!hasNext" @click="goToContent(todayContents[currentIndex + 1].id)">
+          下一篇 →
+        </button>
+      </div>
     </div>
 
     <Teleport to="body">
@@ -57,16 +68,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { dailyApi, dictionaryApi } from '@/api'
+import { useAuthStore } from '@/stores'
 import { speakWord, initVoices } from '@/composables/useSpeech'
 import type { LearningContent, WordItem } from '@/types'
 
 const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
 const loading = ref(true)
 const content = ref<LearningContent | null>(null)
+const todayContents = ref<LearningContent[]>([])
 const wordPopup = ref<{ word: string; phonetic?: string; meaning: string; usage?: string } | null>(null)
+
+const currentIndex = computed(() => todayContents.value.findIndex(c => c.id === content.value?.id))
+const hasPrev = computed(() => currentIndex.value > 0)
+const hasNext = computed(() => currentIndex.value < todayContents.value.length - 1 && currentIndex.value >= 0)
+
+function goToContent(id: number) {
+  router.push(`/learning/content/${id}`)
+}
 
 // 单词弹窗5秒自动收起
 let wordPopupTimer: ReturnType<typeof setTimeout> | null = null
@@ -84,8 +107,13 @@ onUnmounted(clearWordPopupTimer)
 onMounted(async () => {
   initVoices()
   try {
-    const { data } = await dailyApi.getContent(Number(route.params.id))
-    content.value = data
+    // 并行加载当前内容和今日列表
+    const [contentRes, listRes] = await Promise.all([
+      dailyApi.getContent(Number(route.params.id)),
+      dailyApi.getTodayList(auth.currentUserId)
+    ])
+    content.value = contentRes.data
+    todayContents.value = listRes.data.contents || []
   } catch { content.value = null }
   loading.value = false
 })
@@ -148,6 +176,40 @@ async function handleWordClick(e: Event, item: LearningContent) {
 .popup-header h3 { font-size: 22px; margin: 0; }
 .speak-btn { width: 36px; height: 36px; border: none; background: var(--primary-container); border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .speak-btn:hover { background: var(--primary); }
+
+.nav-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-top: 1px solid var(--surface-container-high);
+}
+
+.nav-index {
+  font-size: 13px;
+  color: var(--on-surface-variant);
+}
+
+.btn-outline {
+  padding: 8px 16px;
+  border: 1px solid var(--primary);
+  background: transparent;
+  color: var(--primary);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: var(--primary-container);
+}
+
+.btn-outline:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .word-popup .phonetic { color: var(--on-surface-variant); }
 .word-popup .meaning { margin-top: 10px; font-size: 16px; }
 .word-popup .usage { margin-top: 8px; color: var(--on-surface-variant); font-size: 14px; font-style: italic; }
