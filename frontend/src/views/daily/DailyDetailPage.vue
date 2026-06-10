@@ -170,9 +170,23 @@ function renderArticle(item: LearningContent) {
 
 async function handleWordClick(e: Event, item: LearningContent) {
   const target = e.target as HTMLElement
-  const word = target.dataset.word || target.textContent || ''
-  if (!word || (!target.classList.contains('keyword') && !target.classList.contains('clickable-word'))) return
-
+  // 优先从 data-word 取，否则从文本取
+  let word = target.dataset.word || ''
+  
+  // 如果没有 data-word，尝试从点击的文本中提取英文单词
+  if (!word) {
+    const text = target.textContent || ''
+    const match = text.match(/[a-zA-Z]+(?:'[a-zA-Z]+)?/)
+    if (match) word = match[0]
+  }
+  
+  // 如果还是没有，尝试从父元素取
+  if (!word && target.parentElement) {
+    word = target.parentElement.dataset.word || ''
+  }
+  
+  if (!word) return
+  
   speakWord(word)
   checkFavorite(word)
 
