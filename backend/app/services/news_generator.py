@@ -62,11 +62,18 @@ def _build_batch_system_prompt(theme: str) -> str:
   ]
 }}
 
+【极其重要】lexicon 生成规则：
+- 先写完 3 篇文章的 summary_en，再从中提取词汇
+- 每个 word_phrase 必须在某篇 summary_en 中**逐字出现**（大小写不敏感）
+- usage 必须是 summary_en 中包含该词的**完整原句**，不能改写
+- 提取前请逐词核对：在文章中找不到的词**绝对不要**放进 lexicon
+- 优先提取有学习价值的词：CET-6 难度的实词（名词、动词、形容词、副词）
+- 避免提取：冠词(a/the)、介词(in/on)、代词(he/she)、极常用词(good/make)
+
 要求：
 - overview 要简洁精炼，帮学习者快速了解今日该领域核心动态
 - 3 篇详细新闻话题不重复，覆盖不同子方向
 - lexicon 共 8-12 个词条，必须从上面 3 篇文章的正文中提取，难度适合 CET-6
-- 每个词条的 usage 字段必须是该词在文章中出现的原句（截取包含该词的完整句子）
 - 每篇 keywords 与 lexicon 中的词条有重叠，方便关联
 - source_link 格式为知名媒体域名 + 合理路径（overview 不需要 source_link）
 - 只返回 JSON，禁止输出任何解释性文字"""
@@ -285,11 +292,14 @@ def _normalize_batch(
 
     # overview 记录排在第一位，获得全部 lexicon 作为今日词汇总表
     overview = raw.get("overview") or {}
+    overview_article = (overview.get("summary_en") or "").strip()
     overview_words = [{**w, "order_index": i} for i, w in enumerate(lexicon)]
+    # 过滤掉 overview 中未出现的词汇
+    overview_words = _filter_words_against_article(overview_words, overview_article)
     results.append({
         "content_date": date.today(),
         "title": (overview.get("title_en") or "Today's Overview").strip(),
-        "article": (overview.get("summary_en") or "").strip(),
+        "article": overview_article,
         "translation": (overview.get("summary_cn") or "").strip() or None,
         "audio_url": None,
         "difficulty_level": "medium",
@@ -301,14 +311,18 @@ def _normalize_batch(
     # 3 篇详细文章
     for i, key in enumerate(("news_1", "news_2", "news_3")):
         news = raw.get(key) or {}
+        article_text = (news.get("summary_en") or "").strip()
         words = per_article_words[i]
         for idx in sorted(global_unmatched):
             words.append({**lexicon[idx], "order_index": len(words)})
 
+        # 过滤掉文章中未出现的词汇
+        words = _filter_words_against_article(words, article_text)
+
         results.append({
             "content_date": date.today(),
             "title": (news.get("title_en") or "Daily English News").strip(),
-            "article": (news.get("summary_en") or "").strip(),
+            "article": article_text,
             "translation": (news.get("summary_cn") or "").strip() or None,
             "audio_url": (news.get("source_link") or "").strip() or None,
             "difficulty_level": "medium",
@@ -338,6 +352,22 @@ def _parse_lexicon(raw_items: list) -> list[dict]:
             "order_index": idx,
         })
     return result
+
+
+def _filter_words_against_article(words: list[dict], article: str) -> list[dict]:
+    """过滤掉在文章正文中未出现的词汇。大小写不敏感匹配。"""
+    article_lower = article.lower()
+    filtered = []
+    removed = []
+    for w in words:
+        phrase = w["word"].lower()
+        if phrase in article_lower:
+            filtered.append(w)
+        else:
+            removed.append(w["word"])
+    if removed:
+        log.debug("过滤未出现词汇: %s", removed)
+    return filtered
 
 
 # ---------------------------------------------------------------------------
