@@ -160,6 +160,19 @@ async function handleCheckin() {
 </script>
 
 <style scoped>
+/* 统计横幅 */
+.stats-banner {
+  display: flex;
+  justify-content: space-around;
+  padding: 20px 16px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  color: white;
+}
+.stat-item { text-align: center; }
+.stat-icon { font-size: 24px; }
+.stat-value { font-size: 24px; font-weight: 800; margin-top: 4px; }
+.stat-label { font-size: 12px; opacity: 0.85; }
+
 /* 日历卡片 */
 .calendar-card {
   margin: 0 16px 16px;
