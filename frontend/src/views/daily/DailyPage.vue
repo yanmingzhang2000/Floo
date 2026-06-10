@@ -32,7 +32,7 @@
         </button>
       </div>
 
-      <div v-for="(item, idx) in visibleContents" :key="item.id" :ref="el => cardRefs[idx] = el" class="content-card card">
+      <div v-for="(item, idx) in visibleContents" :key="item.id" :ref="setCardRef(idx)" class="content-card card">
         <div class="card-header">
           <span class="tag tag-primary">{{ item.content_type === 'overview' ? '今日总览' : `文章 ${idx + 1}` }}</span>
           <span class="tag tag-success">{{ item.difficulty_level }}</span>
@@ -122,6 +122,12 @@ function scrollToCard(idx: number) {
   }
 }
 
+function setCardRef(idx: number) {
+  return (el: any) => {
+    cardRefs.value[idx] = el?.$el || el
+  }
+}
+
 // 单词弹窗5秒自动收起
 let wordPopupTimer: ReturnType<typeof setTimeout> | null = null
 function clearWordPopupTimer() {
@@ -162,8 +168,8 @@ onUnmounted(() => {
 function handleScroll() {
   const scrollY = window.scrollY + 120
   for (let i = cardRefs.value.length - 1; i >= 0; i--) {
-    const el = cardRefs.value[i]
-    if (el && (el as HTMLElement).offsetTop <= scrollY) {
+    const el = cardRefs.value[i] as HTMLElement | null
+    if (el && el.offsetTop <= scrollY) {
       activeAnchor.value = i
       break
     }
