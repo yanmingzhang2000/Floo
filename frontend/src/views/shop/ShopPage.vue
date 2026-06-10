@@ -119,20 +119,20 @@ const remainingPoints = ref(0)
 
 // 角色图标映射
 const charIcons: Record<string, string> = {
-  Wisdom: '/characters/wisdom.svg',
-  Courage: '/characters/courage.svg',
-  Hope: '/characters/hope.svg',
-  Faith: '/characters/faith.svg',
-  Grace: '/characters/grace.svg',
-  Peace: '/characters/peace.svg',
-  Love: '/characters/love.svg',
-  Serenity: '/characters/serenity.svg',
-  Brilliance: '/characters/brilliance.svg',
-  Infinity: '/characters/infinity.svg',
+  Wisdom: '/Floo/characters/wisdom.svg',
+  Courage: '/Floo/characters/courage.svg',
+  Hope: '/Floo/characters/hope.svg',
+  Faith: '/Floo/characters/faith.svg',
+  Grace: '/Floo/characters/grace.svg',
+  Peace: '/Floo/characters/peace.svg',
+  Love: '/Floo/characters/love.svg',
+  Serenity: '/Floo/characters/serenity.svg',
+  Brilliance: '/Floo/characters/brilliance.svg',
+  Infinity: '/Floo/characters/infinity.svg',
 }
 
 function getCharIcon(name: string) {
-  return charIcons[name] || '/characters/wisdom.svg'
+  return charIcons[name] || '/Floo/characters/wisdom.svg'
 }
 
 onMounted(loadData)
