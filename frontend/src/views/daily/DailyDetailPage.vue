@@ -1,7 +1,7 @@
 <template>
   <div class="page-container">
-    <div class="page-header clickable-title" v-if="content" @click="handleWordClick($event, content)">
-      <h1 v-html="renderTitle(content)"></h1>
+    <div class="page-header" v-if="content">
+      <h1 class="clickable-title" v-html="renderTitle(content)" @click.stop="handleWordClick($event, content)"></h1>
       <div style="display:flex;gap:8px;margin-top:8px">
         <span class="tag" style="background:rgba(255,255,255,0.2);color:white">{{ content.content_date }}</span>
         <span class="tag" style="background:rgba(255,255,255,0.2);color:white">{{ content.difficulty_level }}</span>
@@ -169,54 +169,65 @@ function renderArticle(item: LearningContent) {
 }
 
 async function handleWordClick(e: Event, item: LearningContent) {
-  const target = e.target as HTMLElement
-  // 优先从 data-word 取，否则从文本取
-  let word = target.dataset.word || ''
+  e.preventDefault()
+  e.stopPropagation()
   
-  // 如果没有 data-word，尝试从点击的文本中提取英文单词
-  if (!word) {
+  const target = e.target as HTMLElement
+  let word = ''
+  
+  // 1. 优先从 data-word 属性取
+  if (target.dataset.word) {
+    word = target.dataset.word
+  }
+  // 2. 向上查找最近的有 data-word 的父元素
+  else if (target.closest('[data-word]')) {
+    word = (target.closest('[data-word]') as HTMLElement).dataset.word || ''
+  }
+  // 3. 从点击文本中提取第一个英文单词
+  else {
     const text = target.textContent || ''
-    const match = text.match(/[a-zA-Z]+(?:'[a-zA-Z]+)?/)
-    if (match) word = match[0]
+    const m = text.match(/[a-zA-Z]+/)
+    if (m) word = m[0]
   }
   
-  // 如果还是没有，尝试从父元素取
-  if (!word && target.parentElement) {
-    word = target.parentElement.dataset.word || ''
+  // 4. 再不行，从整行文本中找
+  if (!word) {
+    const fullText = item.title || ''
+    const m = fullText.match(/[a-zA-Z]+/)
+    if (m) word = m[0]
   }
   
   if (!word) return
   
   speakWord(word)
   checkFavorite(word)
-
-  // 显示加载状态
   wordPopup.value = { word, meaning: '查询中...' }
 
-  // 所有词汇统一调用词典API
   try {
     const { data } = await dictionaryApi.lookup(word)
     const ec = data?.ec?.word?.[0]
     const phonetic = ec?.usphone || ec?.ukphone || ''
     const trs = ec?.trs || []
     const meaning = trs.map((t: any) => t?.tr?.[0]?.l?.i?.[0]).filter(Boolean).join('；')
-    if (meaning) {
-      wordPopup.value = { word, phonetic: phonetic ? `/${phonetic}/` : undefined, meaning }
-    } else {
-      wordPopup.value = { word, meaning: '未找到释义' }
-    }
+    wordPopup.value = meaning
+      ? { word, phonetic: phonetic ? `/${phonetic}/` : undefined, meaning }
+      : { word, meaning: '未找到释义' }
   } catch { wordPopup.value = { word, meaning: '查询失败' } }
 }
 </script>
 
 <style scoped>
 .detail-content { padding-bottom: 20px; }
-.clickable-title { cursor: pointer; }
-.clickable-title h1 { cursor: pointer; }
-.clickable-title :deep(mark.keyword) { background: rgba(255,255,255,0.3); color: white; padding: 1px 3px; border-radius: 3px; cursor: pointer; }
-.clickable-title :deep(.clickable-word) { cursor: pointer; border-bottom: 1px dashed rgba(255,255,255,0.5); transition: background 0.15s; }
-.clickable-title :deep(.clickable-word):hover { background: rgba(255,255,255,0.2); border-radius: 2px; }
+.clickable-title { cursor: pointer; user-select: none; }
+.clickable-title:hover { opacity: 0.8; }
+.clickable-title :deep(mark.keyword) { background: rgba(255,255,255,0.3); color: white; padding: 2px 4px; border-radius: 4px; cursor: pointer; }
+.clickable-title :deep(.clickable-word) { cursor: pointer; border-bottom: 1.5px dashed rgba(255,255,255,0.6); transition: all 0.15s; }
+.clickable-title :deep(.clickable-word):hover { background: rgba(255,255,255,0.2); border-radius: 3px; }
 .card-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+.card-title.clickable-title { cursor: pointer; }
+.card-title.clickable-title :deep(mark.keyword) { background: var(--primary-container); color: var(--on-primary-container); padding: 2px 4px; border-radius: 4px; }
+.card-title.clickable-title :deep(.clickable-word) { cursor: pointer; border-bottom: 1.5px dashed var(--primary-light); }
+.card-title.clickable-title :deep(.clickable-word):hover { background: var(--primary-container); border-radius: 3px; }
 .article-body { font-size: 15px; line-height: 1.8; }
 .article-body :deep(mark.keyword) { background: var(--primary-container); color: var(--on-primary-container); padding: 1px 3px; border-radius: 3px; cursor: pointer; }
 .article-body :deep(.clickable-word) { cursor: pointer; border-bottom: 1px dashed var(--primary-light); transition: background 0.15s; }
