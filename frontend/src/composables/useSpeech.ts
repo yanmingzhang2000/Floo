@@ -5,6 +5,7 @@
  */
 
 let synth: SpeechSynthesis | null = null
+let voicesLoaded = false
 
 function getSynth(): SpeechSynthesis | null {
   if (typeof window !== 'undefined') {
@@ -20,9 +21,42 @@ function getEnVoice(): SpeechSynthesisVoice | undefined {
   const s = getSynth()
   if (!s) return undefined
   const voices = s.getVoices()
-  return voices.find(v => v.lang.startsWith('en') && v.name.includes('Google'))
+
+  // 优先级：Google英文 > 系统英文 > 任何英文
+  const voice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google'))
     || voices.find(v => v.lang.startsWith('en-US'))
     || voices.find(v => v.lang.startsWith('en'))
+    || voices[0] // fallback to first available voice
+
+  return voice
+}
+
+/**
+ * 确保语音引擎就绪（移动端需要等待voices加载）
+ */
+function ensureVoicesReady(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const s = getSynth()
+    if (!s) { resolve(false); return }
+
+    // 如果已加载，直接返回
+    if (voicesLoaded && s.getVoices().length > 0) {
+      resolve(true)
+      return
+    }
+
+    // 等待voices加载
+    const timeout = setTimeout(() => {
+      voicesLoaded = true
+      resolve(s.getVoices().length > 0)
+    }, 1000)
+
+    s.onvoiceschanged = () => {
+      clearTimeout(timeout)
+      voicesLoaded = true
+      resolve(s.getVoices().length > 0)
+    }
+  })
 }
 
 // ========== 单词朗读 ==========
@@ -52,7 +86,10 @@ export function initVoices() {
   const s = getSynth()
   if (s) {
     s.getVoices()
-    s.onvoiceschanged = () => s.getVoices()
+    s.onvoiceschanged = () => {
+      voicesLoaded = true
+      s.getVoices()
+    }
   }
 }
 
@@ -106,8 +143,15 @@ function speakNext() {
     }
   }
 
-  utterance.onerror = () => {
-    readState.value = 'idle'
+  utterance.onerror = (e) => {
+    // 移动端可能有临时错误，延迟后重试
+    if (readState.value === 'playing' && readIndex.value < readSentences.value.length) {
+      setTimeout(() => {
+        if (readState.value === 'playing') speakNext()
+      }, 100)
+    } else {
+      readState.value = 'idle'
+    }
   }
 
   s.speak(utterance)
@@ -116,9 +160,12 @@ function speakNext() {
 /**
  * 开始朗读文章
  */
-export function startReading(article: string) {
+export async function startReading(article: string) {
   const s = getSynth()
   if (!s) return
+
+  // 确保语音引擎就绪（移动端需要等待）
+  await ensureVoicesReady()
 
   s.cancel()
   readSentences.value = splitSentences(article)
