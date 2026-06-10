@@ -114,6 +114,21 @@ const { readState } = useReadingState()
 const cardRefs = ref<(Element | null)[]>([])
 const activeAnchor = ref(0)
 
+// 单词查询缓存
+const wordCache = new Map<string, { word: string; phonetic?: string; meaning: string }>()
+
+function getCachedWord(word: string) {
+  return wordCache.get(word.toLowerCase())
+}
+
+function setCachedWord(word: string, result: { word: string; phonetic?: string; meaning: string }) {
+  wordCache.set(word.toLowerCase(), result)
+  if (wordCache.size > 500) {
+    const firstKey = wordCache.keys().next().value
+    if (firstKey) wordCache.delete(firstKey)
+  }
+}
+
 function scrollToCard(idx: number) {
   const el = cardRefs.value[idx]
   if (el) {
@@ -233,13 +248,19 @@ async function handleWordClick(e: Event, item: LearningContent) {
   const word = target.dataset.word || target.textContent || ''
   if (!word || !target.classList.contains('keyword') && !target.classList.contains('clickable-word')) return
 
-  // 朗读单词
   speakWord(word)
 
-  // 显示加载状态
+  // 先查缓存
+  const cached = getCachedWord(word)
+  if (cached) {
+    const { data: favData } = await favoritesApi.check(auth.currentUserId, word).catch(() => ({ data: { is_favorite: false } }))
+    wordPopup.value = { ...cached, isFavorite: favData.is_favorite }
+    return
+  }
+
+  // 缓存没有，调API
   wordPopup.value = { word, meaning: '查询中...' }
 
-  // 所有词汇统一调用词典API
   try {
     const { data } = await dictionaryApi.lookup(word)
     const ec = data?.ec?.word?.[0]
@@ -247,9 +268,10 @@ async function handleWordClick(e: Event, item: LearningContent) {
     const trs = ec?.trs || []
     const meaning = trs.map((t: any) => t?.tr?.[0]?.l?.i?.[0]).filter(Boolean).join('；')
     if (meaning) {
-      // 检查是否已收藏
+      const result = { word, phonetic: phonetic ? `/${phonetic}/` : undefined, meaning }
+      setCachedWord(word, result)
       const { data: favData } = await favoritesApi.check(auth.currentUserId, word)
-      wordPopup.value = { word, phonetic: phonetic ? `/${phonetic}/` : undefined, meaning, isFavorite: favData.is_favorite }
+      wordPopup.value = { ...result, isFavorite: favData.is_favorite }
     } else {
       wordPopup.value = { word, meaning: '未找到释义' }
     }

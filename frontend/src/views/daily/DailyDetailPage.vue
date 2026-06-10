@@ -93,6 +93,22 @@ const todayContents = ref<LearningContent[]>([])
 const wordPopup = ref<{ word: string; phonetic?: string; meaning: string; usage?: string } | null>(null)
 const isFavorited = ref(false)
 
+// 单词查询缓存
+const wordCache = new Map<string, { word: string; phonetic?: string; meaning: string }>()
+
+function getCachedWord(word: string) {
+  return wordCache.get(word.toLowerCase())
+}
+
+function setCachedWord(word: string, result: { word: string; phonetic?: string; meaning: string }) {
+  wordCache.set(word.toLowerCase(), result)
+  // 限制缓存大小
+  if (wordCache.size > 500) {
+    const firstKey = wordCache.keys().next().value
+    if (firstKey) wordCache.delete(firstKey)
+  }
+}
+
 // 收藏词汇
 async function toggleFavorite() {
   if (!wordPopup.value) return
@@ -212,6 +228,15 @@ async function handleWordClick(e: Event, item: LearningContent) {
   
   speakWord(word)
   checkFavorite(word)
+  
+  // 先查缓存
+  const cached = getCachedWord(word)
+  if (cached) {
+    wordPopup.value = cached
+    return
+  }
+  
+  // 缓存没有，调API
   wordPopup.value = { word, meaning: '查询中...' }
 
   try {
@@ -220,9 +245,11 @@ async function handleWordClick(e: Event, item: LearningContent) {
     const phonetic = ec?.usphone || ec?.ukphone || ''
     const trs = ec?.trs || []
     const meaning = trs.map((t: any) => t?.tr?.[0]?.l?.i?.[0]).filter(Boolean).join('；')
-    wordPopup.value = meaning
+    const result = meaning
       ? { word, phonetic: phonetic ? `/${phonetic}/` : undefined, meaning }
       : { word, meaning: '未找到释义' }
+    setCachedWord(word, result)
+    wordPopup.value = result
   } catch { wordPopup.value = { word, meaning: '查询失败' } }
 }
 </script>
