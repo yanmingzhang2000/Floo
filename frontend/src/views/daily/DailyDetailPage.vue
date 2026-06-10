@@ -1,7 +1,13 @@
 <template>
   <div class="page-container">
-    <div class="page-header" v-if="content">
-      <h1>{{ content.title }}</h1>
+    <div class="page-header clickable-title" v-if="content" @click="handleWordClick($event, content)">
+      <h1 v-html="renderTitle(content)"></h1>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <span class="tag" style="background:rgba(255,255,255,0.2);color:white">{{ content.content_date }}</span>
+        <span class="tag" style="background:rgba(255,255,255,0.2);color:white">{{ content.difficulty_level }}</span>
+        <span class="tag" style="background:rgba(255,255,255,0.2);color:white">{{ content.theme_type }}</span>
+      </div>
+    </div>
       <div style="display:flex;gap:8px;margin-top:8px">
         <span class="tag" style="background:rgba(255,255,255,0.2);color:white">{{ content.content_date }}</span>
         <span class="tag" style="background:rgba(255,255,255,0.2);color:white">{{ content.difficulty_level }}</span>
@@ -56,6 +62,9 @@
             <div class="popup-header">
               <h3>{{ wordPopup.word }}</h3>
               <button class="speak-btn" @click="speakWord(wordPopup!.word)">🔊</button>
+              <button class="fav-btn" :class="{ active: isFavorited }" @click="toggleFavorite">
+                {{ isFavorited ? '⭐' : '☆' }}
+              </button>
             </div>
             <p v-if="wordPopup.phonetic" class="phonetic">{{ wordPopup.phonetic }}</p>
             <p class="meaning">{{ wordPopup.meaning }}</p>
@@ -70,7 +79,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { dailyApi, dictionaryApi } from '@/api'
+import { dailyApi, dictionaryApi, favoritesApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { speakWord, initVoices } from '@/composables/useSpeech'
 import type { LearningContent, WordItem } from '@/types'
@@ -82,6 +91,28 @@ const loading = ref(true)
 const content = ref<LearningContent | null>(null)
 const todayContents = ref<LearningContent[]>([])
 const wordPopup = ref<{ word: string; phonetic?: string; meaning: string; usage?: string } | null>(null)
+const isFavorited = ref(false)
+
+// 收藏词汇
+async function toggleFavorite() {
+  if (!wordPopup.value) return
+  const w = wordPopup.value
+  if (isFavorited.value) {
+    await favoritesApi.remove(auth.currentUserId, w.word).catch(() => {})
+    isFavorited.value = false
+  } else {
+    await favoritesApi.add(auth.currentUserId, w.word, w.phonetic, w.meaning).catch(() => {})
+    isFavorited.value = true
+  }
+}
+
+// 检查是否已收藏
+async function checkFavorite(word: string) {
+  try {
+    const { data } = await favoritesApi.check(auth.currentUserId, word)
+    isFavorited.value = data?.favorited || false
+  } catch { isFavorited.value = false }
+}
 
 const currentIndex = computed(() => todayContents.value.findIndex(c => c.id === content.value?.id))
 const hasPrev = computed(() => currentIndex.value > 0)
@@ -146,9 +177,10 @@ function renderArticle(item: LearningContent) {
 async function handleWordClick(e: Event, item: LearningContent) {
   const target = e.target as HTMLElement
   const word = target.dataset.word || target.textContent || ''
-  if (!word || !target.classList.contains('keyword') && !target.classList.contains('clickable-word')) return
+  if (!word || (!target.classList.contains('keyword') && !target.classList.contains('clickable-word'))) return
 
   speakWord(word)
+  checkFavorite(word)
 
   // 显示加载状态
   wordPopup.value = { word, meaning: '查询中...' }
@@ -171,10 +203,12 @@ async function handleWordClick(e: Event, item: LearningContent) {
 
 <style scoped>
 .detail-content { padding-bottom: 20px; }
+.clickable-title { cursor: pointer; }
+.clickable-title h1 { cursor: pointer; }
+.clickable-title :deep(mark.keyword) { background: rgba(255,255,255,0.3); color: white; padding: 1px 3px; border-radius: 3px; cursor: pointer; }
+.clickable-title :deep(.clickable-word) { cursor: pointer; border-bottom: 1px dashed rgba(255,255,255,0.5); transition: background 0.15s; }
+.clickable-title :deep(.clickable-word):hover { background: rgba(255,255,255,0.2); border-radius: 2px; }
 .card-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
-.clickable-title :deep(mark.keyword) { background: var(--primary-container); color: var(--on-primary-container); padding: 1px 3px; border-radius: 3px; cursor: pointer; }
-.clickable-title :deep(.clickable-word) { cursor: pointer; border-bottom: 1px dashed var(--primary-light); transition: background 0.15s; }
-.clickable-title :deep(.clickable-word):hover { background: var(--primary-container); border-radius: 2px; }
 .article-body { font-size: 15px; line-height: 1.8; }
 .article-body :deep(mark.keyword) { background: var(--primary-container); color: var(--on-primary-container); padding: 1px 3px; border-radius: 3px; cursor: pointer; }
 .article-body :deep(.clickable-word) { cursor: pointer; border-bottom: 1px dashed var(--primary-light); transition: background 0.15s; }
@@ -187,9 +221,12 @@ async function handleWordClick(e: Event, item: LearningContent) {
 .word-meaning { font-size: 12px; color: var(--on-surface-variant); }
 .word-popup { position: fixed; bottom: 64px; left: 50%; transform: translateX(-50%); width: calc(100% - 32px); max-width: 452px; padding: 20px; z-index: 200; border-radius: 20px; }
 .popup-header { display: flex; align-items: center; gap: 12px; }
-.popup-header h3 { font-size: 22px; margin: 0; }
+.popup-header h3 { font-size: 22px; margin: 0; flex: 1; }
 .speak-btn { width: 36px; height: 36px; border: none; background: var(--primary-container); border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .speak-btn:hover { background: var(--primary); }
+.fav-btn { width: 36px; height: 36px; border: none; background: var(--surface-container); border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.fav-btn:hover { background: #FFF3E0; }
+.fav-btn.active { background: #FFE0B2; }
 
 .nav-buttons {
   display: flex;
