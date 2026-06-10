@@ -25,36 +25,36 @@
     </div>
 
     <div v-else>
-      <!-- 快速跳转锚点 -->
-      <div v-if="contents.length > 1" class="anchor-nav">
-        <button v-for="(item, idx) in contents" :key="item.id" class="anchor-btn" :class="{ active: activeAnchor === idx }" @click="scrollToCard(idx)">
-          {{ idx + 1 }}
-        </button>
+      <!-- 切换导航 -->
+      <div v-if="totalCount > 1" class="switch-nav">
+        <button class="switch-btn" :disabled="!hasPrev" @click="goPrev">← 上一篇</button>
+        <span class="switch-index">{{ currentIdx + 1 }} / {{ totalCount }}</span>
+        <button class="switch-btn" :disabled="!hasNext" @click="goNext">下一篇 →</button>
       </div>
 
-      <div v-for="(item, idx) in contents" :key="item.id" :ref="setCardRef(idx)" class="content-card card">
+      <div v-if="currentItem" class="content-card card">
         <div class="card-header">
-          <span class="tag tag-primary">{{ item.content_type === 'overview' ? '今日总览' : `文章 ${idx + 1}` }}</span>
-          <span class="tag tag-success">{{ item.difficulty_level }}</span>
-          <button class="read-btn" @click.stop="toggleReading(item.article)" :class="{ active: readState === 'playing' }">
+          <span class="tag tag-primary">{{ currentItem.content_type === 'overview' ? '今日总览' : `文章 ${currentIdx + 1}` }}</span>
+          <span class="tag tag-success">{{ currentItem.difficulty_level }}</span>
+          <button class="read-btn" @click.stop="toggleReading(currentItem.article)" :class="{ active: readState === 'playing' }">
             {{ readState === 'playing' ? '⏸ 暂停' : readState === 'paused' ? '▶ 继续' : '🔊 朗读' }}
           </button>
         </div>
-        <h3 class="card-title">{{ item.title }}</h3>
+        <h3 class="card-title">{{ currentItem.title }}</h3>
 
-        <div class="article-body" v-html="renderArticle(item)" @click="handleWordClick($event, item)"></div>
+        <div class="article-body" v-html="renderArticle(currentItem)" @click="handleWordClick($event, currentItem)"></div>
 
-        <div v-if="item.translation" class="translation-toggle" @click="toggleTranslation(item.id)">
-          {{ expandedTranslations.has(item.id) ? '收起译文 ▲' : '查看译文 ▼' }}
+        <div v-if="currentItem.translation" class="translation-toggle" @click="toggleTranslation(currentItem.id)">
+          {{ expandedTranslations.has(currentItem.id) ? '收起译文 ▲' : '查看译文 ▼' }}
         </div>
-        <div v-if="expandedTranslations.has(item.id) && item.translation" class="translation">
-          {{ item.translation }}
+        <div v-if="expandedTranslations.has(currentItem.id) && currentItem.translation" class="translation">
+          {{ currentItem.translation }}
         </div>
 
-        <div v-if="item.words?.length" class="words-section">
+        <div v-if="currentItem.words?.length" class="words-section">
           <h4>核心词汇</h4>
           <div class="words-wrap">
-            <div v-for="w in item.words" :key="w.word" class="word-chip" @click="showWordDetail(w)">
+            <div v-for="w in currentItem.words" :key="w.word" class="word-chip" @click="showWordDetail(w)">
               <span class="word-text">{{ w.word }}</span>
               <span class="word-phonetic" v-if="w.phonetic">{{ w.phonetic }}</span>
               <span class="word-meaning">{{ w.meaning }}</span>
@@ -146,6 +146,13 @@ const themeLabels: Record<string, string> = {
 }
 const themeLabel = computed(() => themeLabels[contents.value[0]?.theme_type] || '每日学习')
 const totalCount = computed(() => contents.value.length)
+const currentIdx = ref(0)
+const currentItem = computed(() => contents.value[currentIdx.value] || null)
+const hasPrev = computed(() => currentIdx.value > 0)
+const hasNext = computed(() => currentIdx.value < contents.value.length - 1)
+
+function goNext() { if (hasNext.value) currentIdx.value++ }
+function goPrev() { if (hasPrev.value) currentIdx.value-- }
 
 onMounted(() => {
   initVoices()
@@ -276,34 +283,35 @@ async function toggleFavorite() {
 .content-card { margin-top: 16px; }
 .card-header { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
 
-.anchor-nav {
+.switch-nav {
   display: flex;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 0;
-  position: sticky;
-  top: 0;
-  background: var(--surface);
-  z-index: 10;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--surface-container);
+  border-radius: var(--radius-sm);
+  margin: 12px 0 0 0;
 }
 
-.anchor-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 1.5px solid var(--primary);
+.switch-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--primary);
   background: transparent;
   color: var(--primary);
-  font-weight: 600;
+  border-radius: var(--radius-sm);
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.anchor-btn.active, .anchor-btn:hover {
-  background: var(--primary);
-  color: white;
+.switch-btn:hover:not(:disabled) { background: var(--primary-container); }
+.switch-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.switch-index {
+  font-size: 13px;
+  color: var(--on-surface-variant);
 }
+
 .card-title { font-size: 17px; font-weight: 700; margin-bottom: 12px; }
 
 .read-btn {
