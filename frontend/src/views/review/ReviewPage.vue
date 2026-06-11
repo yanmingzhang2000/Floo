@@ -231,7 +231,7 @@
               <div class="card" style="margin:12px 16px">
                 <div class="word-hint-label">中文释义</div>
                 <div class="word-hint-meaning">{{ currentWordMeaning }}</div>
-                <div v-if="currentWordPhonetic" class="word-hint-phonetic">{{ currentWordPhonetic }}</div>
+                <!-- 音标不显示，避免暴露单词 -->
               </div>
 
               <!-- 输入框 -->
@@ -347,7 +347,7 @@
         <div class="card vocab-hint-card">
           <div class="vocab-hint-label">中文释义</div>
           <div class="vocab-hint-meaning">{{ vocabCurrentWord?.meaning || '' }}</div>
-          <div v-if="vocabCurrentWord?.phonetic" class="vocab-hint-phonetic">{{ vocabCurrentWord.phonetic }}</div>
+          <!-- 音标不显示，避免暴露单词 -->
         </div>
 
         <!-- 输入框 -->
