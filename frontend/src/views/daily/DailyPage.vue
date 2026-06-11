@@ -61,6 +61,36 @@
             </div>
           </div>
         </div>
+
+        <!-- 朗读评测 -->
+        <div class="eval-section">
+          <div v-if="!evalResult && !isRecording" class="eval-trigger" @click="startEval">
+            <span class="eval-icon">🎤</span>
+            <span class="eval-text">朗读评测</span>
+          </div>
+          <div v-else-if="isRecording" class="eval-recording">
+            <div class="recording-pulse"></div>
+            <span>正在录音... {{ recordingTime }}s</span>
+          </div>
+          <div v-else class="eval-result">
+            <div class="eval-scores-row">
+              <div class="eval-score">
+                <span class="eval-score-num" :class="getScoreClass(evalResult?.overall ?? 0)">{{ evalResult?.overall ?? 0 }}</span>
+                <span class="eval-score-label">总分</span>
+              </div>
+              <div class="eval-score">
+                <span class="eval-score-num" :class="getScoreClass(evalResult?.pronunciation ?? 0)">{{ evalResult?.pronunciation ?? 0 }}</span>
+                <span class="eval-score-label">发音</span>
+              </div>
+              <div class="eval-score">
+                <span class="eval-score-num" :class="getScoreClass(evalResult?.fluency ?? 0)">{{ evalResult?.fluency ?? 0 }}</span>
+                <span class="eval-score-label">流利度</span>
+              </div>
+            </div>
+            <p class="eval-suggestion">{{ evalResult?.suggestion }}</p>
+            <button class="btn btn-outline btn-sm" @click="resetEval">重新评测</button>
+          </div>
+        </div>
       </div>
 
       <div class="bottom-actions">
@@ -96,10 +126,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { dailyApi, generationLimitApi, favoritesApi } from '@/api'
+import { dailyApi, generationLimitApi, favoritesApi, speechApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { dictionaryApi } from '@/api'
 import { speakWord, initVoices, toggleReading, stopReading, useReadingState } from '@/composables/useSpeech'
+import { useRecorder } from '@/composables/useRecorder'
 import OnboardingGuide from '@/components/OnboardingGuide.vue'
 import type { LearningContent, WordItem } from '@/types'
 
@@ -113,6 +144,18 @@ const remainingCount = ref(3)
 const { readState } = useReadingState()
 const cardRefs = ref<(Element | null)[]>([])
 const activeAnchor = ref(0)
+
+// 录音和语音评测
+const { isRecording, startRecording, stopRecording } = useRecorder()
+const evalResult = ref<{
+  overall: number;
+  pronunciation: number;
+  fluency: number;
+  integrity: number;
+  suggestion: string;
+} | null>(null)
+const recordingTime = ref(0)
+let recordingTimer: ReturnType<typeof setInterval> | null = null
 
 // 单词查询缓存
 const wordCache = new Map<string, { word: string; phonetic?: string; meaning: string }>()
@@ -168,6 +211,58 @@ const hasNext = computed(() => currentIdx.value < contents.value.length - 1)
 
 function goNext() { if (hasNext.value) currentIdx.value++ }
 function goPrev() { if (hasPrev.value) currentIdx.value-- }
+
+// 发音评测
+async function startEval() {
+  if (isRecording.value) {
+    // 正在录音，停止并评测
+    const audioBase64 = await stopRecording()
+    if (recordingTimer) { clearInterval(recordingTimer); recordingTimer = null }
+    
+    if (!audioBase64 || !currentItem.value) return
+    
+    // 发送到后端评测
+    try {
+      const { data } = await speechApi.evaluate(audioBase64, currentItem.value.article, 'en')
+      evalResult.value = {
+        overall: data.overall,
+        pronunciation: data.pronunciation,
+        fluency: data.fluency,
+        integrity: data.integrity,
+        suggestion: data.suggestion,
+      }
+    } catch (err) {
+      evalResult.value = { overall: 0, pronunciation: 0, fluency: 0, integrity: 0, suggestion: '评测失败，请稍后重试' }
+    }
+    return
+  }
+  
+  // 开始录音
+  const started = await startRecording()
+  if (!started) {
+    alert('无法获取录音权限，请在浏览器设置中允许麦克风访问')
+    return
+  }
+  
+  // 开始计时
+  recordingTime.value = 0
+  recordingTimer = setInterval(() => { recordingTime.value++ }, 1000)
+}
+
+// 重置评测
+function resetEval() {
+  evalResult.value = null
+  recordingTime.value = 0
+}
+
+// 根据分数返回CSS类名
+function getScoreClass(score: number) {
+  if (score >= 90) return 'score-excellent'
+  if (score >= 80) return 'score-good'
+  if (score >= 70) return 'score-ok'
+  if (score >= 60) return 'score-fair'
+  return 'score-poor'
+}
 
 onMounted(() => {
   initVoices()
@@ -492,4 +587,82 @@ async function toggleFavorite() {
 .word-popup .phonetic { color: var(--on-surface-variant); margin-top: 4px; }
 .word-popup .meaning { margin-top: 10px; font-size: 16px; }
 .word-popup .usage { margin-top: 8px; color: var(--on-surface-variant); font-size: 14px; font-style: italic; }
+
+/* 朗读评测 */
+.eval-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--surface-container);
+}
+.eval-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  background: var(--surface-container);
+  transition: background 0.2s;
+}
+.eval-trigger:hover {
+  background: var(--primary-container);
+}
+.eval-icon { font-size: 20px; }
+.eval-text { font-size: 14px; font-weight: 500; }
+.eval-recording {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px;
+  color: #f44336;
+}
+.recording-pulse {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #f44336;
+  animation: pulse 1.5s infinite;
+}
+.eval-result {
+  padding: 12px;
+}
+.eval-scores-row {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 12px;
+}
+.eval-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.eval-score-num {
+  font-size: 24px;
+  font-weight: 700;
+}
+.eval-score-label {
+  font-size: 11px;
+  color: var(--on-surface-variant);
+}
+.score-excellent { color: #4caf50; }
+.score-good { color: #8bc34a; }
+.score-ok { color: #ffc107; }
+.score-fair { color: #ff9800; }
+.score-poor { color: #f44336; }
+.eval-suggestion {
+  margin-bottom: 12px;
+  padding: 10px;
+  background: var(--surface-container);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--on-surface-variant);
+  text-align: center;
+}
+.btn-sm {
+  padding: 6px 16px;
+  font-size: 13px;
+}
 </style>
