@@ -86,23 +86,30 @@ export function getBaseForm(word: string): string {
     return lower.slice(0, -3) + 'y'
   }
   
-  // 4. -ves → -f/-fe (knives → knife)
-  if (lower.endsWith('ves') && lower.length > 3) {
+  // 4. -ves → -f/-fe (knives → knife, but NOT groves/stoves → grove/stove)
+  if (lower.endsWith('ves') && lower.length > 4 && !lower.endsWith('oves')) {
     return lower.slice(0, -3) + 'fe'
   }
   
-  // 5. -es → -e/-∅ (makes → make, boxes → box)
-  if (lower.endsWith('es') && lower.length > 3) {
+  // 5. -es → -e/-∅ (makes → make, boxes → box, but NOT cases/notes/horses)
+  if (lower.endsWith('es') && lower.length > 4) {
     // 特殊：以-ch, -sh, -ss, -x, -z结尾加-es
     if (lower.endsWith('ches') || lower.endsWith('shes') || lower.endsWith('sses') || lower.endsWith('xes') || lower.endsWith('zes')) {
       return lower.slice(0, -2)
     }
-    // 其他情况直接去掉-s
+    // 排除：-tes, -des, -ses, -zes, -ces（通常是原形，不是变形）
+    if (lower.endsWith('tes') || lower.endsWith('des') || lower.endsWith('ses') || lower.endsWith('zes') || lower.endsWith('ces')) {
+      return lower
+    }
     return lower.slice(0, -1)
   }
   
-  // 6. -s → -∅ (runs → run)
-  if (lower.endsWith('s') && !lower.endsWith('ss') && lower.length > 3) {
+  // 6. -s → -∅ (runs → run, but NOT continuous/obvious/bus/plus)
+  if (lower.endsWith('s') && !lower.endsWith('ss') && lower.length > 4) {
+    // 排除：以-ous, -is, -us, -as, -ex, -ix结尾的词
+    if (lower.endsWith('ous') || lower.endsWith('is') || lower.endsWith('us') || lower.endsWith('as') || lower.endsWith('ex') || lower.endsWith('ix')) {
+      return lower
+    }
     return lower.slice(0, -1)
   }
   
