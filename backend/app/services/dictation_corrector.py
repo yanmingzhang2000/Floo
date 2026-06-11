@@ -12,15 +12,50 @@ from app.services.llm_client import chat_json
 
 log = logging.getLogger(__name__)
 
-CORRECT_SYSTEM_PROMPT = """你是一名严谨的英语老师，正在批改学生的英语默写。
-请对比【原文】和【学生输入】，输出 JSON 格式批改结果，字段如下：
+CORRECT_SYSTEM_PROMPT = """你是一名严谨且公正的英语老师，正在批改学生的英语默写。
+
+## 评分原则（重要！）
+
+### 1. 宽松评分，鼓励为主
+- 学生能写出70%以上的内容就给70分以上
+- 只有少量拼写错误（1-3个）应该给85-95分
+- 完全正确给95-100分
+- 不要因为小错误就大幅扣分
+
+### 2. 扣分标准
+- 每个单词完全写错：扣3-5分
+- 漏写单词：每个扣2-3分
+- 多写单词：每个扣1-2分
+- 大小写错误：每个扣0.5分
+- 标点错误：每个扣0.5分
+
+### 3. 特殊情况
+- 如果学生写了同义词或近义词（如 happy → glad），算对，不扣分
+- 如果学生只是漏了s/es/ed等词尾，只扣1分
+- 如果学生只写错了一两个字母，但单词可识别，扣1-2分
+
+## 输出格式
+
+```json
 {
-  "score": 0-100 的整数,
-  "summary": "一句话总评（中文）",
-  "diffs": [{"type": "missing|wrong|extra", "expected": "...", "actual": "...", "position": 索引}],
-  "suggestions": ["改进建议1", "改进建议2"]
+  "score": 0-100的整数,
+  "summary": "一句话总评（中文，要鼓励学生）",
+  "diffs": [
+    {
+      "type": "missing|wrong|extra",
+      "expected": "正确单词",
+      "actual": "学生写的（missing时为空）",
+      "position": 在原文中的位置索引
+    }
+  ],
+  "suggestions": ["具体改进建议1", "改进建议2"]
 }
-只返回 JSON，不要任何额外文字。"""
+```
+
+注意：
+- 只返回JSON，不要任何额外文字
+- score必须是整数
+- suggestions最多3条，要具体可操作"""
 
 
 async def correct_dictation(original: str, user_input: str) -> dict[str, Any]:
@@ -52,22 +87,24 @@ def _tokenize(text: str) -> list[str]:
 
 
 def _mock_correct(original: str, user_input: str) -> dict[str, Any]:
-    """本地兜底批改：基于词级 diff 给出粗略评分。
-
-    为什么用 SequenceMatcher 而不是逐字符比较：词级粒度更贴近
-    人类批改习惯，"the" 写成 "teh" 算一个错误而不是三个。
-    """
+    """本地兜底批改：基于词级 diff 给出评分，宽松鼓励为主。"""
     orig_tokens = _tokenize(original.lower())
     user_tokens = _tokenize(user_input.lower())
     matcher = SequenceMatcher(None, orig_tokens, user_tokens)
     ratio = matcher.ratio()
-    score = int(round(ratio * 100))
-
+    
+    base_score = int(round(ratio * 100))
+    
+    wrong_count = 0
+    missing_count = 0
+    extra_count = 0
+    
     diffs: list[dict[str, Any]] = []
     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
         if tag == "equal":
             continue
         if tag == "replace":
+            wrong_count += 1
             diffs.append({
                 "type": "wrong",
                 "expected": " ".join(orig_tokens[i1:i2]),
@@ -75,6 +112,7 @@ def _mock_correct(original: str, user_input: str) -> dict[str, Any]:
                 "position": i1,
             })
         elif tag == "delete":
+            missing_count += 1
             diffs.append({
                 "type": "missing",
                 "expected": " ".join(orig_tokens[i1:i2]),
@@ -82,6 +120,7 @@ def _mock_correct(original: str, user_input: str) -> dict[str, Any]:
                 "position": i1,
             })
         elif tag == "insert":
+            extra_count += 1
             diffs.append({
                 "type": "extra",
                 "expected": "",
@@ -89,27 +128,42 @@ def _mock_correct(original: str, user_input: str) -> dict[str, Any]:
                 "position": i1,
             })
 
-    if score >= 95:
-        summary = "几乎完美！继续保持。"
-    elif score >= 80:
-        summary = "整体不错，注意少量拼写细节。"
-    elif score >= 60:
-        summary = "有一些错误，建议重听原文再写一遍。"
+    # 宽松评分逻辑：鼓励为主
+    total_errors = wrong_count + missing_count + extra_count
+    if total_errors == 0:
+        score = 100
+    elif total_errors <= 2:
+        score = max(85, base_score)
+    elif total_errors <= 5:
+        score = max(70, base_score)
     else:
-        summary = "差距较大，建议先朗读原文熟悉句型。"
-        log.debug("得分 %s 较低，建议用户多练习", score)
+        score = max(50, base_score)
+
+    # 鼓励性评语
+    if score >= 95:
+        summary = "太棒了！你的默写非常准确，继续保持！"
+    elif score >= 85:
+        summary = "很好！只有少量小错误，注意一下拼写就完美了。"
+    elif score >= 75:
+        summary = "不错！大部分都写对了，再多练习几次会更好。"
+    elif score >= 60:
+        summary = "还可以，建议再听一遍原文，注意漏写的单词。"
+    else:
+        summary = "继续加油！建议先朗读几遍原文，熟悉后再默写。"
 
     suggestions = []
-    if any(d["type"] == "missing" for d in diffs):
-        suggestions.append("注意听写完整，避免遗漏单词。")
-    if any(d["type"] == "wrong" for d in diffs):
-        suggestions.append("留意易混淆单词的拼写。")
+    if missing_count > 0:
+        suggestions.append("注意听完整句子，避免遗漏单词。")
+    if wrong_count > 0:
+        suggestions.append("留意易混淆单词的拼写，可以多写几遍加深记忆。")
+    if extra_count > 0:
+        suggestions.append("默写时尽量忠实原文，不要添加额外内容。")
     if not suggestions:
-        suggestions.append("可以尝试更长的文本挑战自己。")
+        suggestions.append("你的默写很完美，可以挑战更难的内容了！")
 
     return {
         "score": score,
         "summary": summary,
         "diffs": diffs[:20],
-        "suggestions": suggestions,
+        "suggestions": suggestions[:3],
     }
