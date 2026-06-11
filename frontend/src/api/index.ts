@@ -106,8 +106,8 @@ export const shopApi = {
 
 // ===== 语音评测 =====
 export const speechApi = {
-  evaluate: (audio: string, text: string, langType = 'en', format = 'webm') =>
-    api.post('/api/speech/evaluate', { audio, text, lang_type: langType, format }),
+  evaluate: (audio: string, text: string, langType = 'en') =>
+    api.post('/api/speech/evaluate', { audio, text, lang_type: langType, format: 'wav' }),
 }
 
 export default api
