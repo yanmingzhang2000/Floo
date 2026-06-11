@@ -68,9 +68,10 @@
             <span class="eval-icon">🎤</span>
             <span class="eval-text">朗读评测</span>
           </div>
-          <div v-else-if="isRecording" class="eval-recording">
+          <div v-else-if="isRecording" class="eval-recording" @click="startEval">
             <div class="recording-pulse"></div>
-            <span>正在录音... {{ recordingTime }}s</span>
+            <span class="eval-text">⏹ 停止录音</span>
+            <span class="eval-hint">已录制 {{ recordingTime }}s，点击停止</span>
           </div>
           <div v-else class="eval-result">
             <div class="eval-scores-row">
@@ -612,18 +613,29 @@ async function toggleFavorite() {
 .eval-text { font-size: 14px; font-weight: 500; }
 .eval-recording {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 12px;
+  gap: 6px;
+  padding: 16px;
   color: #f44336;
+  background: #ffebee;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.eval-recording:hover {
+  background: #ffcdd2;
 }
 .recording-pulse {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: #f44336;
   animation: pulse 1.5s infinite;
+}
+.eval-hint {
+  font-size: 12px;
+  color: #666;
 }
 .eval-result {
   padding: 12px;
