@@ -119,6 +119,7 @@ import { dailyApi, dictionaryApi, favoritesApi, speechApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { speakWord, initVoices } from '@/composables/useSpeech'
 import { useRecorder } from '@/composables/useRecorder'
+import { getBaseForm } from '@/composables/useWordForm'
 import type { LearningContent, WordItem } from '@/types'
 
 const route = useRoute()
@@ -303,29 +304,32 @@ async function handleWordClick(e: Event, item: LearningContent) {
   e.stopPropagation()
   
   const target = e.target as HTMLElement
-  let word = ''
+  let rawWord = ''
   
   // 从 data-word 属性取
   if (target.dataset.word) {
-    word = target.dataset.word
+    rawWord = target.dataset.word
   }
   // 向上查找
   else if (target.closest('[data-word]')) {
-    word = (target.closest('[data-word]') as HTMLElement).dataset.word || ''
+    rawWord = (target.closest('[data-word]') as HTMLElement).dataset.word || ''
   }
   // 从文本提取
   else {
     const m = (target.textContent || '').match(/[a-zA-Z]+/)
-    if (m) word = m[0]
+    if (m) rawWord = m[0]
   }
   
   // 弹出输入框兜底
-  if (!word) {
+  if (!rawWord) {
     const input = prompt('输入想查询的单词：')
-    if (input && input.trim()) word = input.trim()
+    if (input && input.trim()) rawWord = input.trim()
   }
   
-  if (!word) return
+  if (!rawWord) return
+  
+  // 词形还原：获取单词原型
+  const word = getBaseForm(rawWord)
   
   speakWord(word)
   checkFavorite(word)

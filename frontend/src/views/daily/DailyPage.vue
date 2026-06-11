@@ -132,6 +132,7 @@ import { useAuthStore } from '@/stores'
 import { dictionaryApi } from '@/api'
 import { speakWord, initVoices, toggleReading, stopReading, useReadingState } from '@/composables/useSpeech'
 import { useRecorder } from '@/composables/useRecorder'
+import { getBaseForm } from '@/composables/useWordForm'
 import OnboardingGuide from '@/components/OnboardingGuide.vue'
 import type { LearningContent, WordItem } from '@/types'
 
@@ -346,8 +347,11 @@ function renderArticle(item: LearningContent) {
 
 async function handleWordClick(e: Event, item: LearningContent) {
   const target = e.target as HTMLElement
-  const word = target.dataset.word || target.textContent || ''
-  if (!word || !target.classList.contains('keyword') && !target.classList.contains('clickable-word')) return
+  const rawWord = target.dataset.word || target.textContent || ''
+  if (!rawWord || !target.classList.contains('keyword') && !target.classList.contains('clickable-word')) return
+
+  // 词形还原：获取单词原型
+  const word = getBaseForm(rawWord)
 
   speakWord(word)
 
