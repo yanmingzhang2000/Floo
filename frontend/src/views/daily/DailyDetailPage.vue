@@ -39,7 +39,43 @@
         </div>
       </div>
 
-      <div style="padding:16px">
+      <!-- 朗读评测卡片 -->
+      <div class="card eval-card">
+        <div v-if="!evalResult && !isRecording" class="eval-trigger" @click="startEval">
+          <span class="eval-icon">🎤</span>
+          <span class="eval-text">朗读评测</span>
+          <span class="eval-hint">点击开始，朗读文章后自动评分</span>
+        </div>
+        <div v-else-if="isRecording" class="eval-recording">
+          <div class="recording-pulse"></div>
+          <span>正在录音... {{ recordingTime }}s</span>
+          <span class="eval-hint">再次点击结束录音</span>
+        </div>
+        <div v-else-if="evalResult" class="eval-result">
+          <div class="eval-scores-row">
+            <div class="eval-score">
+              <span class="eval-score-num" :class="getScoreClass(evalResult?.overall ?? 0)">{{ evalResult?.overall ?? 0 }}</span>
+              <span class="eval-score-label">总分</span>
+            </div>
+            <div class="eval-score">
+              <span class="eval-score-num" :class="getScoreClass(evalResult?.pronunciation ?? 0)">{{ evalResult?.pronunciation ?? 0 }}</span>
+              <span class="eval-score-label">发音</span>
+            </div>
+            <div class="eval-score">
+              <span class="eval-score-num" :class="getScoreClass(evalResult?.fluency ?? 0)">{{ evalResult?.fluency ?? 0 }}</span>
+              <span class="eval-score-label">流利度</span>
+            </div>
+            <div class="eval-score">
+              <span class="eval-score-num" :class="getScoreClass(evalResult?.integrity ?? 0)">{{ evalResult?.integrity ?? 0 }}</span>
+              <span class="eval-score-label">完整度</span>
+            </div>
+          </div>
+          <p class="eval-suggestion">{{ evalResult?.suggestion }}</p>
+          <button class="btn btn-outline btn-sm" @click="resetEval">重新评测</button>
+        </div>
+      </div>
+
+      <div style="padding:0 16px 16px">
         <router-link :to="`/dictation?content_id=${content.id}`" class="btn btn-primary btn-block">去默写</router-link>
       </div>
 
@@ -62,9 +98,6 @@
             <div class="popup-header">
               <h3>{{ wordPopup.word }}</h3>
               <button class="speak-btn" @click="speakWord(wordPopup!.word)">🔊</button>
-              <button class="eval-btn" @click="evaluatePronunciation(wordPopup!.word)" :disabled="isRecording">
-                {{ isRecording ? '🎙️ 录音中...' : '🎤 评测发音' }}
-              </button>
               <button class="fav-btn" :class="{ active: isFavorited }" @click="toggleFavorite">
                 {{ isFavorited ? '⭐' : '☆' }}
               </button>
@@ -72,47 +105,6 @@
             <p v-if="wordPopup.phonetic" class="phonetic">{{ wordPopup.phonetic }}</p>
             <p class="meaning">{{ wordPopup.meaning }}</p>
             <p v-if="wordPopup.usage" class="usage">{{ wordPopup.usage }}</p>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
-
-    <!-- 发音评测结果弹窗 -->
-    <Teleport to="body">
-      <Transition name="fade">
-        <div v-if="evalPopup" class="modal-overlay" @click.self="evalPopup = null">
-          <div class="eval-popup card">
-            <h3 class="eval-word">{{ evalPopup.word }}</h3>
-            
-            <div v-if="evalLoading" class="eval-loading">
-              <div class="spinner"></div>
-              <p>{{ evalPopup.suggestion }}</p>
-            </div>
-            
-            <div v-else class="eval-scores">
-              <div class="score-row">
-                <span class="score-label">总分</span>
-                <span class="score-value" :class="getScoreClass(evalPopup.overall)">{{ evalPopup.overall }}</span>
-              </div>
-              <div class="score-row">
-                <span class="score-label">发音准确度</span>
-                <span class="score-value" :class="getScoreClass(evalPopup.pronunciation)">{{ evalPopup.pronunciation }}</span>
-              </div>
-              <div class="score-row">
-                <span class="score-label">流利度</span>
-                <span class="score-value" :class="getScoreClass(evalPopup.fluency)">{{ evalPopup.fluency }}</span>
-              </div>
-              <div class="score-row">
-                <span class="score-label">完整度</span>
-                <span class="score-value" :class="getScoreClass(evalPopup.integrity)">{{ evalPopup.integrity }}</span>
-              </div>
-              <p class="eval-suggestion">{{ evalPopup.suggestion }}</p>
-            </div>
-            
-            <div class="eval-actions">
-              <button class="btn btn-outline" @click="evaluatePronunciation(evalPopup.word)">重新评测</button>
-              <button class="btn btn-primary" @click="evalPopup = null">关闭</button>
-            </div>
           </div>
         </div>
       </Transition>
@@ -140,15 +132,15 @@ const isFavorited = ref(false)
 
 // 录音和语音评测
 const { isRecording, startRecording, stopRecording } = useRecorder()
-const evalPopup = ref<{
-  word: string;
+const evalResult = ref<{
   overall: number;
   pronunciation: number;
   fluency: number;
   integrity: number;
   suggestion: string;
 } | null>(null)
-const evalLoading = ref(false)
+const recordingTime = ref(0)
+let recordingTimer: ReturnType<typeof setInterval> | null = null
 
 // 单词查询缓存
 const wordCache = new Map<string, { word: string; phonetic?: string; meaning: string }>()
@@ -187,10 +179,30 @@ async function checkFavorite(word: string) {
   } catch { isFavorited.value = false }
 }
 
-// 发音评测
-async function evaluatePronunciation(word: string) {
-  // 关闭单词弹窗
-  wordPopup.value = null
+// 发音评测 - 朗读整篇文章
+async function startEval() {
+  if (isRecording.value) {
+    // 正在录音，停止并评测
+    const audioBase64 = await stopRecording()
+    if (recordingTimer) { clearInterval(recordingTimer); recordingTimer = null }
+    
+    if (!audioBase64 || !content.value) return
+    
+    // 发送到后端评测
+    try {
+      const { data } = await speechApi.evaluate(audioBase64, content.value.article, 'en')
+      evalResult.value = {
+        overall: data.overall,
+        pronunciation: data.pronunciation,
+        fluency: data.fluency,
+        integrity: data.integrity,
+        suggestion: data.suggestion,
+      }
+    } catch (err) {
+      evalResult.value = { overall: 0, pronunciation: 0, fluency: 0, integrity: 0, suggestion: '评测失败，请稍后重试' }
+    }
+    return
+  }
   
   // 开始录音
   const started = await startRecording()
@@ -199,37 +211,15 @@ async function evaluatePronunciation(word: string) {
     return
   }
   
-  // 提示用户朗读
-  evalLoading.value = true
-  evalPopup.value = { word, overall: 0, pronunciation: 0, fluency: 0, integrity: 0, suggestion: '正在录音，请朗读这个单词...' }
-  
-  // 录音3秒后自动停止
-  setTimeout(async () => {
-    const audioBase64 = await stopRecording()
-    if (!audioBase64) {
-      evalPopup.value = null
-      evalLoading.value = false
-      return
-    }
-    
-    // 发送到后端评测
-    evalPopup.value = { word, overall: 0, pronunciation: 0, fluency: 0, integrity: 0, suggestion: '正在评测中...' }
-    
-    try {
-      const { data } = await speechApi.evaluate(audioBase64, word)
-      evalPopup.value = {
-        word,
-        overall: data.overall,
-        pronunciation: data.pronunciation,
-        fluency: data.fluency,
-        integrity: data.integrity,
-        suggestion: data.suggestion,
-      }
-    } catch (err) {
-      evalPopup.value = { word, overall: 0, pronunciation: 0, fluency: 0, integrity: 0, suggestion: '评测失败，请稍后重试' }
-    }
-    evalLoading.value = false
-  }, 3000)
+  // 开始计时
+  recordingTime.value = 0
+  recordingTimer = setInterval(() => { recordingTime.value++ }, 1000)
+}
+
+// 重置评测
+function resetEval() {
+  evalResult.value = null
+  recordingTime.value = 0
 }
 
 // 根据分数返回CSS类名
@@ -435,69 +425,70 @@ async function handleWordClick(e: Event, item: LearningContent) {
 .word-popup .meaning { margin-top: 10px; font-size: 16px; }
 .word-popup .usage { margin-top: 8px; color: var(--on-surface-variant); font-size: 14px; font-style: italic; }
 
-/* 评测按钮 */
-.eval-btn {
-  padding: 6px 12px;
-  border: none;
-  background: var(--primary);
-  color: white;
-  border-radius: var(--radius-sm);
-  font-size: 13px;
+/* 朗读评测卡片 */
+.eval-card {
+  margin: 0 16px 16px;
   cursor: pointer;
-  transition: all 0.2s;
 }
-.eval-btn:hover:not(:disabled) {
-  background: var(--primary-dark, #3d7a85);
-}
-.eval-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* 评测结果弹窗 */
-.eval-popup {
-  position: fixed;
-  bottom: 64px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: calc(100% - 32px);
-  max-width: 452px;
-  padding: 24px;
-  z-index: 200;
-  border-radius: 20px;
-  text-align: center;
-}
-.eval-word {
-  font-size: 24px;
-  margin-bottom: 20px;
-}
-.eval-loading {
-  padding: 20px 0;
-}
-.eval-loading p {
-  margin-top: 12px;
-  color: var(--on-surface-variant);
-}
-.eval-scores {
-  margin-bottom: 20px;
-}
-.score-row {
+.eval-trigger {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--surface-container);
+  gap: 8px;
+  padding: 20px;
 }
-.score-row:last-child {
-  border-bottom: none;
+.eval-icon {
+  font-size: 32px;
 }
-.score-label {
-  font-size: 14px;
+.eval-text {
+  font-size: 16px;
+  font-weight: 600;
+}
+.eval-hint {
+  font-size: 12px;
   color: var(--on-surface-variant);
 }
-.score-value {
-  font-size: 20px;
+.eval-recording {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px;
+  color: #f44336;
+}
+.recording-pulse {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #f44336;
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.eval-result {
+  padding: 16px;
+}
+.eval-scores-row {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 16px;
+}
+.eval-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.eval-score-num {
+  font-size: 28px;
   font-weight: 700;
+}
+.eval-score-label {
+  font-size: 12px;
+  color: var(--on-surface-variant);
 }
 .score-excellent { color: #4caf50; }
 .score-good { color: #8bc34a; }
@@ -505,19 +496,16 @@ async function handleWordClick(e: Event, item: LearningContent) {
 .score-fair { color: #ff9800; }
 .score-poor { color: #f44336; }
 .eval-suggestion {
-  margin-top: 16px;
+  margin-bottom: 12px;
   padding: 12px;
   background: var(--surface-container);
   border-radius: var(--radius-sm);
   font-size: 14px;
   color: var(--on-surface-variant);
+  text-align: center;
 }
-.eval-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-}
-.eval-actions .btn {
-  min-width: 100px;
+.btn-sm {
+  padding: 6px 16px;
+  font-size: 13px;
 }
 </style>
