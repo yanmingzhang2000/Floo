@@ -237,7 +237,7 @@
               <!-- 输入框 -->
               <div class="card" style="margin:0 16px">
                 <input v-model="wordInput" type="text" placeholder="输入英文单词..." class="word-input"
-                  @keyup.enter="handleSubmitWord" :disabled="showWordResult" />
+                  @keyup.enter="showWordResult ? nextWord() : handleSubmitWord()" />
               </div>
 
               <!-- 操作按钮 -->
@@ -357,8 +357,7 @@
             type="text" 
             placeholder="输入英文单词..." 
             class="vocab-input"
-            @keyup.enter="checkVocabWord" 
-            :disabled="vocabShowResult" 
+            @keyup.enter="vocabShowResult ? nextVocabWord() : checkVocabWord()" 
             autofocus
           />
         </div>
