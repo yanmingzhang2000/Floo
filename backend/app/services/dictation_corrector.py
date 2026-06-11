@@ -128,16 +128,20 @@ def _mock_correct(original: str, user_input: str) -> dict[str, Any]:
                 "position": i1,
             })
 
-    # 宽松评分逻辑：鼓励为主
+    # 宽松评分逻辑：鼓励为主，分数要高
     total_errors = wrong_count + missing_count + extra_count
     if total_errors == 0:
         score = 100
-    elif total_errors <= 2:
-        score = max(85, base_score)
-    elif total_errors <= 5:
-        score = max(70, base_score)
+    elif total_errors == 1:
+        score = max(92, base_score)  # 1个错误至少92分
+    elif total_errors == 2:
+        score = max(85, base_score)  # 2个错误至少85分
+    elif total_errors <= 4:
+        score = max(78, base_score)  # 3-4个错误至少78分
+    elif total_errors <= 6:
+        score = max(70, base_score)  # 5-6个错误至少70分
     else:
-        score = max(50, base_score)
+        score = max(60, base_score)  # 更多错误至少60分
 
     # 鼓励性评语
     if score >= 95:
