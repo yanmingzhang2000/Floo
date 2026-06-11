@@ -301,7 +301,7 @@
         <div class="section">
           <h3 class="section-title">📚 收藏词汇默写</h3>
           <p style="color:var(--on-surface-variant);font-size:14px;margin-bottom:16px">
-            从你的收藏词汇中随机抽取，像百词斩一样默写
+            从你的收藏词汇中随机抽取，背单词咯！
           </p>
           
           <div v-if="favoriteWords.length === 0" class="empty-state">
@@ -617,14 +617,101 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled
 }
 
+// 判断是否为单词变形（-ing, -ed, -s, -es, -ly, -tion等）
+function isInflectedForm(word: string): boolean {
+  const lower = word.toLowerCase()
+  // 常见变形后缀
+  const inflectionPatterns = [
+    /ing$/i,    // running, going
+    /ed$/i,     // walked, played
+    /s$/i,      // plays, runs（但要注意像 bus, class 这种本身以s结尾的词）
+    /es$/i,     // watches, boxes
+    /ly$/i,     // quickly, slowly
+    /tion$/i,   // education
+    /sion$/i,   // decision
+    /ment$/i,   // development
+    /ness$/i,   // happiness
+    /ful$/i,    // beautiful
+    /less$/i,   // endless
+    /er$/i,     // teacher（但要注意像 teacher 这种是完整词）
+    /est$/i,    // biggest
+    /able$/i,   // comfortable
+    /ible$/i,   // possible
+  ]
+  
+  // 如果单词长度<=3，不做过滤（避免误过滤短词）
+  if (lower.length <= 3) return false
+  
+  // 检查是否匹配变形模式
+  for (const pattern of inflectionPatterns) {
+    if (pattern.test(lower)) {
+      // 进一步检查：去掉后缀后是否还有合理的词根
+      const root = lower.replace(/(?:ing|ed|s|es|ly|tion|sion|ment|ness|ful|less|er|est|able|ible)$/, '')
+      // 如果词根长度>=2，认为可能是变形词
+      if (root.length >= 2) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
+// 过滤词汇，只保留原型和单数形式
+function filterToBaseForms(words: {word: string; phonetic?: string; meaning?: string}[]): {word: string; phonetic?: string; meaning?: string}[] {
+  // 按单词分组，每组只保留第一个（通常是原型）
+  const seen = new Set<string>()
+  const result: {word: string; phonetic?: string; meaning?: string}[] = []
+  
+  for (const w of words) {
+    const lower = w.word.toLowerCase().trim()
+    // 跳过空词
+    if (!lower) continue
+    // 跳过明显是变形的词
+    if (isInflectedForm(lower)) {
+      // 如果这个词是变形的，但原型还没出现，可以添加原型版本
+      const baseForm = lower
+        .replace(/ing$/, '')    // 去掉 -ing
+        .replace(/ed$/, '')     // 去掉 -ed
+        .replace(/s$/, '')      // 去掉 -s
+        .replace(/es$/, '')     // 去掉 -es
+        .replace(/ly$/, '')     // 去掉 -ly
+        .replace(/tion$/, '')   // 去掉 -tion
+        .replace(/ment$/, '')   // 去掉 -ment
+        .replace(/ness$/, '')   // 去掉 -ness
+        .replace(/ful$/, '')    // 去掉 -ful
+        .replace(/less$/, '')   // 去掉 -less
+        .replace(/er$/, '')     // 去掉 -er
+        .replace(/est$/, '')    // 去掉 -est
+        .replace(/able$/, '')   // 去掉 -able
+        .replace(/ible$/, '')   // 去掉 -ible
+      
+      // 如果原型还没添加，添加原型
+      if (baseForm && !seen.has(baseForm) && baseForm.length >= 2) {
+        seen.add(baseForm)
+        result.push({ ...w, word: baseForm })
+      }
+      continue
+    }
+    // 正常词，直接添加
+    if (!seen.has(lower)) {
+      seen.add(lower)
+      result.push(w)
+    }
+  }
+  
+  return result
+}
+
 async function loadFavorites() {
   try {
     const { data } = await favoritesApi.list(auth.currentUserId, 200)
-    favoriteWords.value = (data || []).map((f: any) => ({
+    const allWords = (data || []).map((f: any) => ({
       word: f.word,
       phonetic: f.phonetic || '',
       meaning: f.meaning || '',
     }))
+    // 过滤掉变形词，只保留原型和单数形式
+    favoriteWords.value = filterToBaseForms(allWords)
   } catch { favoriteWords.value = [] }
 }
 
