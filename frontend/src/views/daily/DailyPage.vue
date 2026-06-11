@@ -225,12 +225,17 @@ async function startEval() {
     // 发送到后端评测
     try {
       const { data } = await speechApi.evaluate(audioBase64, currentItem.value.article, 'en')
-      evalResult.value = {
-        overall: data.overall,
-        pronunciation: data.pronunciation,
-        fluency: data.fluency,
-        integrity: data.integrity,
-        suggestion: data.suggestion,
+      // 检查是否有错误
+      if (data.error) {
+        evalResult.value = { overall: 0, pronunciation: 0, fluency: 0, integrity: 0, suggestion: data.error }
+      } else {
+        evalResult.value = {
+          overall: data.overall,
+          pronunciation: data.pronunciation,
+          fluency: data.fluency,
+          integrity: data.integrity,
+          suggestion: data.suggestion,
+        }
       }
     } catch (err) {
       evalResult.value = { overall: 0, pronunciation: 0, fluency: 0, integrity: 0, suggestion: '评测失败，请稍后重试' }

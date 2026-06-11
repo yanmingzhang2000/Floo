@@ -41,7 +41,7 @@ def _make_sign(app_id: str, app_key: str, app_secret: str, audio_base64: str, te
     }
 
 
-async def evaluate_pronunciation(audio_base64: str, text: str, lang_type: str = "en") -> dict:
+async def evaluate_pronunciation(audio_base64: str, text: str, lang_type: str = "en", audio_format: str = "webm") -> dict:
     """
     调用有道智云语音评测 API。
 
@@ -49,6 +49,7 @@ async def evaluate_pronunciation(audio_base64: str, text: str, lang_type: str = 
         audio_base64: 音频的 base64 编码
         text: 要评测的文本（标准文本）
         lang_type: 语言类型，"en" 或 "zh_cn"
+        audio_format: 音频格式，webm/wav/pcm
 
     Returns:
         评测结果字典，包含总分、准确度、流利度、完整度等
@@ -57,7 +58,16 @@ async def evaluate_pronunciation(audio_base64: str, text: str, lang_type: str = 
         log.debug("有道智云未配置，返回 mock 评测结果")
         return _mock_evaluation(text)
 
-    log.debug("开始语音评测: text=%s, lang=%s", text, lang_type)
+    log.debug("开始语音评测: text=%s, lang=%s, format=%s", text, lang_type, audio_format)
+
+    # 有道智云支持的格式映射
+    format_map = {
+        "webm": "speex",  # speex 格式
+        "wav": "wav",
+        "pcm": "raw",
+        "mp3": "mp3",
+    }
+    youdao_format = format_map.get(audio_format, "speex")
 
     # 构建请求参数
     params = _make_sign(
@@ -73,7 +83,7 @@ async def evaluate_pronunciation(audio_base64: str, text: str, lang_type: str = 
         "audio": audio_base64,
         "text": text,
         "langType": lang_type,
-        "format": "wav",
+        "format": youdao_format,
         "rate": "16000",
         "channel": "1",
         "type": "1",

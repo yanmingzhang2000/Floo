@@ -16,6 +16,7 @@ class EvaluateRequest(BaseModel):
     audio: str        # base64 编码的音频
     text: str         # 要评测的文本
     lang_type: str = "en"  # en 或 zh_cn
+    format: str = "webm"   # 音频格式：webm/wav/pcm
 
 
 class EvaluateResponse(BaseModel):
@@ -35,9 +36,9 @@ async def speech_evaluate(req: EvaluateRequest):
     if not req.text:
         raise HTTPException(status_code=400, detail="评测文本不能为空")
 
-    log.debug("收到语音评测请求: text=%s, lang=%s", req.text, req.lang_type)
+    log.debug("收到语音评测请求: text=%s, lang=%s, format=%s", req.text, req.lang_type, req.format)
 
-    result = await evaluate_pronunciation(req.audio, req.text, req.lang_type)
+    result = await evaluate_pronunciation(req.audio, req.text, req.lang_type, req.format)
 
     if "error" in result:
         log.debug("语音评测失败: %s", result["error"])
