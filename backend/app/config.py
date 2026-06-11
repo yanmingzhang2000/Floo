@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     LLM_BASE_URL: str = os.getenv("LLM_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai")
     LLM_MODEL: str = os.getenv("LLM_MODEL", "gemini-2.0-flash")
 
+    # 有道智云语音评测
+    YOUDAO_APP_ID: str = os.getenv("YOUDAO_APP_ID", "")
+    YOUDAO_APP_KEY: str = os.getenv("YOUDAO_APP_KEY", "")
+    YOUDAO_APP_SECRET: str = os.getenv("YOUDAO_APP_SECRET", "")
+
     APP_HOST: str = "0.0.0.0"
     APP_PORT: int = 8000
 

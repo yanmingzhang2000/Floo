@@ -104,4 +104,10 @@ export const shopApi = {
     api.get('/api/shop/collection', { params: { user_id: userId } }),
 }
 
+// ===== 语音评测 =====
+export const speechApi = {
+  evaluate: (audio: string, text: string, langType = 'en') =>
+    api.post('/api/speech/evaluate', { audio, text, lang_type: langType }),
+}
+
 export default api
