@@ -309,6 +309,7 @@ const masteredCount = ref(0)
 
 // 默写
 const todayContents = ref<LearningContent[]>([])
+const allContents = ref<LearningContent[]>([])
 const history = ref<DictationHistory[]>([])
 const dictatingContent = ref<LearningContent | null>(null)
 const showOriginal = ref(false)
@@ -364,16 +365,18 @@ onMounted(loadData)
 async function loadData() {
   loading.value = true
   try {
-    const [reviewRes, progressRes, todayRes, histRes] = await Promise.all([
+    const [reviewRes, progressRes, todayRes, histRes, allRes] = await Promise.all([
       dailyApi.getReviewTasks(auth.currentUserId),
       dailyApi.getAllProgress(auth.currentUserId),
       dailyApi.getTodayList(auth.currentUserId),
       dictationApi.getHistory(auth.currentUserId).catch(() => ({ data: [] })),
+      dailyApi.getList(100).catch(() => ({ data: [] })),
     ])
     dueTasks.value = reviewRes.data.tasks || []
     progressList.value = progressRes.data.items || []
     masteredCount.value = progressRes.data.mastered_count || 0
     todayContents.value = todayRes.data.contents || []
+    allContents.value = allRes.data || []
     history.value = histRes.data?.slice(0, 20) || []
   } catch { /* ignore */ }
   loading.value = false
@@ -381,8 +384,12 @@ async function loadData() {
 
 function getContentTitle(contentId?: number | null): string {
   if (!contentId) return ''
-  const item = todayContents.value.find(c => c.id === contentId)
-  return item?.title || ''
+  // 先在今日内容中找
+  const todayItem = todayContents.value.find(c => c.id === contentId)
+  if (todayItem) return todayItem.title
+  // 再在所有内容中找
+  const allItem = allContents.value.find(c => c.id === contentId)
+  return allItem?.title || ''
 }
 
 function formatDue(dateStr: string): string {
@@ -396,8 +403,8 @@ function formatDue(dateStr: string): string {
 }
 
 function getAccuracyColor(acc: number): string {
-  if (acc >= 0.8) return 'var(--success)'
-  if (acc >= 0.6) return 'var(--warning)'
+  if (acc >= 80) return 'var(--success)'
+  if (acc >= 60) return 'var(--warning)'
   return 'var(--error)'
 }
 
@@ -410,7 +417,12 @@ function startDictation(item: LearningContent) {
 
 function startDictationById(contentId?: number | null) {
   if (!contentId) return
-  const item = todayContents.value.find(c => c.id === contentId)
+  // 先在今日内容中找
+  let item = todayContents.value.find(c => c.id === contentId)
+  // 再在所有内容中找
+  if (!item) {
+    item = allContents.value.find(c => c.id === contentId)
+  }
   if (item) startDictation(item)
 }
 
