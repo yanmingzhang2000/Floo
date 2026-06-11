@@ -102,7 +102,7 @@
               <span class="history-title" v-if="getContentTitle(h.content_id)">{{ getContentTitle(h.content_id) }}</span>
             </div>
             <div class="history-right">
-              <span :style="{ color: getAccuracyColor(h.accuracy_rate) }">{{ (h.accuracy_rate * 100).toFixed(0) }}%</span>
+              <span :style="{ color: getAccuracyColor(h.accuracy_rate) }">{{ h.accuracy_rate.toFixed(0) }}%</span>
               <span style="color:var(--success)">+{{ h.earned_points }}</span>
             </div>
           </div>
@@ -180,7 +180,7 @@
                     {{ result.feedback.score }}
                   </div>
                   <div class="score-meta">
-                    <div>准确率 {{ (result.accuracy_rate * 100).toFixed(0) }}%</div>
+                    <div>准确率 {{ result.accuracy_rate.toFixed(0) }}%</div>
                     <div style="color:var(--success)">+{{ result.earned_points }} 积分</div>
                     <div style="color:var(--primary)">S{{ result.review_stage }} · {{ result.next_review_at?.slice(5, 10) || '-' }}</div>
                   </div>
