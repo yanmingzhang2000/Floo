@@ -18,6 +18,11 @@
           <input v-model="form.password" type="password" placeholder="密码（至少6位）" required minlength="6" />
         </div>
 
+        <label class="remember-me">
+          <input type="checkbox" v-model="rememberMe" />
+          <span>30天内免登录</span>
+        </label>
+
         <button type="submit" class="btn btn-primary btn-block btn-lg" :disabled="loading">
           <span v-if="loading" class="spinner-sm"></span>
           {{ isRegister ? '注册' : '登录' }}
@@ -44,6 +49,7 @@ const isRegister = ref(false)
 const loading = ref(false)
 const error = ref('')
 const form = reactive({ username: '', password: '' })
+const rememberMe = ref(true)
 
 // 页面加载时读取保存的账号密码
 onMounted(() => {
@@ -74,7 +80,7 @@ async function handleSubmit() {
       : await userApi.login(form)
     // 登录/注册成功后保存账号密码
     saveCredentials()
-    auth.setSession(data.user_id, data.username)
+    auth.setSession(data.user_id, data.username, rememberMe.value)
     router.push('/learning')
   } catch (e: any) {
     error.value = e.response?.data?.detail || '操作失败，请重试'
@@ -160,6 +166,16 @@ async function handleSubmit() {
 }
 
 .switch-mode:hover { text-decoration: underline; }
+
+.remember-me {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 16px; font-size: 14px; color: var(--on-surface-variant);
+  cursor: pointer; user-select: none;
+}
+.remember-me input[type="checkbox"] {
+  width: 16px; height: 16px; accent-color: var(--primary);
+  margin: 0; cursor: pointer;
+}
 
 .spinner-sm {
   width: 16px;

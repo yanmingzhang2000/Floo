@@ -4,18 +4,36 @@ import { userApi } from '@/api'
 import type { UserPreference, PointAccount } from '@/types'
 
 export const useAuthStore = defineStore('auth', () => {
-  const userId = ref<number | null>(Number(localStorage.getItem('user_id')) || null)
+  // 30天自动登录：检查过期时间
+  function _checkSessionExpiry() {
+    const expiry = localStorage.getItem('session_expiry')
+    if (expiry && Date.now() > Number(expiry)) {
+      localStorage.removeItem('user_id')
+      localStorage.removeItem('username')
+      localStorage.removeItem('session_expiry')
+      return null
+    }
+    return Number(localStorage.getItem('user_id')) || null
+  }
+
+  const userId = ref<number | null>(_checkSessionExpiry())
   const username = ref<string | null>(localStorage.getItem('username'))
   const preference = ref<UserPreference | null>(null)
 
   const isLoggedIn = computed(() => userId.value !== null)
   const currentUserId = computed(() => userId.value ?? 1)
 
-  function setSession(id: number, name: string) {
+  function setSession(id: number, name: string, rememberMe = false) {
     userId.value = id
     username.value = name
     localStorage.setItem('user_id', String(id))
     localStorage.setItem('username', name)
+    // 记住我：设置30天过期
+    if (rememberMe) {
+      localStorage.setItem('session_expiry', String(Date.now() + 30 * 24 * 60 * 60 * 1000))
+    } else {
+      localStorage.removeItem('session_expiry')
+    }
   }
 
   async function fetchPreference() {
@@ -33,6 +51,8 @@ export const useAuthStore = defineStore('auth', () => {
     preference.value = null
     localStorage.removeItem('user_id')
     localStorage.removeItem('username')
+    localStorage.removeItem('session_expiry')
+    localStorage.removeItem('floo_saved_credentials')
   }
 
   return { userId, username, preference, isLoggedIn, currentUserId, setSession, fetchPreference, logout }
