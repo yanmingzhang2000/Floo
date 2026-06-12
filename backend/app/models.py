@@ -53,6 +53,7 @@ class UserMain(Base):
     weekly_summaries = relationship("UserWeeklySummary", back_populates="user", cascade="all, delete-orphan")
     custom_contents = relationship("LearningContent", back_populates="creator", foreign_keys="LearningContent.user_id")
     collections = relationship("UserCollection", back_populates="user", cascade="all, delete-orphan")
+    learned_contents = relationship("UserLearnedContent", back_populates="user", cascade="all, delete-orphan")
 
 
 class UserLearningPreference(Base):
@@ -304,6 +305,22 @@ class Character(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     collections = relationship("UserCollection", back_populates="character")
+
+
+class UserLearnedContent(Base):
+    """用户已学内容表 - 记录用户标记为「已学过」的文章。"""
+    __tablename__ = "user_learned_content"
+    __table_args__ = (
+        UniqueConstraint("user_id", "content_id", name="uq_user_learned_content"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("user_main.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    content_id = Column(Integer, ForeignKey("learning_contents.content_id", ondelete="CASCADE"), nullable=False, index=True)
+    learned_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user = relationship("UserMain", back_populates="learned_contents")
+    content = relationship("LearningContent")
 
 
 class UserCollection(Base):

@@ -422,3 +422,93 @@ def clear_all_ai_content(db: Session = Depends(get_db)):
     db.commit()
     log.info("已清除 %s 条AI内容、%s 条记忆进度、%s 条生成限制", count, progress_count, limit_count)
     return {"deleted_contents": count, "deleted_progress": progress_count, "deleted_limits": limit_count}
+
+
+# ============== 已学内容标记 ==============
+
+@router.post("/learned/toggle")
+def toggle_learned(user_id: int, content_id: int, db: Session = Depends(get_db)):
+    """切换内容的已学状态：未学→已学，已学→取消。"""
+    from app.models import UserLearnedContent
+
+    existing = (
+        db.query(UserLearnedContent)
+        .filter(UserLearnedContent.user_id == user_id, UserLearnedContent.content_id == content_id)
+        .first()
+    )
+    if existing:
+        db.delete(existing)
+        db.commit()
+        log.debug("取消已学 user_id=%s content_id=%s", user_id, content_id)
+        return {"learned": False}
+    else:
+        record = UserLearnedContent(user_id=user_id, content_id=content_id)
+        db.add(record)
+        db.commit()
+        log.debug("标记已学 user_id=%s content_id=%s", user_id, content_id)
+        return {"learned": True}
+
+
+@router.get("/learned/check")
+def check_learned(user_id: int, content_id: int, db: Session = Depends(get_db)):
+    """检查内容是否已学。"""
+    from app.models import UserLearnedContent
+
+    exists = (
+        db.query(UserLearnedContent)
+        .filter(UserLearnedContent.user_id == user_id, UserLearnedContent.content_id == content_id)
+        .first()
+    ) is not None
+    return {"learned": exists}
+
+
+@router.get("/learned/list")
+def get_learned_content_ids(user_id: int, db: Session = Depends(get_db)):
+    """获取用户所有已学内容的 content_id 列表。"""
+    from app.models import UserLearnedContent
+
+    rows = (
+        db.query(UserLearnedContent.content_id)
+        .filter(UserLearnedContent.user_id == user_id)
+        .all()
+    )
+    return {"content_ids": [r[0] for r in rows]}
+
+
+@router.get("/review/learned")
+def get_learned_review_tasks(user_id: int = 1, db: Session = Depends(get_db)):
+    """查询已学内容的复习任务（仅从已学内容中筛选待复习的）。"""
+    from datetime import datetime
+    from sqlalchemy import and_
+    from app.models import UserMemoryProgress, UserLearnedContent, LearningContent as LC
+
+    now = datetime.utcnow()
+    rows = (
+        db.query(UserMemoryProgress, LC)
+        .join(LC, LC.content_id == UserMemoryProgress.content_id)
+        .join(UserLearnedContent, and_(
+            UserLearnedContent.user_id == user_id,
+            UserLearnedContent.content_id == UserMemoryProgress.content_id,
+        ))
+        .filter(
+            and_(
+                UserMemoryProgress.user_id == user_id,
+                UserMemoryProgress.review_stage >= 1,
+                UserMemoryProgress.next_review_at <= now,
+                LC.is_active == True,
+            )
+        )
+        .order_by(UserMemoryProgress.next_review_at.asc())
+        .all()
+    )
+    tasks = [
+        ReviewTaskOut(
+            content_id=p.content_id,
+            title=c.title,
+            review_stage=p.review_stage,
+            last_accuracy=float(p.last_accuracy or 0),
+            next_review_at=p.next_review_at,
+        )
+        for p, c in rows
+    ]
+    return ReviewListResponse(user_id=user_id, total_count=len(tasks), tasks=tasks)

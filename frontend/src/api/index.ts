@@ -48,6 +48,15 @@ export const dailyApi = {
     api.get('/api/daily/progress', { params: { user_id: userId } }),
   cleanup: () =>
     api.post('/api/daily/cleanup'),
+  // 已学内容
+  toggleLearned: (userId: number, contentId: number) =>
+    api.post('/api/daily/learned/toggle', null, { params: { user_id: userId, content_id: contentId } }),
+  checkLearned: (userId: number, contentId: number) =>
+    api.get('/api/daily/learned/check', { params: { user_id: userId, content_id: contentId } }),
+  getLearnedIds: (userId: number) =>
+    api.get('/api/daily/learned/list', { params: { user_id: userId } }),
+  getLearnedReviewTasks: (userId: number) =>
+    api.get('/api/daily/review/learned', { params: { user_id: userId } }),
 }
 
 // ===== 默写 =====

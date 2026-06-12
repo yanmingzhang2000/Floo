@@ -115,7 +115,12 @@
 
       <!-- 今日学习内容 -->
       <div class="section">
-        <h3 class="section-title">📚 今日学习 <span class="section-hint">（{{ visibleContents.length }} 条）</span></h3>
+        <div class="section-header-row">
+          <h3 class="section-title">📚 今日学习 <span class="section-hint">（{{ visibleContents.length }} 条）</span></h3>
+          <button class="filter-btn" :class="{ active: learnedOnly }" @click="learnedOnly = !learnedOnly">
+            {{ learnedOnly ? '✅ 已学' : '☑️ 已学筛选' }}
+          </button>
+        </div>
         <div v-if="todayContents.length === 0" class="empty-state">
           <div class="icon">📝</div>
           <p>暂无学习内容</p>
@@ -436,6 +441,10 @@ const userInput = ref('')
 const submitting = ref(false)
 const result = ref<DictationResult | null>(null)
 
+// 已学筛选
+const learnedOnly = ref(false)
+const learnedIds = ref(new Set<number>())
+
 // 词汇默写
 const wordDictationContent = ref<LearningContent | null>(null)
 const wordDictationIdx = ref(0)
@@ -491,20 +500,24 @@ const dailyLimit = computed(() => {
 // 复习 tab：只显示 dailyLimit 条待复习
 const visibleDueTasks = computed(() => dueTasks.value.slice(0, dailyLimit.value))
 
-// 默写 tab：显示今日学习内容（已在getTodayList中按dailyGoal过滤）
-const visibleContents = computed(() => todayContents.value)
+// 默写 tab：显示今日学习内容（可按已学筛选）
+const visibleContents = computed(() => {
+  if (!learnedOnly.value) return todayContents.value
+  return todayContents.value.filter(c => learnedIds.value.has(c.id))
+})
 
 onMounted(loadData)
 
 async function loadData() {
   loading.value = true
   try {
-    const [reviewRes, progressRes, todayRes, histRes, allRes] = await Promise.all([
+    const [reviewRes, progressRes, todayRes, histRes, allRes, learnedRes] = await Promise.all([
       dailyApi.getReviewTasks(auth.currentUserId),
       dailyApi.getAllProgress(auth.currentUserId),
       dailyApi.getTodayList(auth.currentUserId),
       dictationApi.getHistory(auth.currentUserId).catch(() => ({ data: [] })),
       dailyApi.getList(100).catch(() => ({ data: [] })),
+      dailyApi.getLearnedIds(auth.currentUserId).catch(() => ({ data: { content_ids: [] } })),
     ])
     dueTasks.value = reviewRes.data.tasks || []
     progressList.value = progressRes.data.items || []
@@ -512,6 +525,7 @@ async function loadData() {
     todayContents.value = todayRes.data.contents || []
     allContents.value = allRes.data || []
     history.value = histRes.data?.slice(0, 20) || []
+    learnedIds.value = new Set(learnedRes.data.content_ids || [])
     // 加载收藏词汇
     await loadFavorites()
   } catch { /* ignore */ }
@@ -824,6 +838,13 @@ function resetVocabDictation() {
 
 .section { padding: 0 16px; margin-bottom: 16px; }
 .section-title { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+.section-header-row { display: flex; justify-content: space-between; align-items: center; }
+.filter-btn {
+  padding: 4px 12px; border-radius: 16px; font-size: 12px;
+  border: 1.5px solid var(--outline-variant); background: var(--surface);
+  color: var(--on-surface-variant); cursor: pointer; transition: all 0.2s;
+}
+.filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
 .section-hint { font-size: 12px; font-weight: 400; color: var(--on-surface-variant); }
 
 .task-list { display: flex; flex-direction: column; gap: 8px; }

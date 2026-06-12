@@ -42,6 +42,11 @@
         </div>
         <h3 class="card-title">{{ currentItem.title }}</h3>
 
+        <div class="learned-toggle" @click="toggleLearned(currentItem)">
+          <span class="learned-icon">{{ learnedIds.has(currentItem.id) ? '✅' : '☑️' }}</span>
+          <span class="learned-text">{{ learnedIds.has(currentItem.id) ? '已学过' : '标记已学' }}</span>
+        </div>
+
         <div class="article-body" v-html="renderArticle(currentItem)" @click="handleWordClick($event, currentItem)"></div>
 
         <div v-if="currentItem.translation" class="translation-toggle" @click="toggleTranslation(currentItem.id)">
@@ -174,6 +179,34 @@ function setCachedWord(word: string, result: { word: string; phonetic?: string; 
   }
 }
 
+// 已学内容
+const learnedIds = ref(new Set<number>())
+
+async function toggleLearned(item: LearningContent) {
+  if (!auth.currentUserId) return
+  try {
+    const { data } = await dailyApi.toggleLearned(auth.currentUserId, item.id)
+    if (data.learned) {
+      learnedIds.value.add(item.id)
+    } else {
+      learnedIds.value.delete(item.id)
+    }
+    learnedIds.value = new Set(learnedIds.value)
+  } catch (e) {
+    console.error('Toggle learned failed:', e)
+  }
+}
+
+async function loadLearnedIds() {
+  if (!auth.currentUserId) return
+  try {
+    const { data } = await dailyApi.getLearnedIds(auth.currentUserId)
+    learnedIds.value = new Set(data.content_ids || [])
+  } catch (e) {
+    console.error('Load learned ids failed:', e)
+  }
+}
+
 function scrollToCard(idx: number) {
   const el = cardRefs.value[idx]
   if (el) {
@@ -274,6 +307,7 @@ function getScoreClass(score: number) {
 onMounted(() => {
   initVoices()
   loadData()
+  loadLearnedIds()
   window.addEventListener('scroll', handleScroll)
 })
 
@@ -440,6 +474,18 @@ async function toggleFavorite() {
 }
 
 .card-title { font-size: 17px; font-weight: 700; margin-bottom: 12px; }
+
+.learned-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 20px; cursor: pointer;
+  background: var(--surface); border: 1.5px solid var(--outline-variant);
+  font-size: 13px; color: var(--on-surface-variant);
+  transition: all 0.2s;
+  margin-bottom: 12px;
+}
+.learned-toggle:active { transform: scale(0.95); }
+.learned-icon { font-size: 16px; }
+.learned-text { font-weight: 500; }
 
 .read-btn {
   margin-left: auto;
