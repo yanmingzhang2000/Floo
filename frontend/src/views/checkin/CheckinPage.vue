@@ -112,10 +112,10 @@ function getDaySeed(day: number): number {
 // 获取打卡的连续天数（用于颜色分配）
 function getCheckedStreak(day: number): number {
   if (!calendar.value?.checked_dates) return 0
-  const today = new Date()
-  const todayDate = today.getDate()
-  const currentMonthNum = today.getMonth() + 1
-  const currentYearNum = today.getFullYear()
+  const now = new Date()
+  const todayDate = now.getUTCDate()
+  const currentMonthNum = now.getUTCMonth() + 1
+  const currentYearNum = now.getUTCFullYear()
   
   // 如果不是当月，返回0
   if (currentMonth.value !== currentMonthNum || currentYear.value !== currentYearNum) {
@@ -144,7 +144,9 @@ function getCheckedStreak(day: number): number {
 
 const checkedDays = computed(() => calendar.value?.checked_dates?.length || 0)
 const todayChecked = computed(() => {
-  const today = new Date().toISOString().slice(0, 10)
+  // 与后端 date.today() 保持一致：用 UTC 日期
+  const now = new Date()
+  const today = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`
   return calendar.value?.checked_dates?.includes(today) || false
 })
 
@@ -163,15 +165,15 @@ function isChecked(day: number) {
 }
 
 function isToday(day: number) {
-  const today = new Date()
-  return day === today.getDate() && currentMonth.value === today.getMonth() + 1 && currentYear.value === today.getFullYear()
+  const now = new Date()
+  return day === now.getUTCDate() && currentMonth.value === now.getUTCMonth() + 1 && currentYear.value === now.getUTCFullYear()
 }
 
 function getDayClass(day: number | null) {
   if (!day) return 'empty'
   const isTodayFlag = isToday(day)
-  const today = new Date()
-  const isFuture = new Date(currentYear.value, currentMonth.value - 1, day) > today
+  const now = new Date()
+  const isFuture = new Date(currentYear.value, currentMonth.value - 1, day) > new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
   
   // 获取连续打卡的颜色索引
   const streak = getCheckedStreak(day)
