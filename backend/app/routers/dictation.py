@@ -104,7 +104,7 @@ async def submit_dictation(
 @router.get("/history", response_model=list[DictationHistoryOut])
 def get_history(
     user_id: int = 1,
-    limit: int = 20,
+    limit: int = 1000,
     db: Session = Depends(get_db),
 ):
     """查询用户最近的默写记录。"""
