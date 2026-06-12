@@ -55,7 +55,7 @@
             <div class="task-info">
               <div class="task-title">{{ task.title }}</div>
               <div class="task-meta">
-                上次准确率 {{ (task.last_accuracy * 100).toFixed(0) }}%
+                上次准确率 {{ task.last_accuracy.toFixed(0) }}%
                 <span v-if="task.next_review_at"> · {{ formatDue(task.next_review_at) }}</span>
               </div>
             </div>
@@ -87,7 +87,7 @@
               </div>
             </div>
             <div class="progress-accuracy" :style="{ color: getAccuracyColor(item.last_accuracy) }">
-              {{ item.review_stage === 0 ? '-' : `${(item.last_accuracy * 100).toFixed(0)}%` }}
+              {{ item.review_stage === 0 ? '-' : `${item.last_accuracy.toFixed(0)}%` }}
             </div>
           </div>
         </div>
