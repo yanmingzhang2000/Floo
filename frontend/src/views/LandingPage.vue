@@ -205,6 +205,8 @@ const techStack = [
 
 .logo-area {
   margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
 }
 
 .logo {
