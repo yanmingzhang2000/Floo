@@ -233,6 +233,7 @@ def create_user_content(
     difficulty_level: str,
     theme_type: str,
     translation: Optional[str] = None,
+    key_words: Optional[list] = None,
 ) -> LearningContent:
     """写入用户自定义学习内容。"""
     content = LearningContent(
@@ -243,7 +244,7 @@ def create_user_content(
         title=title,
         content_text=content_text,
         translation=translation,
-        key_words=json.dumps([], ensure_ascii=False),
+        key_words=json.dumps(key_words or [], ensure_ascii=False),
     )
     db.add(content)
     db.flush()

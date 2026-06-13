@@ -57,6 +57,13 @@ export const dailyApi = {
     api.get('/api/daily/learned/list', { params: { user_id: userId } }),
   getLearnedReviewTasks: (userId: number) =>
     api.get('/api/daily/review/learned', { params: { user_id: userId } }),
+  // 自定义内容
+  createCustomContent: (userId: number, text: string) =>
+    api.post('/api/daily/custom-content', { user_id: userId, text }),
+  getCustomContents: (userId: number) =>
+    api.get('/api/daily/custom-content', { params: { user_id: userId } }),
+  deleteCustomContent: (contentId: number, userId: number) =>
+    api.delete(`/api/daily/custom-content/${contentId}`, { params: { user_id: userId } }),
 }
 
 // ===== 默写 =====

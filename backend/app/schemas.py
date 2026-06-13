@@ -107,6 +107,21 @@ class GenerateContentResult(BaseModel):
     message: str
 
 
+# ============== 自定义内容相关 ==============
+
+class CustomContentRequest(BaseModel):
+    """提交自定义学习内容请求。"""
+    user_id: int = 1
+    text: str  # 用户粘贴的英文文本
+
+
+class CustomContentResponse(BaseModel):
+    """自定义内容创建结果。"""
+    content_id: int
+    title: str
+    message: str
+
+
 # ============== 默写相关 ==============
 
 class DictationSubmitRequest(BaseModel):

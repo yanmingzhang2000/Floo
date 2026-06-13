@@ -13,6 +13,8 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.repositories import content_repo, user_repo
 from app.schemas import (
+    CustomContentRequest,
+    CustomContentResponse,
     GenerateContentRequest,
     GenerateContentResult,
     LearningContentOut,
@@ -512,3 +514,169 @@ def get_learned_review_tasks(user_id: int = 1, db: Session = Depends(get_db)):
         for p, c in rows
     ]
     return ReviewListResponse(user_id=user_id, total_count=len(tasks), tasks=tasks)
+
+
+# ============== 自定义学习内容 ==============
+
+async def _process_custom_content(text: str) -> dict:
+    """调用 LLM 处理用户粘贴的文本，生成翻译和生词。"""
+    from app.services.llm_client import chat_json
+
+    system_prompt = """你是一位英语教学专家。用户会粘贴一段英文文本，请完成以下任务：
+1. 根据内容生成一个简短的英文标题（不超过 8 个词）
+2. 将全文翻译成中文
+3. 从文本中提取 5-10 个对英语学习者有价值的生词或短语
+
+严格按如下 JSON 格式输出，不要包含任何额外文字：
+{
+  "title": "英文标题",
+  "translation": "完整中文翻译",
+  "lexicon": [
+    {
+      "word": "单词或短语",
+      "phonetic": "音标",
+      "meaning": "中文释义，含词性",
+      "usage": "原文中包含该词的完整句子"
+    }
+  ]
+}
+
+生词提取规则：
+- 优先选择 CET-4/CET-6 级别的实词（名词、动词、形容词、副词）
+- 避免冠词、介词、代词等虚词
+- 每个 usage 必须是原文中的原句
+- 如果文本较短，可以少提取，但至少提取 3 个"""
+
+    user_prompt = f"请处理以下英文文本：\n\n{text}"
+
+    result = await chat_json(system_prompt, user_prompt, temperature=0.3)
+    if not result:
+        log.debug("LLM 返回空结果，使用降级方案")
+        return {
+            "title": text[:50].strip() + "..." if len(text) > 50 else text.strip(),
+            "translation": "（翻译生成失败，请稍后重试）",
+            "lexicon": [],
+        }
+    return result
+
+
+@router.post("/custom-content", response_model=CustomContentResponse)
+async def create_custom_content(
+    payload: CustomContentRequest,
+    db: Session = Depends(get_db),
+):
+    """用户粘贴文本，AI 生成翻译和生词，创建自定义学习内容。"""
+    text = payload.text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="内容不能为空")
+
+    # 检查每日限额（和 AI 生成共用）
+    from datetime import date
+    from app.models import DailyGenerationLimit
+
+    today = date.today()
+    limit_record = (
+        db.query(DailyGenerationLimit)
+        .filter(
+            DailyGenerationLimit.user_id == payload.user_id,
+            DailyGenerationLimit.generation_date == today,
+        )
+        .first()
+    )
+    used_count = limit_record.generation_count if limit_record else 0
+    if used_count >= 3:
+        log.debug("用户 %s 今日已生成 %s 次，自定义内容达上限", payload.user_id, used_count)
+        raise HTTPException(status_code=429, detail="今日生成次数已用完（每天 3 篇）")
+
+    # 调用 AI 处理文本
+    log.debug("开始处理自定义内容 user_id=%s text_len=%s", payload.user_id, len(text))
+    ai_result = await _process_custom_content(text)
+
+    # 读取用户偏好获取 difficulty_level
+    user = user_repo.get_user(db, payload.user_id)
+    difficulty = "medium"
+    if user and user.preference:
+        difficulty = user.preference.difficulty_level
+
+    # 写入数据库
+    content = content_repo.create_user_content(
+        db=db,
+        user_id=payload.user_id,
+        title=ai_result.get("title", "自定义内容"),
+        content_text=text,
+        difficulty_level=difficulty,
+        theme_type="custom",
+        translation=ai_result.get("translation"),
+        key_words=ai_result.get("lexicon", []),
+    )
+
+    # 初始化记忆进度
+    content_repo.init_memory_progress(db, payload.user_id, content.content_id)
+
+    # 更新生成次数
+    if limit_record:
+        limit_record.generation_count += 1
+    else:
+        from app.models import DailyGenerationLimit as DGL
+        db.add(DGL(
+            user_id=payload.user_id,
+            generation_date=today,
+            generation_count=1,
+        ))
+    db.commit()
+
+    log.debug("自定义内容创建成功 content_id=%s user_id=%s", content.content_id, payload.user_id)
+    return CustomContentResponse(
+        content_id=content.content_id,
+        title=content.title,
+        message="自定义内容已创建，进入复习计划",
+    )
+
+
+@router.get("/custom-content")
+def list_custom_content(user_id: int = 1, db: Session = Depends(get_db)):
+    """获取用户的自定义学习内容列表。"""
+    from app.models import LearningContent as LC
+
+    contents = (
+        db.query(LC)
+        .filter(
+            LC.user_id == user_id,
+            LC.creator_type == 1,
+            LC.is_active == True,
+        )
+        .order_by(LC.created_at.desc())
+        .all()
+    )
+    result = []
+    for c in contents:
+        words = content_repo.parse_words(c.key_words)
+        result.append(_content_to_out(c, words))
+    return {"contents": result, "total": len(result)}
+
+
+@router.delete("/custom-content/{content_id}")
+def delete_custom_content(
+    content_id: int,
+    user_id: int = 1,
+    db: Session = Depends(get_db),
+):
+    """删除用户的自定义学习内容（只能删自己的）。"""
+    from app.models import LearningContent as LC
+
+    content = (
+        db.query(LC)
+        .filter(
+            LC.content_id == content_id,
+            LC.user_id == user_id,
+            LC.creator_type == 1,
+        )
+        .first()
+    )
+    if not content:
+        raise HTTPException(status_code=404, detail="内容不存在或无权删除")
+
+    content.is_active = False
+    db.commit()
+    log.debug("自定义内容已删除 content_id=%s user_id=%s", content_id, user_id)
+    return {"message": "已删除"}

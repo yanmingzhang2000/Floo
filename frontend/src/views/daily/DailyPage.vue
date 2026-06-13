@@ -5,6 +5,9 @@
       <h1>今日英语 · {{ themeLabel }}</h1>
       <p class="subtitle">共 {{ totalCount }} 篇</p>
       <div class="actions">
+        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white" @click="showCustomContent = true">
+          📝 自定义内容
+        </button>
         <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white" @click="handleGenerate" :disabled="generating || remainingCount <= 0">
           {{ generating ? '生成中...' : remainingCount > 0 ? `✨ 生成新内容 (${remainingCount}次)` : '今日已用完' }}
         </button>
@@ -127,6 +130,7 @@
         </div>
       </Transition>
     </Teleport>
+    <CustomContentModal :visible="showCustomContent" @close="showCustomContent = false" @created="loadData" />
   </div>
 </template>
 
@@ -139,11 +143,13 @@ import { speakWord, initVoices, toggleReading, stopReading, useReadingState } fr
 import { useRecorder } from '@/composables/useRecorder'
 import { getBaseForm } from '@/composables/useWordForm'
 import OnboardingGuide from '@/components/OnboardingGuide.vue'
+import CustomContentModal from '@/components/CustomContentModal.vue'
 import type { LearningContent, WordItem } from '@/types'
 
 const auth = useAuthStore()
 const loading = ref(true)
 const generating = ref(false)
+const showCustomContent = ref(false)
 const contents = ref<LearningContent[]>([])
 const expandedTranslations = ref(new Set<number>())
 const wordPopup = ref<{ word: string; phonetic?: string; meaning: string; usage?: string; isFavorite?: boolean } | null>(null)
