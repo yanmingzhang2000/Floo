@@ -5,7 +5,7 @@
       <div class="hero-bg"></div>
       <div class="hero-content">
         <div class="logo-area">
-          <img src="/Floo/logo.jpg?v=2" alt="Floo!" class="logo-img" />
+          <img :src="'/Floo/logo.jpg'" alt="Floo!" class="logo-img" />
         </div>
         <h1 class="brand">Floo!</h1>
         <p class="tagline">飞路一下</p>
