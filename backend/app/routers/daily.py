@@ -579,7 +579,7 @@ async def create_custom_content(
         db.query(DailyGenerationLimit)
         .filter(
             DailyGenerationLimit.user_id == payload.user_id,
-            DailyGenerationLimit.generation_date == today,
+            DailyGenerationLimit.limit_date == today,
         )
         .first()
     )
@@ -620,7 +620,7 @@ async def create_custom_content(
         from app.models import DailyGenerationLimit as DGL
         db.add(DGL(
             user_id=payload.user_id,
-            generation_date=today,
+            limit_date=today,
             generation_count=1,
         ))
     db.commit()
