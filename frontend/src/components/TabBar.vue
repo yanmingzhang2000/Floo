@@ -4,6 +4,7 @@
     <header class="top-nav">
       <div class="top-left">
         <router-link to="/learning" class="logo-link">
+          <img :src="'/Floo/logo.jpg'" alt="Floo!" class="logo-img" />
           <span class="logo-text">Floo!</span>
         </router-link>
       </div>
@@ -99,7 +100,8 @@ function handleLogout() {
 }
 
 .top-left { display: flex; align-items: center; }
-.logo-link { text-decoration: none; }
+.logo-link { text-decoration: none; display: flex; align-items: center; gap: 6px; }
+.logo-img { width: 28px; height: 28px; border-radius: 6px; object-fit: contain; }
 .logo-text { color: white; font-size: 20px; font-weight: 800; }
 
 .profile-btn {
