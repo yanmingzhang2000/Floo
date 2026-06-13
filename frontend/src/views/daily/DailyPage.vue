@@ -5,15 +5,15 @@
       <h1>今日英语 · {{ themeLabel }}</h1>
       <p class="subtitle">共 {{ totalCount }} 篇</p>
       <div class="actions">
-        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white" @click="showCustomContent = true">
-          📝 自定义内容
-        </button>
         <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white" @click="handleGenerate" :disabled="generating || remainingCount <= 0">
           {{ generating ? '生成中...' : remainingCount > 0 ? `✨ 生成新内容 (${remainingCount}次)` : '今日已用完' }}
         </button>
         <router-link to="/learning/list" class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white">
           📋 历史内容
         </router-link>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white" @click="showCustomContent = true">
+          📝 自定义内容
+        </button>
       </div>
     </div>
 
