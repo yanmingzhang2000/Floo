@@ -665,7 +665,7 @@ def list_custom_content(user_id: int = 1, db: Session = Depends(get_db)):
     )
     result = []
     for c in contents:
-        words = content_repo.parse_words(c.key_words)
+        words = content_repo.parse_words(c)
         result.append(_content_to_out(c, words))
     return {"contents": result, "total": len(result)}
 
