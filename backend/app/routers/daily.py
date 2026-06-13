@@ -230,10 +230,25 @@ def get_today_list(user_id: int = 1, db: Session = Depends(get_db)):
 
     contents = content_repo.get_today_content_list_by_theme(db, theme)
     log.debug("today-list theme=%s count=%s daily_goal=%s", theme, len(contents), daily_goal)
+
+    # 追加用户的自定义内容
+    from app.models import LearningContent as LC
+    custom_contents = (
+        db.query(LC)
+        .filter(
+            LC.user_id == user_id,
+            LC.creator_type == 1,
+            LC.is_active == True,
+        )
+        .order_by(LC.created_at.desc())
+        .all()
+    )
+    all_contents = list(contents) + list(custom_contents)
+
     return TodayContentListResponse(
         theme=theme,
         daily_goal_minutes=daily_goal,
-        contents=[_content_to_out(c, content_repo.parse_words(c)) for c in contents],
+        contents=[_content_to_out(c, content_repo.parse_words(c)) for c in all_contents],
     )
 
 
