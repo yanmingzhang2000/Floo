@@ -1,0 +1,59 @@
+.container {
+  width: 100%;
+  height: 100vh;
+  background: #f5f5f5;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+
+.loading-icon {
+  width: 60rpx;
+  height: 60rpx;
+  border: 4rpx solid #e0e0e0;
+  border-top-color: #5B9AA8;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  margin-top: 30rpx;
+  font-size: 30rpx;
+  color: #999;
+}
+
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+
+.error-icon {
+  font-size: 100rpx;
+  margin-bottom: 30rpx;
+}
+
+.error-text {
+  font-size: 30rpx;
+  color: #999;
+  margin-bottom: 40rpx;
+}
+
+.retry-btn {
+  background: #5B9AA8;
+  color: white;
+  border-radius: 40rpx;
+  padding: 20rpx 60rpx;
+  font-size: 30rpx;
+}

@@ -1,0 +1,40 @@
+{
+  "name": "Floo! 学英语",
+  "appid": "",
+  "description": "每天5分钟，轻松学英语",
+  "versionName": "1.0.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "h5": {
+    "title": "Floo! 学英语 - 每天5分钟",
+    "router": {
+      "mode": "hash",
+      "base": "/Floo/"
+    },
+    "devServer": {
+      "port": 5173,
+      "proxy": {
+        "/api": {
+          "target": "https://floo-production.up.railway.app",
+          "changeOrigin": true
+        }
+      }
+    },
+    "optimization": {
+      "treeShaking": {
+        "enable": true
+      }
+    }
+  },
+  "mp-weixin": {
+    "appid": "",
+    "setting": {
+      "urlCheck": false,
+      "es6": true,
+      "minified": true
+    },
+    "usingComponents": true,
+    "permission": {},
+    "requiredPrivateInfos": []
+  }
+}

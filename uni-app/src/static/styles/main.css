@@ -1,0 +1,206 @@
+/**
+ * 全局样式 - uni-app 版本
+ * 注意：uni-app 推荐用 rpx 代替 px，这里保留 px 但加了 rpx 版本的类名
+ */
+
+page {
+  /* CSS 变量 */
+  --primary: #5B9AA8;
+  --primary-light: #7FB3BE;
+  --primary-dark: #4A8A98;
+  --primary-container: #D0E8ED;
+  --on-primary: #ffffff;
+  --on-primary-container: #1A3A40;
+  --surface: #FAFCFD;
+  --surface-container: #F0F4F5;
+  --surface-container-high: #E4E9EA;
+  --surface-container-highest: #D8DDDE;
+  --on-surface: #1A1C1E;
+  --on-surface-variant: #6F7680;
+  --error: #BA1A1A;
+  --success: #2E7D32;
+  --warning: #ED6C02;
+  --outline: #C4C9CE;
+  --outline-variant: #E0E3E8;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --radius: 12px;
+  --radius-sm: 8px;
+
+  background: var(--surface);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+/* uni-app 全局重置 */
+view, text, button, input, textarea, image {
+  box-sizing: border-box;
+}
+
+/* 页面容器 */
+.page-container {
+  min-height: 100vh;
+  background: var(--surface);
+  padding-bottom: 120rpx; /* 为 tabBar 留空间 */
+}
+
+/* 页面头部 */
+.page-header {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  color: var(--on-primary);
+  padding: 32rpx 40rpx 40rpx;
+}
+
+.page-header .title {
+  font-size: 40rpx;
+  font-weight: 700;
+}
+
+.page-header .subtitle {
+  font-size: 26rpx;
+  opacity: 0.85;
+  margin-top: 8rpx;
+}
+
+.page-header .actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+/* 按钮 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  padding: 20rpx 40rpx;
+  border-radius: 16rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  border: none;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.btn-primary[disabled] {
+  opacity: 0.5;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--primary);
+  border: 3rpx solid var(--primary);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-sm {
+  padding: 12rpx 28rpx;
+  font-size: 26rpx;
+}
+
+.btn-lg {
+  padding: 28rpx 48rpx;
+  font-size: 32rpx;
+  border-radius: 24rpx;
+}
+
+/* 卡片 */
+.card {
+  background: #fff;
+  border-radius: 24rpx;
+  box-shadow: var(--shadow);
+  padding: 32rpx;
+  margin: 24rpx 32rpx;
+}
+
+/* 输入框组 */
+.input-group {
+  margin-bottom: 32rpx;
+}
+
+.input-group .label {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--on-surface);
+  margin-bottom: 12rpx;
+}
+
+.input-group input,
+.input-group textarea {
+  width: 100%;
+  padding: 24rpx 28rpx;
+  border: 3rpx solid var(--outline);
+  border-radius: 16rpx;
+  font-size: 30rpx;
+  background: #fff;
+}
+
+/* 标签 */
+.tag {
+  display: inline-block;
+  padding: 6rpx 20rpx;
+  border-radius: 40rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.tag-primary {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
+
+.tag-success {
+  background: #E8F5E9;
+  color: var(--success);
+}
+
+.tag-warning {
+  background: #FFF3E0;
+  color: var(--warning);
+}
+
+.tag-error {
+  background: #FFEBEE;
+  color: var(--error);
+}
+
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  padding: 120rpx 40rpx;
+  color: var(--on-surface-variant);
+}
+
+.empty-state .icon {
+  font-size: 96rpx;
+  margin-bottom: 24rpx;
+  opacity: 0.5;
+}
+
+/* 加载中 */
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 80rpx;
+}
+
+.spinner {
+  width: 64rpx;
+  height: 64rpx;
+  border: 6rpx solid var(--surface-container-high);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

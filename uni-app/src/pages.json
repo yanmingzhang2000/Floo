@@ -1,0 +1,114 @@
+{
+  "pages": [
+    {
+      "path": "pages/learning/index",
+      "style": {
+        "navigationBarTitleText": "每日学习",
+        "navigationBarBackgroundColor": "#5B9AA8",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/dictionary/index",
+      "style": {
+        "navigationBarTitleText": "单词书",
+        "navigationBarBackgroundColor": "#5B9AA8",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/review/index",
+      "style": {
+        "navigationBarTitleText": "复习",
+        "navigationBarBackgroundColor": "#5B9AA8",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/checkin/index",
+      "style": {
+        "navigationBarTitleText": "打卡",
+        "navigationBarBackgroundColor": "#5B9AA8",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationBarBackgroundColor": "#5B9AA8",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/detail/index",
+      "style": {
+        "navigationBarTitleText": "文章详情",
+        "navigationBarBackgroundColor": "#5B9AA8",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/list/index",
+      "style": {
+        "navigationBarTitleText": "历史内容",
+        "navigationBarBackgroundColor": "#5B9AA8",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/weekly/index",
+      "style": {
+        "navigationBarTitleText": "每周报告",
+        "navigationBarBackgroundColor": "#5B9AA8",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/shop/index",
+      "style": {
+        "navigationBarTitleText": "Floo! 商店",
+        "navigationBarBackgroundColor": "#5B9AA8",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/preference/index",
+      "style": {
+        "navigationBarTitleText": "学习偏好",
+        "navigationBarBackgroundColor": "#5B9AA8",
+        "navigationBarTextStyle": "white"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "Floo!",
+    "navigationBarBackgroundColor": "#5B9AA8",
+    "backgroundColor": "#f5f5f5"
+  },
+  "tabBar": {
+    "color": "#7F8C94",
+    "selectedColor": "#5B9AA8",
+    "borderStyle": "white",
+    "backgroundColor": "#ffffff",
+    "list": [
+      {
+        "pagePath": "pages/learning/index",
+        "text": "学习"
+      },
+      {
+        "pagePath": "pages/dictionary/index",
+        "text": "单词书"
+      },
+      {
+        "pagePath": "pages/review/index",
+        "text": "复习"
+      },
+      {
+        "pagePath": "pages/checkin/index",
+        "text": "打卡"
+      }
+    ]
+  }
+}

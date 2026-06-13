@@ -24,6 +24,10 @@ frontend/.flutter-plugins-dependencies
 .vscode/
 *.iml
 
+# Node
+node_modules/
+dist/
+
 # 系统
 .DS_Store
 Thumbs.db

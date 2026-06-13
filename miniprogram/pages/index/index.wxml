@@ -1,0 +1,22 @@
+<view class="container">
+  <!-- Loading state -->
+  <view class="loading" wx:if="{{loading}}">
+    <view class="loading-icon"></view>
+    <text class="loading-text">正在加载 Floo!...</text>
+  </view>
+
+  <!-- Error state -->
+  <view class="error" wx:if="{{error}}">
+    <text class="error-icon"> :( </text>
+    <text class="error-text">加载失败，请检查网络后重试</text>
+    <button class="retry-btn" bindtap="onRetry">重新加载</button>
+  </view>
+
+  <!-- Web view -->
+  <web-view
+    wx:if="{{!error}}"
+    src="{{url}}"
+    bindload="onWebViewLoad"
+    binderror="onWebViewError"
+  ></web-view>
+</view>
