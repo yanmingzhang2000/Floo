@@ -5,7 +5,7 @@
       <div class="hero-bg"></div>
       <div class="hero-content">
         <div class="logo-area">
-          <div class="logo-text">F!</div>
+          <img src="/Floo/logo.jpg" alt="Floo!" class="logo-img" />
         </div>
         <h1 class="brand">Floo!</h1>
         <p class="tagline">飞路一下</p>
@@ -201,31 +201,19 @@ const techStack = [
   position: relative;
   z-index: 1;
   padding: 40px 24px;
+  width: 100%;
 }
 
 .logo-area {
   margin-bottom: 20px;
-  display: flex;
-  justify-content: center;
+  text-align: center;
 }
 
-.logo {
+.logo-img {
   width: 88px;
   height: 88px;
-  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.08));
-}
-
-.logo-text {
-  width: 88px;
-  height: 88px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #5B9AA8 0%, #4E8A97 100%);
-  color: white;
-  font-size: 40px;
-  font-weight: 800;
-  border-radius: 24px;
+  border-radius: 22px;
+  object-fit: contain;
   box-shadow: 0 4px 16px rgba(91, 154, 168, 0.3);
 }
 
