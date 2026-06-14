@@ -7,7 +7,7 @@ import logging
 import random
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -58,21 +58,23 @@ def get_balance(user_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/open-box")
-def open_box(user_id: int, count: int = 1, db: Session = Depends(get_db)):
+def open_box(
+    user_id: int = Body(...),
+    count: int = Body(1),
+    db: Session = Depends(get_db),
+):
     """
     开盲盒。
-    count: 抽取次数（1/10/100）
+    count: 抽取次数（1/5）
     """
-    if count not in [1, 10, 100]:
-        raise HTTPException(status_code=400, detail="抽取次数只能是1/10/100")
+    if count not in [1, 5]:
+        raise HTTPException(status_code=400, detail="抽取次数只能是1或5")
 
     # 计算价格
     if count == 1:
         price = BOX_PRICE
-    elif count == 10:
-        price = TEN_BOX_PRICE
     else:
-        price = HUNDRED_BOX_PRICE
+        price = 200  # 5连抽200积分
 
     # 检查积分
     account = db.query(UserPointAccount).filter(UserPointAccount.user_id == user_id).first()
