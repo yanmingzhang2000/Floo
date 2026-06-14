@@ -25,6 +25,11 @@ class UserLoginRequest(BaseModel):
     password: str
 
 
+class WechatLoginRequest(BaseModel):
+    """微信小程序登录请求。"""
+    code: str  # wx.login() 获取的临时登录凭证
+
+
 class UserOut(BaseModel):
     """用户基本信息输出。"""
     model_config = ConfigDict(from_attributes=True)
@@ -78,7 +83,7 @@ class LearningContentOut(BaseModel):
     theme_type: str
     # key_words 从 JSON 字符串解析后返回
     words: list[dict[str, Any]] = []  # 临时用 dict，后续可拆单独表
-    content_type: str = "article"  # overview=今日总览, article=详细文章
+    content_type: str = "article"
 
 
 # 合法 theme 枚举值

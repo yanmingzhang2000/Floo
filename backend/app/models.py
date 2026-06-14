@@ -37,10 +37,11 @@ class UserMain(Base):
 
     user_id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(64), unique=True, nullable=False, index=True)
-    password_hash = Column(String(255), nullable=False)
+    password_hash = Column(String(255), nullable=True)  # 微信登录用户无需密码
     nickname = Column(String(64), nullable=False, default="Floo学习者")
     email = Column(String(128), unique=True, nullable=True, index=True)
     avatar_url = Column(String(512), nullable=True)
+    openid = Column(String(128), unique=True, nullable=True, index=True)  # 微信小程序 openid
     register_time = Column(DateTime, default=datetime.utcnow, nullable=False)
     last_login_time = Column(DateTime, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
@@ -93,7 +94,6 @@ class LearningContent(Base):
     phonetic = Column(Text, nullable=True)
     key_words = Column(Text, nullable=True)
     audio_url = Column(String(512), nullable=True)
-    # overview=今日总览, article=详细文章（默认）
     content_type = Column(String(16), default="article", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     is_active = Column(Boolean, default=True, nullable=False)

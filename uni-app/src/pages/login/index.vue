@@ -53,6 +53,19 @@
         <view class="switch-mode" @tap="isRegister = !isRegister">
           <text>{{ isRegister ? '已有账号？去登录' : '没有账号？立即注册' }}</text>
         </view>
+
+        <!-- #ifdef MP-WEIXIN -->
+        <view class="divider">
+          <view class="divider-line"></view>
+          <text class="divider-text">其他登录方式</text>
+          <view class="divider-line"></view>
+        </view>
+
+        <button class="btn-wechat" :disabled="wxLoading" @tap="handleWechatLogin">
+          <text v-if="wxLoading">登录中...</text>
+          <text v-else>微信一键登录</text>
+        </button>
+        <!-- #endif -->
       </view>
     </view>
   </view>
@@ -68,6 +81,7 @@ import { navReLaunch } from '@/utils/router'
 const auth = useAuthStore()
 const isRegister = ref(false)
 const loading = ref(false)
+const wxLoading = ref(false)
 const error = ref('')
 const form = ref({ username: '', password: '' })
 const rememberMe = ref(true)
@@ -108,6 +122,30 @@ async function handleSubmit() {
     loading.value = false
   }
 }
+
+// #ifdef MP-WEIXIN
+async function handleWechatLogin() {
+  wxLoading.value = true
+  error.value = ''
+  try {
+    const loginRes = await new Promise<UniApp.LoginRes>((resolve, reject) => {
+      uni.login({ success: resolve, fail: reject })
+    })
+    if (!loginRes.code) {
+      error.value = '微信登录失败'
+      return
+    }
+    const { data } = await userApi.wechatLogin(loginRes.code)
+    auth.setSession(data.user_id, data.username, false)
+    uni.showToast({ title: '登录成功', icon: 'success', duration: 1500 })
+    setTimeout(() => navReLaunch('/pages/learning/index'), 1500)
+  } catch (e: any) {
+    error.value = e.data?.detail || e.errMsg || '微信登录失败，请重试'
+  } finally {
+    wxLoading.value = false
+  }
+}
+// #endif
 </script>
 
 <style scoped>
@@ -211,5 +249,36 @@ async function handleSubmit() {
   color: #5B9AA8;
   font-size: 28rpx;
   padding: 20rpx;
+}
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 48rpx 0 32rpx;
+  gap: 20rpx;
+}
+.divider-line {
+  flex: 1;
+  height: 2rpx;
+  background: #E0E0E0;
+}
+.divider-text {
+  color: #999;
+  font-size: 26rpx;
+}
+.btn-wechat {
+  width: 100%;
+  height: 96rpx;
+  line-height: 96rpx;
+  background: #07C160;
+  color: white;
+  font-size: 32rpx;
+  font-weight: 600;
+  border-radius: 16rpx;
+  text-align: center;
+  border: none;
+}
+.btn-wechat[disabled] {
+  opacity: 0.6;
+  background: #07C160;
 }
 </style>

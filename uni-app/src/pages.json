@@ -95,19 +95,27 @@
     "list": [
       {
         "pagePath": "pages/learning/index",
-        "text": "学习"
+        "text": "学习",
+        "iconPath": "static/icons/learning.svg",
+        "selectedIconPath": "static/icons/learning.svg"
       },
       {
         "pagePath": "pages/dictionary/index",
-        "text": "单词书"
+        "text": "单词书",
+        "iconPath": "static/icons/dictionary.svg",
+        "selectedIconPath": "static/icons/dictionary.svg"
       },
       {
         "pagePath": "pages/review/index",
-        "text": "复习"
+        "text": "复习",
+        "iconPath": "static/icons/review.svg",
+        "selectedIconPath": "static/icons/review.svg"
       },
       {
         "pagePath": "pages/checkin/index",
-        "text": "打卡"
+        "text": "打卡",
+        "iconPath": "static/icons/checkin.svg",
+        "selectedIconPath": "static/icons/checkin.svg"
       }
     ]
   }

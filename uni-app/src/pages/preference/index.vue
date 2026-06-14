@@ -40,6 +40,21 @@
           <text>{{ saving ? '保存中...' : '保存设置' }}</text>
         </button>
       </view>
+
+      <!-- #ifdef MP-WEIXIN -->
+      <view class="bind-section">
+        <view class="divider">
+          <view class="divider-line"></view>
+          <text class="divider-text">账号绑定</text>
+          <view class="divider-line"></view>
+        </view>
+        <button class="btn-wechat" :disabled="wxLoading" @tap="handleBindWechat">
+          <text v-if="wxLoading">绑定中...</text>
+          <text v-else>绑定微信</text>
+        </button>
+        <text class="bind-hint">绑定后可使用微信一键登录</text>
+      </view>
+      <!-- #endif -->
     </view>
   </view>
 </template>
@@ -52,6 +67,7 @@ import { useAuthStore } from '@/stores'
 const auth = useAuthStore()
 const loading = ref(true)
 const saving = ref(false)
+const wxLoading = ref(false)
 
 const difficulties = ['easy', 'medium', 'hard']
 const themes = ['daily_news', 'ai_tech', 'product_tech', 'business', 'self_growth', 'all_random']
@@ -99,6 +115,28 @@ onMounted(async () => {
   } catch {}
   loading.value = false
 })
+
+// #ifdef MP-WEIXIN
+async function handleBindWechat() {
+  wxLoading.value = true
+  try {
+    const loginRes = await new Promise<UniApp.LoginRes>((resolve, reject) => {
+      uni.login({ success: resolve, fail: reject })
+    })
+    if (!loginRes.code) {
+      uni.showToast({ title: '获取code失败', icon: 'none' })
+      return
+    }
+    await userApi.bindWechat(auth.currentUserId, loginRes.code)
+    uni.showToast({ title: '绑定成功', icon: 'success' })
+  } catch (e: any) {
+    const msg = e.data?.detail || e.errMsg || '绑定失败'
+    uni.showToast({ title: msg, icon: 'none' })
+  } finally {
+    wxLoading.value = false
+  }
+}
+// #endif
 </script>
 
 <style scoped>
@@ -124,5 +162,46 @@ onMounted(async () => {
 .arrow-icon {
   font-size: 40rpx;
   color: var(--on-surface-variant);
+}
+.bind-section {
+  padding: 32rpx;
+}
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 32rpx 0;
+  gap: 20rpx;
+}
+.divider-line {
+  flex: 1;
+  height: 2rpx;
+  background: #E0E0E0;
+}
+.divider-text {
+  color: #999;
+  font-size: 26rpx;
+}
+.btn-wechat {
+  width: 100%;
+  height: 96rpx;
+  line-height: 96rpx;
+  background: #07C160;
+  color: white;
+  font-size: 32rpx;
+  font-weight: 600;
+  border-radius: 16rpx;
+  text-align: center;
+  border: none;
+}
+.btn-wechat[disabled] {
+  opacity: 0.6;
+  background: #07C160;
+}
+.bind-hint {
+  display: block;
+  text-align: center;
+  font-size: 24rpx;
+  color: #999;
+  margin-top: 16rpx;
 }
 </style>

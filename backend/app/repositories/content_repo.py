@@ -81,28 +81,9 @@ def get_today_ai_contents_by_theme(db: Session, theme: str) -> list[LearningCont
 
 def get_latest_ai_content_by_theme(db: Session, theme: str) -> Optional[LearningContent]:
     """
-    获取指定 theme 最新一条 AI 内容，优先返回 overview。
+    获取指定 theme 最新一条 AI 内容。
     供 /today 接口按用户偏好返回单条预览。
     """
-    # 优先返回今日总览
-    from datetime import datetime
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-    overview = (
-        db.query(LearningContent)
-        .filter(
-            LearningContent.creator_type == 0,
-            LearningContent.is_active == True,
-            LearningContent.theme_type == theme,
-            LearningContent.content_type == "overview",
-            LearningContent.created_at >= today_start,
-        )
-        .order_by(LearningContent.created_at.desc())
-        .first()
-    )
-    if overview:
-        log.debug("找到 theme=%s 今日总览 content_id=%s", theme, overview.content_id)
-        return overview
-    # 没有总览则返回最新一篇
     content = (
         db.query(LearningContent)
         .filter(
@@ -122,7 +103,7 @@ def get_latest_ai_content_by_theme(db: Session, theme: str) -> Optional[Learning
 
 def get_today_content_list_by_theme(db: Session, theme: str) -> list[LearningContent]:
     """
-    获取今日指定 theme 的完整内容列表，overview 排第一，articles 按生成顺序排列。
+    获取今日指定 theme 的完整内容列表，按生成顺序排列。
     供前端根据用户学习时长决定展示几篇。
     """
     from datetime import datetime
@@ -137,11 +118,7 @@ def get_today_content_list_by_theme(db: Session, theme: str) -> list[LearningCon
             LearningContent.created_at >= today_start,
             LearningContent.created_at <= today_end,
         )
-        .order_by(
-            # overview 排第一，article 按 content_id 升序
-            LearningContent.content_type.desc(),  # overview > article 字母序
-            LearningContent.content_id.asc(),
-        )
+        .order_by(LearningContent.content_id.asc())
         .all()
     )
     log.debug("theme=%s 今日内容列表 count=%s", theme, len(contents))

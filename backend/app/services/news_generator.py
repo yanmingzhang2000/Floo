@@ -28,20 +28,11 @@ def _build_batch_system_prompt(theme: str) -> str:
     theme_desc = theme_map.get(theme, "日常新闻与社会热点")
 
     return f"""你是一位英语教学专家，负责每日为英语学习者生成新闻阅读材料。
-请围绕【{theme_desc}】方向，生成：
-1. 一篇总览（overview）：50-80 词，概括今日该领域的核心动态
-2. 三篇详细新闻（news_1/2/3）：每篇 80-120 词，深入不同子话题
+请围绕【{theme_desc}】方向，生成 3 篇独立的英语新闻（news_1/news_2/news_3），每篇 80-120 词，话题不重复，覆盖不同子方向。
 
 严格按如下 JSON 格式输出，不要包含任何额外文字：
 {{
   "date": "YYYY-MM-DD",
-  "overview": {{
-    "title_en": "今日总览英文标题",
-    "title_cn": "今日总览中文标题",
-    "summary_en": "英文总览 50-80 词，概括今日核心动态",
-    "summary_cn": "中文翻译",
-    "keywords": ["核心关键词1", "关键词2"]
-  }},
   "news_1": {{
     "title_en": "英文标题",
     "title_cn": "中文标题",
@@ -71,34 +62,15 @@ def _build_batch_system_prompt(theme: str) -> str:
 - 避免提取：冠词(a/the)、介词(in/on)、代词(he/she)、极常用词(good/make)
 
 要求：
-- overview 要简洁精炼，帮学习者快速了解今日该领域核心动态
-- 3 篇详细新闻话题不重复，覆盖不同子方向
+- 3 篇新闻话题不重复，覆盖不同子方向
 - lexicon 共 8-12 个词条，必须从上面 3 篇文章的正文中提取，难度适合 CET-6
 - 每篇 keywords 与 lexicon 中的词条有重叠，方便关联
-- source_link 格式为知名媒体域名 + 合理路径（overview 不需要 source_link）
+- source_link 格式为知名媒体域名 + 合理路径
 - 只返回 JSON，禁止输出任何解释性文字"""
 
 # 没配 API Key 时的兜底数据
 _MOCK_BATCH_RESULT: dict[str, Any] = {
     "date": date.today().isoformat(),
-    "overview": {
-        "title_en": "Today's Tech Digest: AI, Energy & Work",
-        "title_cn": "今日科技速览：AI、能源与工作方式",
-        "summary_en": (
-            "Today's top stories span three major shifts: AI tools are transforming "
-            "how people learn and work, renewable energy installations are breaking "
-            "records worldwide, and remote work continues to reshape urban landscapes. "
-            "Together, these trends signal a fundamental rethinking of productivity, "
-            "sustainability, and city life."
-        ),
-        "summary_cn": (
-            "今日三大核心动态：AI 工具正在改变人们的学习与工作方式，"
-            "全球可再生能源装机量持续创纪录，"
-            "远程办公继续重塑城市格局。"
-            "这些趋势共同预示着生产力、可持续发展和城市生活的深层变革。"
-        ),
-        "keywords": ["artificial intelligence", "renewable", "remote work"],
-    },
     "news_1": {
         "title_en": "AI Assistants Transform Daily Learning",
         "title_cn": "AI 助手改变日常学习方式",
@@ -244,17 +216,15 @@ def _normalize_batch(
     theme: str,
 ) -> list[dict[str, Any]]:
     """
-    将 LLM 返回的批量 JSON 规范化为 4 个 content dict（1 总览 + 3 详细）。
+    将 LLM 返回的批量 JSON 规范化为 3 个 content dict。
 
-    顺序：overview 在第一位，content_type 字段区分总览和详细文章。
     词汇分配策略：
       1. lexicon 词条的 word_phrase 出现在某篇 keywords 中 → 分配给该篇
       2. 未匹配任何文章的词条 → 追加给所有文章（保证词汇完整性）
-      3. overview 获得全部 lexicon 词条（作为今日词汇总表）
     """
     lexicon: list[dict] = _parse_lexicon(raw.get("lexicon") or [])
 
-    # 第一轮：为每篇详细文章收集匹配词条，记录未匹配索引
+    # 第一轮：为每篇文章收集匹配词条，记录未匹配索引
     per_article_words: list[list[dict]] = []
     per_article_unmatched: list[set[int]] = []
 
@@ -290,25 +260,7 @@ def _normalize_batch(
 
     results: list[dict[str, Any]] = []
 
-    # overview 记录排在第一位，获得全部 lexicon 作为今日词汇总表
-    overview = raw.get("overview") or {}
-    overview_article = (overview.get("summary_en") or "").strip()
-    overview_words = [{**w, "order_index": i} for i, w in enumerate(lexicon)]
-    # 过滤掉 overview 中未出现的词汇
-    overview_words = _filter_words_against_article(overview_words, overview_article)
-    results.append({
-        "content_date": date.today(),
-        "title": (overview.get("title_en") or "Today's Overview").strip(),
-        "article": overview_article,
-        "translation": (overview.get("summary_cn") or "").strip() or None,
-        "audio_url": None,
-        "difficulty_level": "medium",
-        "theme_type": theme,
-        "content_type": "overview",  # 标记为总览
-        "words": overview_words,
-    })
-
-    # 3 篇详细文章
+    # 3 篇文章
     for i, key in enumerate(("news_1", "news_2", "news_3")):
         news = raw.get(key) or {}
         article_text = (news.get("summary_en") or "").strip()
@@ -327,7 +279,7 @@ def _normalize_batch(
             "audio_url": (news.get("source_link") or "").strip() or None,
             "difficulty_level": "medium",
             "theme_type": theme,
-            "content_type": "article",  # 标记为详细文章
+            "content_type": "article",
             "words": words,
         })
 

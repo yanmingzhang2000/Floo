@@ -19,6 +19,9 @@
         >
           <text>{{ generating ? '生成中...' : (remainingCount > 0 ? `✨ 生成 (${remainingCount})` : '已用完') }}</text>
         </button>
+        <button class="btn btn-sm action-btn" @tap="showCustomContent = true">
+          <text>📝 自定义</text>
+        </button>
         <button class="btn btn-sm action-btn" @tap="goList">
           <text>📋 历史</text>
         </button>
@@ -50,7 +53,7 @@
 
       <view v-if="currentItem" class="content-card card">
         <view class="card-header">
-          <text class="tag tag-primary">{{ currentItem.content_type === 'overview' ? '今日总览' : '文章 ' + (currentIdx + 1) }}</text>
+          <text class="tag tag-primary">文章 {{ currentIdx + 1 }}</text>
           <text class="tag tag-success">{{ currentItem.difficulty_level }}</text>
         </view>
         <text class="card-title">{{ currentItem.title }}</text>
@@ -133,6 +136,16 @@
         </view>
       </view>
     </view>
+
+    <!-- 自定义内容弹窗 -->
+    <CustomContentModal
+      :visible="showCustomContent"
+      @close="showCustomContent = false"
+      @created="loadData"
+    />
+
+    <!-- 新手引导 -->
+    <OnboardingGuide />
   </view>
 </template>
 
@@ -145,6 +158,8 @@ import { speakWord, initVoices } from '@/composables/useSpeech'
 import { getBaseForm } from '@/composables/useWordForm'
 import { navTo, navReLaunch } from '@/utils/router'
 import type { LearningContent, WordItem } from '@/types'
+import CustomContentModal from '@/components/CustomContentModal.vue'
+import OnboardingGuide from '@/components/OnboardingGuide.vue'
 
 const auth = useAuthStore()
 const loading = ref(true)
@@ -156,6 +171,7 @@ const learnedIds = ref<number[]>([])
 const remainingCount = ref(3)
 const wordPopup = ref<{ word: string; phonetic?: string; meaning: string; usage?: string; isFavorite?: boolean } | null>(null)
 const showProfile = ref(false)
+const showCustomContent = ref(false)
 
 // 词缓存
 const wordCache = new Map<string, { word: string; phonetic?: string; meaning: string }>()

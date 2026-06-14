@@ -1,12 +1,16 @@
 /**
  * 语音朗读工具 - uni-app 版本
- * H5 用 Web Speech API，小程序用 uni.createInnerAudioContext
+ * H5 用 Web Speech API，小程序用后端 TTS 接口 + uni.createInnerAudioContext
  */
 
 import { ref } from 'vue'
+import { ttsApi } from '@/api'
 
 let synth: SpeechSynthesis | null = null
 let voicesLoaded = false
+
+// 小程序音频上下文
+let innerAudio: UniApp.InnerAudioContext | null = null
 
 function getSynth(): SpeechSynthesis | null {
   // #ifdef H5
@@ -66,9 +70,76 @@ export function speak(text: string, lang = 'en-US') {
   // #endif
 
   // #ifdef MP-WEIXIN
-  // 小程序暂不支持TTS，可以调用后端TTS接口或使用录音文件
-  console.log('小程序暂不支持TTS:', text)
+  // 小程序端使用后端 TTS 接口
+  speakWithTTS(text)
   // #endif
+}
+
+// 小程序端 TTS 播放
+async function speakWithTTS(text: string) {
+  try {
+    uni.showLoading({ title: '加载语音...' })
+    const { data } = await ttsApi.synthesize(text, '0')  // 0=英文
+    uni.hideLoading()
+    
+    if (data && data.audio) {
+      // 创建临时音频文件并播放
+      const fs = uni.getFileSystemManager()
+      const filePath = `${wx.env.USER_DATA_PATH}/tts_${Date.now()}.wav`
+      
+      // 解码 base64 音频并保存为文件
+      const audioData = base64ToArrayBuffer(data.audio)
+      fs.writeFile({
+        filePath,
+        data: audioData,
+        encoding: 'binary',
+        success: () => {
+          playAudioFile(filePath)
+        },
+        fail: (err) => {
+          console.error('保存音频文件失败:', err)
+          uni.showToast({ title: '语音播放失败', icon: 'none' })
+        }
+      })
+    }
+  } catch (e) {
+    uni.hideLoading()
+    console.error('TTS 请求失败:', e)
+    // 静默失败，不打扰用户
+  }
+}
+
+// 播放音频文件
+function playAudioFile(filePath: string) {
+  if (innerAudio) {
+    innerAudio.destroy()
+  }
+  innerAudio = uni.createInnerAudioContext()
+  innerAudio.src = filePath
+  innerAudio.onEnded(() => {
+    // 播放完成后删除临时文件
+    const fs = uni.getFileSystemManager()
+    fs.unlink({ filePath, fail: () => {} })
+  })
+  innerAudio.onError((err) => {
+    console.error('音频播放失败:', err)
+    // 清理临时文件
+    const fs = uni.getFileSystemManager()
+    fs.unlink({ filePath, fail: () => {} })
+  })
+  innerAudio.play()
+}
+
+// base64 转 ArrayBuffer
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binary = atob(base64)
+  const len = binary.length
+  const buffer = new ArrayBuffer(len)
+  const view = new Uint8Array(buffer)
+  for (let i = 0; i < len; i++) {
+    view[i] = binary.charCodeAt(i)
+  }
+  return buffer
 }
 
 export function speakWord(word: string) {
@@ -135,6 +206,60 @@ function speakNext() {
   }
   s.speak(utterance)
   // #endif
+
+  // #ifdef MP-WEIXIN
+  // 小程序端逐句朗读
+  if (readIndex.value >= readSentences.value.length) {
+    readState.value = 'idle'
+    readIndex.value = 0
+    return
+  }
+  const text = readSentences.value[readIndex.value]
+  speakWithTTSForArticle(text, () => {
+    if (readState.value === 'playing') {
+      readIndex.value++
+      speakNext()
+    }
+  })
+  // #endif
+}
+
+// 小程序端文章朗读 TTS
+async function speakWithTTSForArticle(text: string, onEnd: () => void) {
+  try {
+    const { data } = await ttsApi.synthesize(text, '0')
+    if (data && data.audio) {
+      const fs = uni.getFileSystemManager()
+      const filePath = `${wx.env.USER_DATA_PATH}/tts_article_${Date.now()}.wav`
+      const audioData = base64ToArrayBuffer(data.audio)
+      
+      fs.writeFile({
+        filePath,
+        data: audioData,
+        encoding: 'binary',
+        success: () => {
+          const audio = uni.createInnerAudioContext()
+          audio.src = filePath
+          audio.onEnded(() => {
+            fs.unlink({ filePath, fail: () => {} })
+            onEnd()
+          })
+          audio.onError(() => {
+            fs.unlink({ filePath, fail: () => {} })
+            onEnd()
+          })
+          audio.play()
+        },
+        fail: () => {
+          onEnd()
+        }
+      })
+    } else {
+      onEnd()
+    }
+  } catch {
+    onEnd()
+  }
 }
 
 export async function startReading(article: string) {
@@ -143,6 +268,13 @@ export async function startReading(article: string) {
   if (!s) return
   await ensureVoicesReady()
   s.cancel()
+  readSentences.value = splitSentences(article)
+  readIndex.value = 0
+  readState.value = 'playing'
+  speakNext()
+  // #endif
+
+  // #ifdef MP-WEIXIN
   readSentences.value = splitSentences(article)
   readIndex.value = 0
   readState.value = 'playing'
@@ -157,6 +289,13 @@ export function pauseReading() {
   readState.value = 'paused'
   s.pause()
   // #endif
+
+  // #ifdef MP-WEIXIN
+  readState.value = 'paused'
+  if (innerAudio) {
+    innerAudio.pause()
+  }
+  // #endif
 }
 
 export function resumeReading() {
@@ -165,6 +304,13 @@ export function resumeReading() {
   if (!s) return
   readState.value = 'playing'
   s.resume()
+  // #endif
+
+  // #ifdef MP-WEIXIN
+  readState.value = 'playing'
+  if (innerAudio) {
+    innerAudio.play()
+  }
   // #endif
 }
 
@@ -176,6 +322,17 @@ export function stopReading() {
   readState.value = 'idle'
   readIndex.value = 0
   readSentences.value = []
+  // #endif
+
+  // #ifdef MP-WEIXIN
+  readState.value = 'idle'
+  readIndex.value = 0
+  readSentences.value = []
+  if (innerAudio) {
+    innerAudio.stop()
+    innerAudio.destroy()
+    innerAudio = null
+  }
   // #endif
 }
 

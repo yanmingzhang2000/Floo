@@ -11,8 +11,8 @@
       </view>
 
       <view class="card">
-        <text class="card-label">🎁 开盲盒</text>
-        <text class="card-desc">消耗积分获取收藏角色</text>
+        <text class="card-label">🎁 美好品质盲盒</text>
+        <text class="card-desc">开启盲盒，收集美好品质</text>
         <view class="box-actions">
           <button class="btn btn-primary" :disabled="opening || balance < 50" @tap="handleOpen(1)">
             <text>开1次 (50分)</text>
@@ -20,23 +20,6 @@
           <button class="btn btn-outline" :disabled="opening || balance < 200" @tap="handleOpen(5)">
             <text>开5次 (200分)</text>
           </button>
-        </view>
-      </view>
-
-      <!-- 开盒结果 -->
-      <view v-if="boxResults.length" class="card">
-        <text class="card-label">🎉 获得角色</text>
-        <view class="result-list">
-          <view v-for="r in boxResults" :key="r.character_id" class="result-item">
-            <view class="result-rarity" :class="r.rarity">
-              <text>{{ r.rarity === 'legendary' ? '🌟' : r.rarity === 'rare' ? '⭐' : '✦' }}</text>
-            </view>
-            <view class="result-info">
-              <text class="result-name">{{ r.name }}</text>
-              <text class="result-meaning">{{ r.meaning }}</text>
-              <text v-if="r.is_new" class="new-badge">NEW!</text>
-            </view>
-          </view>
         </view>
       </view>
 
@@ -57,6 +40,15 @@
         </view>
       </view>
     </view>
+
+    <!-- 抽卡动画组件 -->
+    <GachaAnimation
+      :visible="showAnimation"
+      :characters="animationCharacters"
+      :current-index="animationIndex"
+      @close="handleAnimationClose"
+      @next="handleAnimationNext"
+    />
   </view>
 </template>
 
@@ -64,6 +56,7 @@
 import { ref, onMounted } from 'vue'
 import { shopApi } from '@/api'
 import { useAuthStore } from '@/stores'
+import GachaAnimation from '@/components/GachaAnimation.vue'
 import type { Character, BoxResult } from '@/types'
 
 const auth = useAuthStore()
@@ -71,7 +64,11 @@ const loading = ref(true)
 const opening = ref(false)
 const balance = ref(0)
 const collection = ref<Character[]>([])
-const boxResults = ref<BoxResult[]>([])
+
+// 动画相关状态
+const showAnimation = ref(false)
+const animationCharacters = ref<BoxResult[]>([])
+const animationIndex = ref(0)
 
 async function loadData() {
   loading.value = true
@@ -88,10 +85,15 @@ async function loadData() {
 
 async function handleOpen(count: number) {
   opening.value = true
-  boxResults.value = []
   try {
     const { data } = await shopApi.openBox(auth.currentUserId, count)
-    boxResults.value = data.results || []
+    const results = data.results || []
+
+    // 开始动画
+    animationCharacters.value = results
+    animationIndex.value = 0
+    showAnimation.value = true
+
     // 刷新余额和收藏
     const [balRes, colRes] = await Promise.all([
       shopApi.getBalance(auth.currentUserId),
@@ -103,6 +105,18 @@ async function handleOpen(count: number) {
     uni.showToast({ title: '开盒失败', icon: 'none' })
   }
   opening.value = false
+}
+
+function handleAnimationNext() {
+  if (animationIndex.value < animationCharacters.value.length - 1) {
+    animationIndex.value++
+  }
+}
+
+function handleAnimationClose() {
+  showAnimation.value = false
+  animationCharacters.value = []
+  animationIndex.value = 0
 }
 
 onMounted(loadData)
@@ -121,23 +135,6 @@ onMounted(loadData)
 .card-label { font-size: 32rpx; font-weight: 700; display: block; margin-bottom: 12rpx; }
 .card-desc { font-size: 26rpx; color: var(--on-surface-variant); display: block; margin-bottom: 24rpx; }
 .box-actions { display: flex; gap: 20rpx; }
-
-.result-list { display: flex; flex-direction: column; gap: 16rpx; }
-.result-item { display: flex; align-items: center; gap: 20rpx; }
-.result-rarity { font-size: 40rpx; }
-.result-info { flex: 1; }
-.result-name { font-weight: 600; font-size: 30rpx; display: block; }
-.result-meaning { font-size: 26rpx; color: var(--on-surface-variant); display: block; }
-.new-badge {
-  display: inline-block;
-  background: #FF9800;
-  color: white;
-  font-size: 20rpx;
-  padding: 4rpx 12rpx;
-  border-radius: 12rpx;
-  font-weight: 700;
-  margin-left: 12rpx;
-}
 
 .empty-hint { text-align: center; padding: 32rpx; color: var(--on-surface-variant); font-size: 28rpx; }
 .collection-grid { display: flex; flex-wrap: wrap; gap: 16rpx; }

@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     YOUDAO_APP_KEY: str = os.getenv("YOUDAO_APP_KEY", "")
     YOUDAO_APP_SECRET: str = os.getenv("YOUDAO_APP_SECRET", "")
 
+    # 微信小程序登录
+    WX_APPID: str = os.getenv("WX_APPID", "")
+    WX_SECRET: str = os.getenv("WX_SECRET", "")
+
     APP_HOST: str = "0.0.0.0"
     APP_PORT: int = 8000
 

@@ -28,6 +28,11 @@ def get_user_by_username(db: Session, username: str) -> Optional[UserMain]:
     return db.query(UserMain).filter(UserMain.username == username).first()
 
 
+def get_user_by_openid(db: Session, openid: str) -> Optional[UserMain]:
+    """按微信 openid 查用户，用于微信登录。"""
+    return db.query(UserMain).filter(UserMain.openid == openid).first()
+
+
 def create_user(
     db: Session,
     username: str,
@@ -69,6 +74,53 @@ def create_user(
 
     db.flush()
     log.debug("创建用户 user_id=%s username=%s，偏好和积分账户已初始化", user.user_id, username)
+    return user
+
+
+def create_wechat_user(
+    db: Session,
+    openid: str,
+    nickname: str = "微信用户",
+    avatar_url: Optional[str] = None,
+) -> UserMain:
+    """创建微信小程序用户，无需密码。"""
+    # 生成唯一用户名：wx_ + openid 前8位
+    username = f"wx_{openid[:8]}"
+    # 确保用户名不重复
+    existing = get_user_by_username(db, username)
+    if existing:
+        username = f"wx_{openid[:8]}_{db.query(UserMain).count()}"
+
+    user = UserMain(
+        username=username,
+        password_hash=None,  # 微信用户无密码
+        nickname=nickname,
+        avatar_url=avatar_url,
+        openid=openid,
+    )
+    db.add(user)
+    db.flush()
+
+    # 初始化学习偏好
+    preference = UserLearningPreference(
+        user_id=user.user_id,
+        difficulty_level="medium",
+        theme_type="daily_life",
+        daily_goal_count=5,
+    )
+    db.add(preference)
+
+    # 初始化积分账户
+    account = UserPointAccount(
+        user_id=user.user_id,
+        total_earned_points=0,
+        available_points=0,
+        total_consumed_points=0,
+    )
+    db.add(account)
+
+    db.flush()
+    log.debug("创建微信用户 user_id=%s openid=%s", user.user_id, openid)
     return user
 
 

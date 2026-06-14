@@ -6,6 +6,10 @@ export const userApi = {
     api.post('/api/user/login', data),
   register: (data: { username: string; password: string }) =>
     api.post('/api/user/register', data),
+  wechatLogin: (code: string) =>
+    api.post('/api/user/wechat-login', { code }),
+  bindWechat: (userId: number, code: string) =>
+    api.post(`/api/user/bind-wechat?user_id=${userId}`, { code }),
   getPreference: (userId: number) =>
     api.get(`/api/user/${userId}/preference`),
   updatePreference: (userId: number, data: { difficulty_level?: string; theme_type?: string; daily_goal_minutes?: number }) =>
@@ -100,12 +104,20 @@ export const shopApi = {
     api.post('/api/shop/open-box', { user_id: userId, count }),
   getCollection: (userId: number) =>
     api.get('/api/shop/collection', { params: { user_id: userId } }),
+  givePointsToAll: (amount: number = 50) =>
+    api.post(`/api/shop/admin/give-points?amount=${amount}`),
 }
 
 // ===== 语音评测 =====
 export const speechApi = {
   evaluate: (audio: string, text: string, langType = 'en') =>
     api.post('/api/speech/evaluate', { audio, text, lang_type: langType, format: 'wav' }),
+}
+
+// ===== TTS 语音合成 =====
+export const ttsApi = {
+  synthesize: (text: string, langType = '0') =>
+    api.post('/api/tts/synthesize', { text, lang_type: langType }),
 }
 
 export default api

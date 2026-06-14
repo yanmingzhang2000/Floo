@@ -170,3 +170,22 @@ def get_collection(user_id: int, db: Session = Depends(get_db)):
         })
 
     return {"collection": result}
+
+
+@router.post("/admin/give-points")
+def give_points_to_all_users(amount: int = 50, db: Session = Depends(get_db)):
+    """管理员：给所有用户赠送积分。"""
+    accounts = db.query(UserPointAccount).all()
+    count = 0
+    for account in accounts:
+        add_points(
+            db=db,
+            account=account,
+            amount=amount,
+            change_type="reward",
+            description="新手赠送积分",
+        )
+        count += 1
+    db.commit()
+    log.debug("给 %d 个用户赠送了 %d 积分", count, amount)
+    return {"message": f"已给 {count} 个用户赠送 {amount} 积分"}
