@@ -24,12 +24,16 @@ async def chat_json(
 ) -> dict[str, Any]:
     """调用 LLM 并解析返回的 JSON。
 
-    为什么强制 json_object 格式：避免模型返回多余解释文字导致 json.loads 失败。
+    为什么不传 response_format：Gemini 兼容层不支持 json_object 参数，
+    传了直接 400。所有调用方的 system_prompt 已明确要求只输出 JSON，
+    模型会自然遵守；容错逻辑会剥掉 ```json 包裹。
     """
     if not settings.LLM_API_KEY:
         log.debug("LLM_API_KEY 未配置，返回空 dict 让调用方走 mock")
         return {}
 
+    # response_format=json_object 是 OpenAI 专属，Gemini 兼容层不支持会返回 400
+    # 所有 prompt 已在 system_prompt 里明确要求返回 JSON，模型会自然遵守
     payload = {
         "model": settings.LLM_MODEL,
         "messages": [
@@ -37,7 +41,6 @@ async def chat_json(
             {"role": "user", "content": user_prompt},
         ],
         "temperature": temperature,
-        "response_format": {"type": "json_object"},
     }
     headers = {
         "Authorization": f"Bearer {settings.LLM_API_KEY}",
