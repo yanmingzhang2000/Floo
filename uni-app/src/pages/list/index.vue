@@ -1,8 +1,8 @@
-<template>
+﻿<template>
   <view class="page-container">
     <view class="nav-bar">
       <view class="nav-left">
-        <view class="nav-back" @tap="uni.navigateBack()"><text>‹</text></view>
+        <view class="nav-back" @tap="navBackSafe"><text>‹</text></view>
       </view>
       <text class="nav-title">往期内容</text>
       <view class="nav-right">
@@ -40,6 +40,7 @@
         <text class="list-item-arrow">›</text>
       </view>
     </view>
+    <AppTabBar />
   </view>
 </template>
 

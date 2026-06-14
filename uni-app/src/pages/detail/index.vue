@@ -2,7 +2,7 @@
   <view class="page-container">
     <view class="nav-bar">
       <view class="nav-left">
-        <view class="nav-back" @tap="navBack"><text>‹</text></view>
+        <view class="nav-back" @tap="navBackSafe"><text>‹</text></view>
       </view>
       <text class="nav-title">文章详情</text>
       <view class="nav-right">
@@ -88,6 +88,7 @@
         <text class="popup-meaning">{{ wordPopup.meaning }}</text>
       </view>
     </view>
+    <AppTabBar />
   </view>
 </template>
 
@@ -98,6 +99,8 @@ import { dailyApi, dictionaryApi } from '@/api'
 import { speakWord, initVoices } from '@/composables/useSpeech'
 import { getBaseForm } from '@/composables/useWordForm'
 import { useAuthStore } from '@/stores'
+import { navBackSafe } from '@/utils/router'
+import AppTabBar from '@/components/AppTabBar.vue'
 import type { LearningContent, WordItem } from '@/types'
 
 const auth = useAuthStore()
@@ -172,11 +175,11 @@ function showWordDetail(w: WordItem) {
 }
 
 function goReview() { uni.switchTab({ url: '/pages/review/index' }) }
-function navBack() { uni.navigateBack() }
+function navBack() { navBackSafe() }
 </script>
 
 <style scoped>
-.detail-wrap { padding-bottom: 120rpx; }
+.detail-wrap { padding-bottom: 160rpx; }
 
 .read-toolbar {
   display: flex;

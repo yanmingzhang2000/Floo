@@ -1,8 +1,8 @@
-<template>
+﻿<template>
   <view class="page-container">
     <view class="nav-bar">
       <view class="nav-left">
-        <view class="nav-back" @tap="uni.navigateBack()"><text>‹</text></view>
+        <view class="nav-back" @tap="navBackSafe"><text>‹</text></view>
       </view>
       <text class="nav-title">学习周报</text>
       <view class="nav-right">
@@ -51,11 +51,12 @@
       </view>
 
       <view class="weekly-footer">
-        <button class="btn btn-outline" @tap="uni.navigateBack()">
+        <button class="btn btn-outline" @tap="navBackSafe">
           <text>返回打卡页</text>
         </button>
       </view>
     </view>
+    <AppTabBar />
   </view>
 </template>
 

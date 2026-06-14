@@ -52,6 +52,19 @@ export function navReLaunch(path: string) {
 }
 
 /**
+ * 安全返回：有历史栈就返回，否则跳首页
+ * 直接从浏览器地址栏进入内页时历史栈为空，navigateBack 会无效
+ */
+export function navBackSafe(delta = 1) {
+  const pages = getCurrentPages()
+  if (pages.length > 1) {
+    uni.navigateBack({ delta })
+  } else {
+    uni.switchTab({ url: '/pages/learning/index' })
+  }
+}
+
+/**
  * 返回上一页
  */
 export function navBack(delta = 1) {

@@ -1,8 +1,8 @@
-<template>
+﻿<template>
   <view class="page-container">
     <view class="nav-bar">
       <view class="nav-left">
-        <view class="nav-back" @tap="uni.navigateBack()"><text>‹</text></view>
+        <view class="nav-back" @tap="navBackSafe"><text>‹</text></view>
       </view>
       <text class="nav-title">学习偏好</text>
       <view class="nav-right">
@@ -79,6 +79,7 @@
       </view>
       <!-- #endif -->
     </view>
+    <AppTabBar />
   </view>
 </template>
 
