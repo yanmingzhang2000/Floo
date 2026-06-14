@@ -1,0 +1,1 @@
+import{E as n,G as i,H as s}from"./index-kX219cF_.js";const t=["/pages/learning/index","/pages/dictionary/index","/pages/review/index","/pages/checkin/index"];function e(s){s.startsWith("/")||(s="/"+s),function(n){const i=n.split("?")[0];return t.includes(i)}(s)?n({url:s.split("?")[0]}):i({url:s})}function a(n){n.startsWith("/")||(n="/"+n),s({url:n})}export{a,e as n};
