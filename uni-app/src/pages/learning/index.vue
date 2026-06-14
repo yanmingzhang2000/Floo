@@ -163,18 +163,25 @@ const usernameInitial = computed(() => (auth.username?.[0] || '?').toUpperCase()
 async function loadData() {
   loading.value = true
   try {
-    const [todayRes, learnedRes, limitRes, checkinRes, balRes] = await Promise.all([
-      dailyApi.getTodayList(auth.currentUserId),
-      dailyApi.getLearnedList(auth.currentUserId),
-      generationLimitApi.getLimit(auth.currentUserId),
-      checkinApi.getCalendar(auth.currentUserId, new Date().getFullYear(), new Date().getMonth() + 1),
-      shopApi.getBalance(auth.currentUserId),
-    ])
-    contents.value = todayRes.data.contents || []
-    learnedIds.value = learnedRes.data || []
-    remainingCount.value = limitRes.data?.remaining_count ?? 3
-    streakDays.value = checkinRes.data?.current_streak_days || 0
-    pointBalance.value = balRes.data?.available_points || 0
+    const { data } = await dailyApi.getTodayList(auth.currentUserId)
+    contents.value = data.contents || []
+  } catch {}
+  try {
+    const { data } = await generationLimitApi.getLimit(auth.currentUserId)
+    remainingCount.value = data?.remaining_count ?? 3
+  } catch {}
+  try {
+    const { data } = await dailyApi.getLearnedIds(auth.currentUserId)
+    learnedIds.value = data.content_ids || []
+  } catch {}
+  try {
+    const now = new Date()
+    const { data } = await checkinApi.getCalendar(auth.currentUserId, now.getFullYear(), now.getMonth() + 1)
+    streakDays.value = data?.current_streak_days || 0
+  } catch {}
+  try {
+    const { data } = await shopApi.getBalance(auth.currentUserId)
+    pointBalance.value = data?.available_points || 0
   } catch {}
   loading.value = false
 }

@@ -57,6 +57,7 @@
           <text v-for="d in ['日','一','二','三','四','五','六']" :key="d" class="weekday">{{ d }}</text>
           <view v-for="(day, idx) in calendarDays" :key="idx" class="day-cell" :class="getDayClass(day)">
             <text v-if="day" class="day-num">{{ day }}</text>
+            <text v-if="day && isChecked(day)" class="check-mark">✓</text>
           </view>
         </view>
       </view>
@@ -96,7 +97,7 @@ const showSuccess = ref(false)
 const checkedDays = computed(() => calendar.value?.checked_dates?.length || 0)
 const todayChecked = computed(() => {
   const now = new Date()
-  const today = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   return calendar.value?.checked_dates?.includes(today) || false
 })
 
@@ -117,7 +118,7 @@ function isChecked(day: number) {
 }
 function isToday(day: number) {
   const now = new Date()
-  return day === now.getUTCDate() && currentMonth.value === now.getUTCMonth() + 1 && currentYear.value === now.getUTCFullYear()
+  return day === now.getDate() && currentMonth.value === now.getMonth() + 1 && currentYear.value === now.getFullYear()
 }
 function getDayClass(day: number | null) {
   if (!day) return 'empty'
@@ -204,6 +205,11 @@ onShow(loadData)
 .day-cell.is-checked {
   background: linear-gradient(135deg, #D0E8ED 0%, #B9D7DD 100%);
   color: #4A8A98; font-weight: 700;
+}
+.day-num { position: relative; z-index: 2; }
+.check-mark {
+  position: absolute; bottom: 4rpx; right: 8rpx;
+  font-size: 18rpx; opacity: 0.7; color: var(--primary);
 }
 
 .checkin-success {

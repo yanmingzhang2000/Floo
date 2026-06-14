@@ -341,17 +341,30 @@ function resetVocab() { vocabActive.value = false }
 async function loadData() {
   loading.value = true
   try {
-    const [reviewRes, progressRes, todayRes] = await Promise.all([
-      dailyApi.getReviewTasks(auth.currentUserId),
-      dailyApi.getAllProgress(auth.currentUserId),
-      dailyApi.getTodayList(auth.currentUserId),
-    ])
-    dueTasks.value = reviewRes.data.tasks || []
-    progressList.value = progressRes.data.items || []
-    masteredCount.value = progressRes.data.mastered_count || 0
-    todayContents.value = todayRes.data.contents || []
-    await loadFavorites()
+    const { data } = await dailyApi.getReviewTasks(auth.currentUserId)
+    dueTasks.value = data.tasks || []
   } catch {}
+  try {
+    const { data } = await dailyApi.getAllProgress(auth.currentUserId)
+    progressList.value = data.items || []
+    masteredCount.value = data.mastered_count || 0
+  } catch {}
+  try {
+    const { data } = await dailyApi.getTodayList(auth.currentUserId)
+    todayContents.value = data.contents || []
+  } catch {}
+  try {
+    const { data } = await dailyApi.getList(30)
+    if (Array.isArray(data)) {
+      const ids = new Set(todayContents.value.map(c => c.id))
+      for (const item of data) {
+        if (!ids.has(item.id)) {
+          todayContents.value.push(item)
+        }
+      }
+    }
+  } catch {}
+  await loadFavorites()
   loading.value = false
 }
 
