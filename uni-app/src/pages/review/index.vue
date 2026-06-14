@@ -403,8 +403,8 @@ onShow(loadData)
 
 .feature-tabs {
   display: flex;
-  gap: 24rpx;
-  padding: 24rpx 32rpx;
+  gap: 20rpx;
+  padding: 24rpx 24rpx;
 }
 .feature-tab {
   flex: 1;
@@ -412,39 +412,50 @@ onShow(loadData)
   flex-direction: column;
   align-items: center;
   gap: 8rpx;
-  padding: 32rpx 24rpx;
-  background: var(--surface-container);
-  border-radius: 24rpx;
+  padding: 28rpx 16rpx;
+  background: #fff;
+  border-radius: 20rpx;
   position: relative;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s;
 }
 .feature-tab.active {
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
+  box-shadow: 0 4rpx 16rpx rgba(91,154,168,0.25);
 }
 .feature-icon { font-size: 48rpx; }
 .feature-name { font-size: 26rpx; font-weight: 500; }
 .feature-badge {
   position: absolute;
-  top: 16rpx;
-  right: 16rpx;
+  top: 12rpx;
+  right: 12rpx;
   background: var(--error);
   color: white;
-  font-size: 22rpx;
-  padding: 4rpx 12rpx;
-  border-radius: 20rpx;
+  font-size: 20rpx;
+  font-weight: 700;
+  min-width: 36rpx;
+  height: 36rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18rpx;
+  padding: 0 8rpx;
+  box-shadow: 0 2rpx 8rpx rgba(186,26,26,0.3);
 }
 
 .stats-row {
   display: flex;
-  gap: 20rpx;
-  padding: 0 32rpx 24rpx;
+  gap: 16rpx;
+  padding: 0 24rpx 24rpx;
 }
 .stat-card {
   flex: 1;
   text-align: center;
   padding: 28rpx 16rpx;
-  background: var(--surface-container);
-  border-radius: 24rpx;
+  background: #fff;
+  border-radius: 20rpx;
+  box-shadow: var(--shadow-sm);
 }
 .stat-num { font-size: 48rpx; font-weight: 800; display: block; }
 .stat-success { color: var(--success); }
@@ -452,12 +463,12 @@ onShow(loadData)
 .stat-error { color: var(--error); }
 .stat-label { font-size: 24rpx; color: var(--on-surface-variant); display: block; margin-top: 4rpx; }
 
-.section { padding: 0 32rpx; margin-bottom: 32rpx; }
+.section { padding: 0 24rpx; margin-bottom: 32rpx; }
 .section-title { font-size: 30rpx; font-weight: 700; margin-bottom: 20rpx; display: block; }
 .empty-text { font-size: 30rpx; display: block; }
 
 .task-list { display: flex; flex-direction: column; gap: 16rpx; }
-.task-item { display: flex; align-items: center; gap: 24rpx; }
+.task-item { display: flex; align-items: center; gap: 24rpx; padding: 24rpx 28rpx; }
 .task-avatar {
   width: 88rpx; height: 88rpx; border-radius: 24rpx;
   display: flex; align-items: center; justify-content: center;
@@ -474,12 +485,6 @@ onShow(loadData)
 .content-meta { font-size: 26rpx; color: var(--on-surface-variant); margin-top: 4rpx; display: block; }
 .content-actions { flex-shrink: 0; }
 
-/* 默写弹窗 */
-.modal-overlay {
-  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.4); z-index: 999;
-  display: flex; align-items: flex-end;
-}
 .dictation-sheet {
   width: 100%; max-height: 90vh;
   background: white; border-radius: 32rpx 32rpx 0 0;

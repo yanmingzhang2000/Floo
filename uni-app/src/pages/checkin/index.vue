@@ -47,7 +47,7 @@
         </view>
       </view>
 
-      <view style="padding: 32rpx">
+      <view class="checkin-btn-wrap">
         <button
           class="btn btn-primary btn-block btn-lg"
           :disabled="checking || todayChecked"
@@ -173,13 +173,14 @@ onShow(loadData)
   padding: 40rpx 32rpx;
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
   color: white;
+  margin-bottom: 24rpx;
 }
 .stat-item { text-align: center; }
 .stat-icon { font-size: 48rpx; display: block; }
 .stat-value { font-size: 48rpx; font-weight: 800; margin-top: 8rpx; display: block; }
 .stat-label { font-size: 24rpx; opacity: 0.85; display: block; }
 
-.calendar-card { margin: 0 32rpx 32rpx; }
+.calendar-card { margin: 0 24rpx 24rpx; padding: 28rpx; }
 .calendar-header {
   display: flex;
   justify-content: space-between;
@@ -240,10 +241,11 @@ onShow(loadData)
   opacity: 0.6;
 }
 
+.checkin-btn-wrap { padding: 0 32rpx 24rpx; }
 .checkin-success {
   margin: 0 32rpx 32rpx;
   padding: 32rpx;
-  background: #F5F5F5;
+  background: var(--surface-container);
   border-radius: 24rpx;
   text-align: center;
 }

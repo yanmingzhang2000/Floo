@@ -1,10 +1,10 @@
 /**
  * 全局样式 - uni-app 版本
- * 注意：uni-app 推荐用 rpx 代替 px，这里保留 px 但加了 rpx 版本的类名
+ * H5 端内容居中 + 现代化视觉打磨
  */
 
 page {
-  /* CSS 变量 */
+  /* ===== CSS 变量 ===== */
   --primary: #5B9AA8;
   --primary-light: #7FB3BE;
   --primary-dark: #4A8A98;
@@ -22,52 +22,86 @@ page {
   --warning: #ED6C02;
   --outline: #C4C9CE;
   --outline-variant: #E0E3E8;
-  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.1);
   --radius: 12px;
   --radius-sm: 8px;
+  --radius-lg: 16px;
 
-  background: var(--surface);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  line-height: 1.5;
+  background: #f5f6f8;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  line-height: 1.6;
 }
 
-/* uni-app 全局重置 */
+/* 全局重置 */
 view, text, button, input, textarea, image {
   box-sizing: border-box;
 }
 
-/* 页面容器 */
+/* ===== 居中容器（H5 大屏居中，小程序不变） ===== */
 .page-container {
+  width: 100%;
   min-height: 100vh;
   background: var(--surface);
-  padding-bottom: 120rpx; /* 为 tabBar 留空间 */
+  padding-bottom: 120rpx;
 }
 
-/* 页面头部 */
+/* H5 大屏：内容居中 */
+@media (min-width: 768px) {
+  page {
+    background: #eef0f2;
+  }
+  .page-container {
+    max-width: 750px;
+    margin: 0 auto;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.03), var(--shadow-lg);
+    border-radius: 0;
+    min-height: 100vh;
+  }
+}
+
+/* ===== 页面头部 ===== */
 .page-header {
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
   color: var(--on-primary);
   padding: 32rpx 40rpx 40rpx;
+  position: relative;
+  overflow: hidden;
+}
+.page-header::after {
+  content: '';
+  position: absolute;
+  top: -60%;
+  right: -20%;
+  width: 300rpx;
+  height: 300rpx;
+  background: rgba(255,255,255,0.06);
+  border-radius: 50%;
 }
 
 .page-header .title {
   font-size: 40rpx;
   font-weight: 700;
+  position: relative;
+  z-index: 1;
 }
-
 .page-header .subtitle {
   font-size: 26rpx;
   opacity: 0.85;
   margin-top: 8rpx;
+  position: relative;
+  z-index: 1;
 }
-
 .page-header .actions {
   display: flex;
   gap: 16rpx;
   margin-top: 24rpx;
+  position: relative;
+  z-index: 1;
 }
 
-/* 按钮 */
+/* ===== 按钮 ===== */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -78,16 +112,21 @@ view, text, button, input, textarea, image {
   font-size: 30rpx;
   font-weight: 600;
   border: none;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.btn:active {
+  transform: scale(0.97);
 }
 
 .btn-primary {
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: var(--on-primary);
+  box-shadow: 0 4rpx 12rpx rgba(91, 154, 168, 0.3);
 }
-
 .btn-primary[disabled] {
   opacity: 0.5;
+  box-shadow: none;
 }
 
 .btn-outline {
@@ -102,7 +141,8 @@ view, text, button, input, textarea, image {
 
 .btn-sm {
   padding: 12rpx 28rpx;
-  font-size: 26rpx;
+  font-size: 24rpx;
+  border-radius: 32rpx;
 }
 
 .btn-lg {
@@ -111,20 +151,23 @@ view, text, button, input, textarea, image {
   border-radius: 24rpx;
 }
 
-/* 卡片 */
+/* ===== 卡片 ===== */
 .card {
   background: #fff;
   border-radius: 24rpx;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-sm);
   padding: 32rpx;
-  margin: 24rpx 32rpx;
+  margin: 20rpx 24rpx;
+  transition: box-shadow 0.2s ease;
+}
+.card:active {
+  box-shadow: var(--shadow-md);
 }
 
-/* 输入框组 */
+/* ===== 输入框 ===== */
 .input-group {
   margin-bottom: 32rpx;
 }
-
 .input-group .label {
   display: block;
   font-size: 28rpx;
@@ -141,57 +184,86 @@ view, text, button, input, textarea, image {
   border-radius: 16rpx;
   font-size: 30rpx;
   background: #fff;
+  transition: border-color 0.2s;
+  outline: none;
+}
+.input-group input:focus,
+.input-group textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4rpx rgba(91, 154, 168, 0.1);
 }
 
-/* 标签 */
+/* ===== 标签 ===== */
 .tag {
   display: inline-block;
   padding: 6rpx 20rpx;
   border-radius: 40rpx;
-  font-size: 24rpx;
+  font-size: 22rpx;
   font-weight: 600;
 }
-
 .tag-primary {
   background: var(--primary-container);
   color: var(--on-primary-container);
 }
-
 .tag-success {
   background: #E8F5E9;
   color: var(--success);
 }
-
 .tag-warning {
   background: #FFF3E0;
   color: var(--warning);
 }
-
 .tag-error {
   background: #FFEBEE;
   color: var(--error);
 }
 
-/* 空状态 */
-.empty-state {
-  text-align: center;
-  padding: 120rpx 40rpx;
+/* ===== 分割线 ===== */
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 48rpx 0 32rpx;
+  gap: 20rpx;
+}
+.divider-line {
+  flex: 1;
+  height: 2rpx;
+  background: var(--outline-variant);
+}
+.divider-text {
   color: var(--on-surface-variant);
+  font-size: 24rpx;
+  white-space: nowrap;
 }
 
+/* ===== 空状态 ===== */
+.empty-state {
+  text-align: center;
+  padding: 160rpx 40rpx;
+  color: var(--on-surface-variant);
+}
 .empty-state .icon {
   font-size: 96rpx;
   margin-bottom: 24rpx;
   opacity: 0.5;
 }
+.empty-state .empty-text {
+  font-size: 30rpx;
+  margin-bottom: 12rpx;
+  display: block;
+}
+.empty-state .empty-hint {
+  font-size: 26rpx;
+  display: block;
+}
 
-/* 加载中 */
+/* ===== 加载中 ===== */
 .loading {
   display: flex;
   justify-content: center;
-  padding: 80rpx;
+  align-items: center;
+  padding: 120rpx;
 }
-
 .spinner {
   width: 64rpx;
   height: 64rpx;
@@ -201,6 +273,26 @@ view, text, button, input, textarea, image {
   animation: spin 0.8s linear infinite;
 }
 
+/* ===== 弹窗遮罩 ===== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

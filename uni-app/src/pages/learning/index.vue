@@ -414,6 +414,7 @@ onShow(() => {
 
 .content-card {
   margin-top: 24rpx;
+  padding: 32rpx 32rpx 40rpx;
 }
 .card-header {
   display: flex;
@@ -508,23 +509,17 @@ onShow(() => {
   padding: 32rpx;
 }
 
-/* 弹窗 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.4);
-  z-index: 999;
-  display: flex;
-  align-items: flex-end;
-}
 .word-popup {
   width: 100%;
+  max-width: 600px;
   background: white;
   border-radius: 32rpx 32rpx 0 0;
   padding: 40rpx 32rpx;
+  animation: slideUp 0.3s ease;
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }
 .popup-header {
   display: flex;
@@ -579,9 +574,11 @@ onShow(() => {
 
 .profile-sheet {
   width: 100%;
+  max-width: 600px;
   background: white;
   border-radius: 32rpx 32rpx 0 0;
   padding: 40rpx 32rpx;
+  animation: slideUp 0.3s ease;
 }
 .sheet-header {
   display: flex;

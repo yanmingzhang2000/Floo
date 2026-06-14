@@ -16,19 +16,23 @@
       </view>
 
       <view class="stats-grid">
-        <view class="stat-card card">
+        <view class="stat-card">
+          <text class="stat-icon">📅</text>
           <text class="stat-num">{{ weekly.total_checkin_days }}</text>
           <text class="stat-label">打卡天数</text>
         </view>
-        <view class="stat-card card">
+        <view class="stat-card">
+          <text class="stat-icon">📖</text>
           <text class="stat-num">{{ weekly.total_learned_count }}</text>
           <text class="stat-label">学习篇数</text>
         </view>
-        <view class="stat-card card">
+        <view class="stat-card">
+          <text class="stat-icon">🎯</text>
           <text class="stat-num">{{ weekly.avg_accuracy_rate.toFixed(0) }}%</text>
           <text class="stat-label">平均准确率</text>
         </view>
-        <view class="stat-card card">
+        <view class="stat-card">
+          <text class="stat-icon">⭐</text>
           <text class="stat-num">{{ weekly.total_earned_points }}</text>
           <text class="stat-label">获得积分</text>
         </view>
@@ -67,27 +71,29 @@ onMounted(async () => {
 .stats-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20rpx;
-  padding: 0 32rpx;
+  gap: 16rpx;
+  padding: 0 24rpx;
 }
 
 .stat-card {
   text-align: center;
-  padding: 32rpx 24rpx;
-  margin: 0;
+  padding: 32rpx 16rpx;
+  background: #fff;
+  border-radius: 20rpx;
+  box-shadow: var(--shadow-sm);
 }
 
+.stat-icon { font-size: 40rpx; display: block; margin-bottom: 8rpx; }
 .stat-num {
   font-size: 48rpx;
   font-weight: 800;
   color: var(--primary);
   display: block;
 }
-
 .stat-label {
   font-size: 24rpx;
   color: var(--on-surface-variant);
-  margin-top: 8rpx;
+  margin-top: 4rpx;
   display: block;
 }
 </style>

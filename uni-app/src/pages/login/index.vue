@@ -153,9 +153,7 @@ async function handleWechatLogin() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  padding: 40rpx;
+  padding: 80rpx 40rpx 60rpx;
 }
 .logo-area {
   text-align: center;

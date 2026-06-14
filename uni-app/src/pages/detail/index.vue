@@ -5,7 +5,7 @@
     </view>
 
     <view v-else-if="content">
-      <view class="card">
+      <view class="card detail-card">
         <view class="tags-row">
           <text class="tag tag-primary">{{ content.content_date }}</text>
           <text class="tag tag-success">{{ content.difficulty_level }}</text>
@@ -38,9 +38,9 @@
         </view>
       </view>
 
-      <view style="padding: 0 32rpx 32rpx">
-        <button class="btn btn-primary btn-block" @tap="goDictation">
-          <text>去默写</text>
+      <view class="detail-bottom">
+        <button class="btn btn-primary btn-block btn-lg" @tap="goDictation">
+          <text>去默写练习</text>
         </button>
       </view>
     </view>
@@ -176,11 +176,8 @@ function goDictation() {
 .word-phonetic { font-size: 22rpx; color: var(--on-surface-variant); }
 .word-meaning { font-size: 24rpx; color: var(--on-surface-variant); }
 
-.modal-overlay {
-  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.4); z-index: 999;
-  display: flex; align-items: flex-end;
-}
+.detail-card { margin: 24rpx; }
+.detail-bottom { padding: 0 24rpx 48rpx; }
 .word-popup {
   width: 100%;
   background: white;

@@ -1,5 +1,8 @@
 <template>
   <view class="page-container">
+    <view class="page-header">
+      <text class="title">历史内容</text>
+    </view>
     <view v-if="loading" class="loading">
       <view class="spinner"></view>
     </view>
