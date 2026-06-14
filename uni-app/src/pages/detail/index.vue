@@ -199,7 +199,7 @@ function navBack() { uni.navigateBack() }
 .toolbar-icon { font-size: 40rpx; }
 .toolbar-label { font-size: 22rpx; color: var(--on-surface-variant); font-weight: 500; }
 
-.detail-card { margin: 0 24rpx 24rpx; }
+.detail-card { margin: 0 0 24rpx; }
 .detail-meta { display: flex; gap: 12rpx; margin-bottom: 20rpx; }
 .detail-title {
   font-size: 36rpx; font-weight: 700; margin-bottom: 24rpx;
@@ -212,7 +212,7 @@ function navBack() { uni.navigateBack() }
 }
 .translation-text { font-size: 28rpx; line-height: 1.8; display: block; }
 
-.bottom-actions { padding: 0 24rpx 48rpx; }
+.bottom-actions { padding: 0 0 48rpx; }
 
 .speak-btn {
   width: 72rpx; height: 72rpx;

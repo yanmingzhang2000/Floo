@@ -388,7 +388,7 @@ onShow(loadData)
   text-align: center;
 }
 
-.section { padding: 24rpx 24rpx; }
+.section { padding: 24rpx 0; }
 .section-title { font-size: 28rpx; font-weight: 700; margin-bottom: 20rpx; display: block; }
 
 .task-list { display: flex; flex-direction: column; gap: 16rpx; }

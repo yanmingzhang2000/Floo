@@ -174,7 +174,7 @@ onMounted(loadData)
 .rarity.rare { color: #9C27B0; }
 
 .odds-note {
-  text-align: center; padding: 24rpx 32rpx 48rpx;
+  text-align: center; padding: 24rpx 0 48rpx;
   font-size: 22rpx; color: var(--on-surface-muted);
 }
 </style>

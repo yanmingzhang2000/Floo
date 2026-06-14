@@ -67,7 +67,7 @@ onMounted(async () => {
 <style scoped>
 .list-view { padding: 16rpx 0; }
 .list-item {
-  display: flex; align-items: center; gap: 20rpx; padding: 28rpx;
+  display: flex; align-items: center; gap: 20rpx; padding: 28rpx 0;
 }
 .list-item-icon { font-size: 48rpx; flex-shrink: 0; }
 .list-item-info { flex: 1; min-width: 0; }

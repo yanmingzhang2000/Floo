@@ -153,18 +153,18 @@ async function handleBindWechat() {
 .pref-group:first-child { margin-top: 0; }
 .pref-group-title {
   font-size: 26rpx; color: var(--on-surface-variant);
-  padding: 0 32rpx; margin-bottom: 12rpx; display: block; font-weight: 600;
+  padding: 0; margin-bottom: 12rpx; display: block; font-weight: 600;
 }
 .pref-card { padding: 0; }
 .pref-row {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 28rpx 32rpx;
+  padding: 28rpx 0;
 }
 .pref-label { font-size: 28rpx; color: var(--on-surface); }
 .pref-value { display: flex; align-items: center; gap: 8rpx; }
 .pref-value text:first-child { font-size: 28rpx; color: var(--primary); }
 .pref-arrow { font-size: 36rpx; color: var(--on-surface-muted); }
-.pref-hint { font-size: 22rpx; color: var(--on-surface-muted); padding: 12rpx 32rpx 0; display: block; }
+.pref-hint { font-size: 22rpx; color: var(--on-surface-muted); padding: 12rpx 0 0; display: block; }
 
-.pref-save { padding: 48rpx 32rpx; }
+.pref-save { padding: 48rpx 0; }
 </style>

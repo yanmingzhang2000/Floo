@@ -178,7 +178,7 @@ onShow(loadData)
   display: block; font-size: 24rpx; color: var(--on-surface-variant); margin-top: 16rpx;
 }
 
-.calendar-card { margin: 0 24rpx 24rpx; padding: 28rpx; }
+.calendar-card { margin: 0 0 24rpx; padding: 28rpx; }
 .calendar-header {
   display: flex; justify-content: space-between; align-items: center; margin-bottom: 24rpx;
 }
@@ -213,11 +213,11 @@ onShow(loadData)
 }
 
 .checkin-success {
-  margin: 0 24rpx 24rpx; padding: 32rpx;
+  margin: 0 0 24rpx; padding: 32rpx;
   background: var(--success-container); border-radius: 20rpx; text-align: center;
 }
 .checkin-success-title { font-size: 32rpx; font-weight: 700; margin-bottom: 8rpx; display: block; color: var(--success); }
 .checkin-success-msg { font-size: 26rpx; display: block; color: var(--success); }
 
-.checkin-links { padding: 0 24rpx 48rpx; }
+.checkin-links { padding: 0 0 48rpx; }
 </style>

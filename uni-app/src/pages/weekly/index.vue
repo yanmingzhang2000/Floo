@@ -92,7 +92,7 @@ onMounted(async () => {
 
 .stats-grid {
   display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx;
-  padding: 0 24rpx;
+  padding: 0;
 }
 .stat-item {
   text-align: center; padding: 32rpx 16rpx;
@@ -102,5 +102,5 @@ onMounted(async () => {
 .stat-value { font-size: 48rpx; font-weight: 800; color: var(--primary); display: block; }
 .stat-label { font-size: 24rpx; color: var(--on-surface-variant); margin-top: 4rpx; display: block; }
 
-.weekly-footer { padding: 32rpx 24rpx; }
+.weekly-footer { padding: 32rpx 0; }
 </style>

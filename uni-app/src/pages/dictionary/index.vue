@@ -187,7 +187,7 @@ onShow(loadData)
 <style scoped>
 .search-bar {
   display: flex; align-items: center; gap: 16rpx;
-  padding: 20rpx 24rpx;
+  padding: 20rpx 0;
   background: #fff;
   border-bottom: 2rpx solid var(--outline-variant);
 }
@@ -206,7 +206,7 @@ onShow(loadData)
 .search-placeholder { color: var(--on-surface-muted); }
 .search-clear { font-size: 28rpx; color: var(--on-surface-muted); padding: 8rpx; }
 
-.search-result-card { margin: 24rpx; }
+.search-result-card { margin: 24rpx 0; }
 .search-result-header {
   display: flex; align-items: center; justify-content: space-between; margin-bottom: 16rpx;
 }

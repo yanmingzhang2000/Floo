@@ -237,7 +237,7 @@ onShow(loadData)
 .card-track {
   display: inline-flex;
   gap: 24rpx;
-  padding: 0 24rpx;
+  padding: 0;
 }
 .article-card {
   width: 520rpx;
@@ -287,9 +287,9 @@ onShow(loadData)
 .action-bar {
   display: flex;
   gap: 16rpx;
-  padding: 16rpx 24rpx;
+  padding: 24rpx 0;
 }
 .action-btn { flex: 1; font-size: 24rpx; padding: 20rpx 16rpx; }
 
-.review-bar { padding: 16rpx 24rpx 32rpx; }
+.review-bar { padding: 16rpx 0 32rpx; }
 </style>

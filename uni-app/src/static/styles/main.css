@@ -45,7 +45,7 @@ view, text, button, input, textarea, image { box-sizing: border-box; }
   width: 100%;
   min-height: 100vh;
   background: var(--surface);
-  padding-top: 0;
+  padding: 0 32rpx;
 }
 
 /* 内容区（顶部导航 + 底部 Tab 之间的滚动区） */
