@@ -64,42 +64,46 @@ view, text, button, input, textarea, image { box-sizing: border-box; }
 }
 
 /* ===== 顶部导航 ===== */
+/* nav-bar 本身高度 88rpx，内容在安全区以下垂直居中；
+   背景主题色延伸覆盖刘海/状态栏区域 */
 .nav-bar {
   display: flex;
-  align-items: center;
+  align-items: flex-end;        /* 内容贴底，安全区上方留空给背景色 */
   justify-content: space-between;
-  height: 88rpx;
-  padding: 0;
-  padding-top: env(safe-area-inset-top, 0);
-  background: var(--surface);
+  height: calc(88rpx + env(safe-area-inset-top, 0px));
+  padding: 0 0 4rpx;
+  background: var(--primary);
   position: sticky;
   top: 0;
   z-index: 100;
-  margin-bottom: 8rpx;
+  margin: 0 -32rpx 16rpx;      /* 突破 page-container 的 32rpx padding，全宽显示 */
+  padding-left: 32rpx;
+  padding-right: 32rpx;
 }
 .nav-left { display: flex; align-items: center; gap: 16rpx; min-width: 72rpx; }
 .nav-back {
   width: 56rpx; height: 56rpx;
   display: flex; align-items: center; justify-content: center;
-  font-size: 40rpx; color: var(--on-surface);
+  font-size: 40rpx; color: #fff;
   border-radius: 50%;
 }
-.nav-back:active { background: var(--surface-container); }
+.nav-back:active { background: rgba(255,255,255,0.15); }
 .nav-title {
   font-size: 34rpx;
   font-weight: 700;
-  color: var(--on-surface);
+  color: #fff;
   text-align: center;
   flex: 1;
 }
 .nav-right { min-width: 72rpx; display: flex; justify-content: flex-end; }
 .nav-avatar {
   width: 64rpx; height: 64rpx;
-  background: var(--primary);
+  background: rgba(255,255,255,0.25);
   color: white;
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 28rpx; font-weight: 700;
+  border: 2rpx solid rgba(255,255,255,0.5);
 }
 
 /* ===== 底部 Tab 安全区 ===== */
@@ -399,4 +403,23 @@ view, text, button, input, textarea, image { box-sizing: border-box; }
 
 @media (min-width: 768px) {
   @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+}
+
+/* ===== H5 底部 Tab 栏：与内容左右对齐 ===== */
+/* uni-app H5 的 tabBar 用 CSS 变量 --window-left/--window-right 控制左右边界 */
+.uni-tabbar-bottom .uni-tabbar,
+.uni-tabbar-bottom {
+  left: 32rpx !important;
+  right: 32rpx !important;
+  border-radius: 24rpx 24rpx 0 0;
+  box-shadow: 0 -2px 16px rgba(0,0,0,0.08);
+}
+
+@media (min-width: 768px) {
+  /* 桌面端 tabBar 与 750px 容器对齐 */
+  .uni-tabbar-bottom .uni-tabbar,
+  .uni-tabbar-bottom {
+    left: calc(50% - 375px) !important;
+    right: calc(50% - 375px) !important;
+  }
 }
