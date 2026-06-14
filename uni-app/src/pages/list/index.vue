@@ -4,7 +4,7 @@
       <view class="nav-left">
         <view class="nav-back" @tap="uni.navigateBack()"><text>‹</text></view>
       </view>
-      <text class="nav-title">历史内容</text>
+      <text class="nav-title">往期内容</text>
       <view class="nav-right">
         <view class="nav-avatar">
           <text>{{ usernameInitial }}</text>
@@ -18,21 +18,25 @@
 
     <view v-else-if="list.length === 0" class="empty-state">
       <text class="icon">📚</text>
-      <text class="empty-text">暂无历史内容</text>
+      <text class="empty-text">暂无往期内容</text>
     </view>
 
     <view v-else class="list-view">
-      <view v-for="item in list" :key="item.id" class="card list-item" @tap="goDetail(item.id)">
-        <view class="list-item-icon">
-          <text>📄</text>
-        </view>
+      <view
+        v-for="item in list"
+        :key="item.id"
+        class="list-item"
+        @tap="goDetail(item.id)"
+      >
+        <!-- 主信息 -->
         <view class="list-item-info">
           <text class="list-item-title">{{ item.title }}</text>
           <view class="list-item-meta">
-            <text>{{ item.content_date }}</text>
-            <text class="tag tag-primary" style="margin-left: 12rpx">{{ item.difficulty_level }}</text>
+            <text class="tag tag-success">{{ themeLabels[item.theme_type] || item.theme_type }}</text>
+            <text class="list-item-date">{{ item.content_date }}</text>
           </view>
         </view>
+        <!-- 箭头 -->
         <text class="list-item-arrow">›</text>
       </view>
     </view>
@@ -52,6 +56,11 @@ const list = ref<LearningContent[]>([])
 
 const usernameInitial = computed(() => (auth.username?.[0] || '?').toUpperCase())
 
+const themeLabels: Record<string, string> = {
+  ai_tech: 'AI科技', product_tech: '产品技术', business: '财经商业',
+  daily_news: '日常新闻', self_growth: '个人成长', all_random: '随机', custom: '自定义',
+}
+
 function goDetail(id: number) { navTo(`/pages/detail/index?id=${id}`) }
 
 onMounted(async () => {
@@ -65,13 +74,50 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.list-view { padding: 16rpx 0; }
-.list-item {
-  display: flex; align-items: center; gap: 20rpx; padding: 28rpx 0;
+.list-view {
+  padding: 8rpx 0 40rpx;
 }
-.list-item-icon { font-size: 48rpx; flex-shrink: 0; }
-.list-item-info { flex: 1; min-width: 0; }
-.list-item-title { font-weight: 600; font-size: 28rpx; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.list-item-meta { font-size: 24rpx; color: var(--on-surface-variant); margin-top: 8rpx; display: flex; align-items: center; }
-.list-item-arrow { font-size: 36rpx; color: var(--on-surface-muted); flex-shrink: 0; }
+
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid var(--outline-variant);
+}
+.list-item:last-child { border-bottom: none; }
+
+.list-item-info {
+  flex: 1;
+  min-width: 0;  /* 让 flex 子项可以收缩，触发 overflow 截断 */
+}
+.list-item-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--on-surface);
+  display: block;
+  /* 最多两行，超出省略 */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.5;
+  margin-bottom: 10rpx;
+}
+.list-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.list-item-date {
+  font-size: 22rpx;
+  color: var(--on-surface-muted);
+}
+
+.list-item-arrow {
+  font-size: 40rpx;
+  color: var(--on-surface-muted);
+  flex-shrink: 0;
+  margin-left: 8rpx;
+}
 </style>
