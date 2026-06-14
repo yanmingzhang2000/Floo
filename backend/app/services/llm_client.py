@@ -20,7 +20,7 @@ async def chat_json(
     system_prompt: str,
     user_prompt: str,
     temperature: float = 0.3,
-    timeout: float = 60.0,
+    timeout: float = 90.0,  # 生成3篇文章需要更长时间，Railway冷启动也有延迟
 ) -> dict[str, Any]:
     """调用 LLM 并解析返回的 JSON。
 

@@ -25,7 +25,7 @@ export const dailyApi = {
   getToday: (userId: number) =>
     api.get('/api/daily/today', { params: { user_id: userId } }),
   generate: (userId: number, themeOverride?: string, force = false) =>
-    api.post('/api/daily/generate', { user_id: userId, theme_override: themeOverride, force }),
+    api.post('/api/daily/generate', { user_id: userId, theme_override: themeOverride, force }, { timeout: 120000 }),
   getList: (limit = 20) =>
     api.get('/api/daily/list', { params: { limit } }),
   getContent: (contentId: number) =>

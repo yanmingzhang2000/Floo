@@ -64,19 +64,24 @@ view, text, button, input, textarea, image { box-sizing: border-box; }
 }
 
 /* ===== 顶部导航 ===== */
-/* nav-bar 本身高度 88rpx，内容在安全区以下垂直居中；
-   背景主题色延伸覆盖刘海/状态栏区域 */
+/* 背景撑满刘海/状态栏 + 44rpx 导航内容区。
+   align-items:flex-end + padding-bottom 让内容压到底部，
+   在状态栏以下的 88rpx 中视觉上居中。                     */
 .nav-bar {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  height: calc(88rpx + env(safe-area-inset-top, 0px));
-  padding: 0 20rpx 12rpx;        /* 底部 12rpx 让内容离顶部状态区更远 */
+  padding-top: env(safe-area-inset-top, 44px);
+  padding-left: 20rpx;
+  padding-right: 20rpx;
+  padding-bottom: 20rpx;  /* 内容行底部留白，让文字在 88rpx 内居中 */
+  min-height: calc(88rpx + env(safe-area-inset-top, 44px));
   background: var(--primary);
   position: sticky;
   top: 0;
   z-index: 100;
-  margin: 0 -20rpx 16rpx;       /* 突破容器 20rpx padding 全宽显示 */
+  margin: 0 -20rpx 16rpx;
+  box-sizing: border-box;
 }
 .nav-left { display: flex; align-items: center; gap: 16rpx; min-width: 72rpx; }
 .nav-back {
