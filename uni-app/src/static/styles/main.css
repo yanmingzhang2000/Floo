@@ -45,7 +45,7 @@ view, text, button, input, textarea, image { box-sizing: border-box; }
   width: 100%;
   min-height: 100vh;
   background: var(--surface);
-  padding: 0 32rpx;
+  padding: 0 20rpx;
 }
 
 /* 内容区（顶部导航 + 底部 Tab 之间的滚动区） */
@@ -68,17 +68,15 @@ view, text, button, input, textarea, image { box-sizing: border-box; }
    背景主题色延伸覆盖刘海/状态栏区域 */
 .nav-bar {
   display: flex;
-  align-items: flex-end;        /* 内容贴底，安全区上方留空给背景色 */
+  align-items: flex-end;
   justify-content: space-between;
   height: calc(88rpx + env(safe-area-inset-top, 0px));
-  padding: 0 0 4rpx;
+  padding: 0 20rpx 12rpx;        /* 底部 12rpx 让内容离顶部状态区更远 */
   background: var(--primary);
   position: sticky;
   top: 0;
   z-index: 100;
-  margin: 0 -32rpx 16rpx;      /* 突破 page-container 的 32rpx padding，全宽显示 */
-  padding-left: 32rpx;
-  padding-right: 32rpx;
+  margin: 0 -20rpx 16rpx;       /* 突破容器 20rpx padding 全宽显示 */
 }
 .nav-left { display: flex; align-items: center; gap: 16rpx; min-width: 72rpx; }
 .nav-back {
@@ -409,8 +407,8 @@ view, text, button, input, textarea, image { box-sizing: border-box; }
 /* uni-app H5 的 tabBar 用 CSS 变量 --window-left/--window-right 控制左右边界 */
 .uni-tabbar-bottom .uni-tabbar,
 .uni-tabbar-bottom {
-  left: 32rpx !important;
-  right: 32rpx !important;
+  left: 20rpx !important;
+  right: 20rpx !important;
   border-radius: 24rpx 24rpx 0 0;
   box-shadow: 0 -2px 16px rgba(0,0,0,0.08);
 }
