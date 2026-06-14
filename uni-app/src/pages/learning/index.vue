@@ -34,6 +34,19 @@
         </view>
       </view>
 
+      <!-- 功能按钮：放在文章卡片上方 -->
+      <view class="action-bar">
+        <button class="btn btn-primary action-btn" :disabled="generating || remainingCount <= 0" @tap="handleGenerate">
+          <text>{{ generating ? '生成中...' : (remainingCount > 0 ? `✨ AI 生成 (${remainingCount})` : '今日已用完') }}</text>
+        </button>
+        <button class="btn btn-outline action-btn" @tap="showCustomContent = true">
+          <text>📝 粘贴文章</text>
+        </button>
+        <button class="btn btn-outline action-btn" @tap="goList">
+          <text>📋 往期内容</text>
+        </button>
+      </view>
+
       <!-- 空状态 -->
       <view v-if="contents.length === 0" class="empty-state">
         <text class="icon">📝</text>
@@ -52,7 +65,6 @@
               @tap="goDetail(item.id)"
             >
               <view class="article-card-tags">
-                <text class="tag tag-primary">{{ item.difficulty_level }}</text>
                 <text class="tag tag-success">{{ themeLabels[item.theme_type] || item.theme_type }}</text>
               </view>
               <text class="article-card-title">{{ item.title }}</text>
@@ -74,19 +86,6 @@
             :class="{ active: idx === currentIdx }"
           ></view>
         </view>
-      </view>
-
-      <!-- 功能按钮（始终显示） -->
-      <view class="action-bar">
-        <button class="btn btn-primary action-btn" :disabled="generating || remainingCount <= 0" @tap="handleGenerate">
-          <text>{{ generating ? '生成中...' : (remainingCount > 0 ? `✨ 生成 (${remainingCount})` : '已用完') }}</text>
-        </button>
-        <button class="btn btn-outline action-btn" @tap="showCustomContent = true">
-          <text>📝 自定义</text>
-        </button>
-        <button class="btn btn-outline action-btn" @tap="goList">
-          <text>📋 历史</text>
-        </button>
       </view>
 
       <!-- 去复习（有内容时） -->
