@@ -21,6 +21,37 @@ log = logging.getLogger(__name__)
 Base.metadata.create_all(bind=engine)
 log.debug("数据库表已同步")
 
+# 兼容性补丁：检查并补齐缺失列（避免 schema 不匹配导致 500）
+def _patch_missing_columns():
+    """检查 user_main 表是否缺少 openid 列，缺则补上。
+    为什么不用 Alembic：MVP 阶段求快速迭代，后续再规范。"""
+    from sqlalchemy import text
+    db = SessionLocal()
+    try:
+        # 检查 openid 列是否存在
+        result = db.execute(text(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user_main' AND COLUMN_NAME = 'openid'"
+        )).scalar()
+        
+        if result == 0:
+            log.info("检测到 user_main 缺少 openid 列，开始补列")
+            db.execute(text(
+                "ALTER TABLE user_main ADD COLUMN openid VARCHAR(128) NULL UNIQUE, "
+                "ADD INDEX ix_user_main_openid (openid)"
+            ))
+            db.commit()
+            log.info("openid 列已补齐")
+        else:
+            log.debug("user_main.openid 列已存在，跳过补列")
+    except Exception as e:
+        db.rollback()
+        log.warning("补列检查失败（如果数据库已正常可忽略）: %s", e)
+    finally:
+        db.close()
+
+_patch_missing_columns()
+
 # 初始化盲盒角色数据（仅首次）
 CHARACTERS_INIT = [
     {"name": "Wisdom", "meaning": "智慧", "rarity": "common", "weight": 7000, "description": "洞察世事的智慧"},
