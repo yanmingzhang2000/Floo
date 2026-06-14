@@ -1,12 +1,41 @@
 <template>
   <view class="page-container">
+    <view class="nav-bar">
+      <view class="nav-left">
+        <view class="nav-back" @tap="navBack"><text>‹</text></view>
+      </view>
+      <text class="nav-title">文章详情</text>
+      <view class="nav-right">
+        <view class="nav-avatar">
+          <text>{{ usernameInitial }}</text>
+        </view>
+      </view>
+    </view>
+
     <view v-if="loading" class="loading">
       <view class="spinner"></view>
     </view>
 
-    <view v-else-if="content">
+    <view v-else-if="content" class="detail-wrap">
+      <!-- 阅读工具栏 -->
+      <view class="read-toolbar">
+        <view class="toolbar-item" @tap="speakContent">
+          <text class="toolbar-icon">🔊</text>
+          <text class="toolbar-label">朗读</text>
+        </view>
+        <view class="toolbar-item" @tap="showTranslation = !showTranslation">
+          <text class="toolbar-icon">{{ showTranslation ? '📖' : '📕' }}</text>
+          <text class="toolbar-label">{{ showTranslation ? '隐藏译文' : '查看译文' }}</text>
+        </view>
+        <view class="toolbar-item" @tap="goReview">
+          <text class="toolbar-icon">✏️</text>
+          <text class="toolbar-label">默写</text>
+        </view>
+      </view>
+
+      <!-- 文章内容 -->
       <view class="card detail-card">
-        <view class="tags-row">
+        <view class="detail-meta">
           <text class="tag tag-primary">{{ content.content_date }}</text>
           <text class="tag tag-success">{{ content.difficulty_level }}</text>
         </view>
@@ -22,11 +51,13 @@
         </view>
       </view>
 
-      <view v-if="content.translation" class="card">
+      <!-- 译文 -->
+      <view v-if="showTranslation && content.translation" class="card">
         <text class="section-label">中文译文</text>
         <text class="translation-text">{{ content.translation }}</text>
       </view>
 
+      <!-- 核心词汇 -->
       <view v-if="content.words && content.words.length" class="card">
         <text class="section-label">核心词汇</text>
         <view class="words-wrap">
@@ -38,8 +69,9 @@
         </view>
       </view>
 
-      <view class="detail-bottom">
-        <button class="btn btn-primary btn-block btn-lg" @tap="goDictation">
+      <!-- 底部行动栏 -->
+      <view class="bottom-actions">
+        <button class="btn btn-primary btn-block btn-lg" @tap="goReview">
           <text>去默写练习</text>
         </button>
       </view>
@@ -65,22 +97,24 @@ import { onLoad } from '@dcloudio/uni-app'
 import { dailyApi, dictionaryApi } from '@/api'
 import { speakWord, initVoices } from '@/composables/useSpeech'
 import { getBaseForm } from '@/composables/useWordForm'
-import { navTo } from '@/utils/router'
+import { useAuthStore } from '@/stores'
 import type { LearningContent, WordItem } from '@/types'
 
+const auth = useAuthStore()
 const loading = ref(true)
 const content = ref<LearningContent | null>(null)
 const wordPopup = ref<{ word: string; phonetic?: string; meaning: string } | null>(null)
+const showTranslation = ref(false)
 let contentId = 0
+
+const usernameInitial = computed(() => (auth.username?.[0] || '?').toUpperCase())
 
 onLoad((query) => {
   contentId = Number(query?.id || 0)
   loadContent()
 })
 
-onMounted(() => {
-  initVoices()
-})
+onMounted(() => { initVoices() })
 
 const articleParts = computed(() => {
   if (!content.value) return []
@@ -109,10 +143,12 @@ async function loadContent() {
   try {
     const { data } = await dailyApi.getContent(contentId)
     content.value = data
-  } catch {
-    content.value = null
-  }
+  } catch { content.value = null }
   loading.value = false
+}
+
+function speakContent() {
+  if (content.value?.article) speakWord(content.value.article.slice(0, 500))
 }
 
 async function handleWordTap(rawWord: string) {
@@ -128,70 +164,59 @@ async function handleWordTap(rawWord: string) {
     wordPopup.value = meaning
       ? { word, phonetic: phonetic ? `/${phonetic}/` : undefined, meaning }
       : { word, meaning: '未找到释义' }
-  } catch {
-    wordPopup.value = { word, meaning: '查询失败' }
-  }
+  } catch { wordPopup.value = { word, meaning: '查询失败' } }
 }
 
 function showWordDetail(w: WordItem) {
   wordPopup.value = { word: w.word, phonetic: w.phonetic, meaning: w.meaning }
 }
 
-function goDictation() {
-  navTo('/pages/review/index')
-}
+function goReview() { uni.switchTab({ url: '/pages/review/index' }) }
+function navBack() { uni.navigateBack() }
 </script>
 
 <style scoped>
-.tags-row { display: flex; gap: 16rpx; margin-bottom: 20rpx; }
-.detail-title { font-size: 36rpx; font-weight: 700; margin-bottom: 24rpx; display: block; line-height: 1.5; }
+.detail-wrap { padding-bottom: 120rpx; }
 
-.article-body { font-size: 30rpx; line-height: 1.8; color: var(--on-surface); }
-.word-span { display: inline; }
-.keyword {
-  background: var(--primary-container);
-  color: var(--on-primary-container);
-  padding: 0 4rpx;
-  border-radius: 4rpx;
-  font-weight: 600;
+.read-toolbar {
+  display: flex;
+  justify-content: space-around;
+  padding: 24rpx;
+  gap: 16rpx;
 }
-.clickable-word {
-  color: var(--primary);
-  text-decoration: underline;
-  text-decoration-style: dashed;
-}
-
-.section-label { font-size: 28rpx; color: var(--on-surface-variant); margin-bottom: 16rpx; display: block; }
-.translation-text { font-size: 28rpx; line-height: 1.8; display: block; }
-
-.words-wrap { display: flex; flex-wrap: wrap; gap: 16rpx; }
-.word-chip {
-  padding: 16rpx 24rpx;
-  background: var(--surface-container);
-  border-radius: 16rpx;
+.toolbar-item {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  padding: 20rpx 32rpx;
+  background: #fff;
+  border-radius: 20rpx;
+  box-shadow: var(--shadow-sm);
+  flex: 1;
 }
-.word-text { font-weight: 600; font-size: 28rpx; }
-.word-phonetic { font-size: 22rpx; color: var(--on-surface-variant); }
-.word-meaning { font-size: 24rpx; color: var(--on-surface-variant); }
+.toolbar-item:active { opacity: 0.7; }
+.toolbar-icon { font-size: 40rpx; }
+.toolbar-label { font-size: 22rpx; color: var(--on-surface-variant); font-weight: 500; }
 
-.detail-card { margin: 24rpx; }
-.detail-bottom { padding: 0 24rpx 48rpx; }
-.word-popup {
-  width: 100%;
-  background: white;
-  border-radius: 32rpx 32rpx 0 0;
-  padding: 40rpx 32rpx;
+.detail-card { margin: 0 24rpx 24rpx; }
+.detail-meta { display: flex; gap: 12rpx; margin-bottom: 20rpx; }
+.detail-title {
+  font-size: 36rpx; font-weight: 700; margin-bottom: 24rpx;
+  display: block; line-height: 1.5;
 }
-.popup-header { display: flex; align-items: center; gap: 24rpx; }
-.popup-word { font-size: 44rpx; font-weight: 700; flex: 1; }
+
+.section-label {
+  font-size: 26rpx; color: var(--on-surface-variant);
+  margin-bottom: 16rpx; display: block; font-weight: 600;
+}
+.translation-text { font-size: 28rpx; line-height: 1.8; display: block; }
+
+.bottom-actions { padding: 0 24rpx 48rpx; }
+
 .speak-btn {
   width: 72rpx; height: 72rpx;
   background: var(--primary-container); border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 36rpx;
+  display: flex; align-items: center; justify-content: center; font-size: 36rpx;
 }
-.popup-phonetic { color: var(--on-surface-variant); margin-top: 8rpx; display: block; font-size: 26rpx; }
-.popup-meaning { margin-top: 20rpx; font-size: 32rpx; display: block; }
 </style>

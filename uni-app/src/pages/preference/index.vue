@@ -1,61 +1,81 @@
 <template>
   <view class="page-container">
-    <view class="page-header">
-      <text class="title">学习偏好</text>
+    <view class="nav-bar">
+      <view class="nav-left">
+        <view class="nav-back" @tap="uni.navigateBack()"><text>‹</text></view>
+      </view>
+      <text class="nav-title">学习偏好</text>
+      <view class="nav-right">
+        <view class="nav-avatar">
+          <text>{{ usernameInitial }}</text>
+        </view>
+      </view>
     </view>
+
     <view v-if="loading" class="loading">
       <view class="spinner"></view>
     </view>
 
-    <view v-else>
-      <view class="card">
-        <text class="card-label">难度等级</text>
-        <picker mode="selector" :range="difficulties" :value="difficultyIdx" @change="onDifficultyChange">
-          <view class="picker-input">
-            <text>{{ difficulties[difficultyIdx] }}</text>
-            <text class="arrow-icon">›</text>
+    <view v-else class="pref-wrap">
+      <view class="pref-group">
+        <text class="pref-group-title">文章设置</text>
+        <view class="card pref-card">
+          <view class="pref-row">
+            <text class="pref-label">难度等级</text>
+            <picker mode="selector" :range="difficultyLabels" :value="difficultyIdx" @change="e => difficultyIdx = e.detail.value">
+              <view class="pref-value">
+                <text>{{ difficultyLabels[difficultyIdx] }}</text>
+                <text class="pref-arrow">›</text>
+              </view>
+            </picker>
           </view>
-        </picker>
+        </view>
+        <view class="card pref-card">
+          <view class="pref-row">
+            <text class="pref-label">阅读主题</text>
+            <picker mode="selector" :range="themeLabels" :value="themeIdx" @change="e => themeIdx = e.detail.value">
+              <view class="pref-value">
+                <text>{{ themeLabels[themeIdx] }}</text>
+                <text class="pref-arrow">›</text>
+              </view>
+            </picker>
+          </view>
+        </view>
       </view>
 
-      <view class="card">
-        <text class="card-label">主题类型</text>
-        <picker mode="selector" :range="themes" :value="themeIdx" @change="onThemeChange">
-          <view class="picker-input">
-            <text>{{ themes[themeIdx] }}</text>
-            <text class="arrow-icon">›</text>
+      <view class="pref-group">
+        <text class="pref-group-title">学习目标</text>
+        <view class="card pref-card">
+          <view class="pref-row">
+            <text class="pref-label">每日学习目标</text>
+            <picker mode="selector" :range="goalLabels" :value="goalIdx" @change="e => goalIdx = e.detail.value">
+              <view class="pref-value">
+                <text>{{ goalLabels[goalIdx] }}</text>
+                <text class="pref-arrow">›</text>
+              </view>
+            </picker>
           </view>
-        </picker>
+        </view>
       </view>
 
-      <view class="card">
-        <text class="card-label">每日目标（分钟）</text>
-        <picker mode="selector" :range="goals" :value="goalIdx" @change="onGoalChange">
-          <view class="picker-input">
-            <text>{{ goals[goalIdx] }} 分钟</text>
-            <text class="arrow-icon">›</text>
-          </view>
-        </picker>
-      </view>
-
-      <view style="padding: 32rpx">
-        <button class="btn btn-primary btn-block" :disabled="saving" @tap="handleSave">
+      <view class="pref-save">
+        <button class="btn btn-primary btn-block btn-lg" :disabled="saving" @tap="handleSave">
           <text>{{ saving ? '保存中...' : '保存设置' }}</text>
         </button>
       </view>
 
       <!-- #ifdef MP-WEIXIN -->
-      <view class="bind-section">
-        <view class="divider">
-          <view class="divider-line"></view>
-          <text class="divider-text">账号绑定</text>
-          <view class="divider-line"></view>
+      <view class="pref-group">
+        <text class="pref-group-title">账号</text>
+        <view class="card pref-card">
+          <view class="pref-row">
+            <text class="pref-label">绑定微信</text>
+            <button class="btn btn-sm btn-success" :disabled="wxLoading" @tap="handleBindWechat">
+              <text>{{ wxLoading ? '绑定中...' : '立即绑定' }}</text>
+            </button>
+          </view>
         </view>
-        <button class="btn-wechat" :disabled="wxLoading" @tap="handleBindWechat">
-          <text v-if="wxLoading">绑定中...</text>
-          <text v-else>绑定微信</text>
-        </button>
-        <text class="bind-hint">绑定后可使用微信一键登录</text>
+        <text class="pref-hint">绑定后可使用微信一键登录</text>
       </view>
       <!-- #endif -->
     </view>
@@ -63,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { userApi } from '@/api'
 import { useAuthStore } from '@/stores'
 
@@ -73,24 +93,17 @@ const saving = ref(false)
 const wxLoading = ref(false)
 
 const difficulties = ['easy', 'medium', 'hard']
+const difficultyLabels = ['简单', '中等', '困难']
 const themes = ['daily_news', 'ai_tech', 'product_tech', 'business', 'self_growth', 'all_random']
+const themeLabels = ['日常新闻', 'AI科技', '产品技术', '财经商业', '个人成长', '随机主题']
 const goals = [5, 10, 15, 30, 45, 60]
+const goalLabels = ['5分钟', '10分钟', '15分钟', '30分钟', '45分钟', '60分钟']
 
 const difficultyIdx = ref(1)
 const themeIdx = ref(0)
 const goalIdx = ref(2)
 
-function onDifficultyChange(e: any) {
-  difficultyIdx.value = e.detail.value
-}
-
-function onThemeChange(e: any) {
-  themeIdx.value = e.detail.value
-}
-
-function onGoalChange(e: any) {
-  goalIdx.value = e.detail.value
-}
+const usernameInitial = computed(() => (auth.username?.[0] || '?').toUpperCase())
 
 async function handleSave() {
   saving.value = true
@@ -102,9 +115,7 @@ async function handleSave() {
     })
     uni.showToast({ title: '保存成功', icon: 'success' })
     setTimeout(() => uni.navigateBack(), 1000)
-  } catch {
-    uni.showToast({ title: '保存失败', icon: 'none' })
-  }
+  } catch { uni.showToast({ title: '保存失败', icon: 'none' }) }
   saving.value = false
 }
 
@@ -126,85 +137,34 @@ async function handleBindWechat() {
     const loginRes = await new Promise<UniApp.LoginRes>((resolve, reject) => {
       uni.login({ success: resolve, fail: reject })
     })
-    if (!loginRes.code) {
-      uni.showToast({ title: '获取code失败', icon: 'none' })
-      return
-    }
+    if (!loginRes.code) { uni.showToast({ title: '获取code失败', icon: 'none' }); return }
     await userApi.bindWechat(auth.currentUserId, loginRes.code)
     uni.showToast({ title: '绑定成功', icon: 'success' })
   } catch (e: any) {
-    const msg = e.data?.detail || e.errMsg || '绑定失败'
-    uni.showToast({ title: msg, icon: 'none' })
-  } finally {
-    wxLoading.value = false
-  }
+    uni.showToast({ title: e.data?.detail || '绑定失败', icon: 'none' })
+  } finally { wxLoading.value = false }
 }
 // #endif
 </script>
 
 <style scoped>
-.card-label {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--on-surface);
-  margin-bottom: 16rpx;
-  display: block;
+.pref-wrap { padding-bottom: 48rpx; }
+.pref-group { margin-top: 32rpx; }
+.pref-group:first-child { margin-top: 0; }
+.pref-group-title {
+  font-size: 26rpx; color: var(--on-surface-variant);
+  padding: 0 32rpx; margin-bottom: 12rpx; display: block; font-weight: 600;
 }
-
-.picker-input {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24rpx 0;
-  border: 3rpx solid var(--outline);
-  border-radius: 16rpx;
+.pref-card { padding: 0; }
+.pref-row {
+  display: flex; justify-content: space-between; align-items: center;
   padding: 28rpx 32rpx;
-  font-size: 32rpx;
 }
+.pref-label { font-size: 28rpx; color: var(--on-surface); }
+.pref-value { display: flex; align-items: center; gap: 8rpx; }
+.pref-value text:first-child { font-size: 28rpx; color: var(--primary); }
+.pref-arrow { font-size: 36rpx; color: var(--on-surface-muted); }
+.pref-hint { font-size: 22rpx; color: var(--on-surface-muted); padding: 12rpx 32rpx 0; display: block; }
 
-.arrow-icon {
-  font-size: 40rpx;
-  color: var(--on-surface-variant);
-}
-.bind-section {
-  padding: 32rpx;
-}
-.divider {
-  display: flex;
-  align-items: center;
-  margin: 32rpx 0;
-  gap: 20rpx;
-}
-.divider-line {
-  flex: 1;
-  height: 2rpx;
-  background: #E0E0E0;
-}
-.divider-text {
-  color: #999;
-  font-size: 26rpx;
-}
-.btn-wechat {
-  width: 100%;
-  height: 96rpx;
-  line-height: 96rpx;
-  background: #07C160;
-  color: white;
-  font-size: 32rpx;
-  font-weight: 600;
-  border-radius: 16rpx;
-  text-align: center;
-  border: none;
-}
-.btn-wechat[disabled] {
-  opacity: 0.6;
-  background: #07C160;
-}
-.bind-hint {
-  display: block;
-  text-align: center;
-  font-size: 24rpx;
-  color: #999;
-  margin-top: 16rpx;
-}
+.pref-save { padding: 48rpx 32rpx; }
 </style>
