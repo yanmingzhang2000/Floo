@@ -2,7 +2,7 @@
   <view v-if="visible" class="modal-overlay" @tap.self="handleClose">
     <view class="modal-sheet" @tap.stop>
       <view class="sheet-header">
-        <text class="sheet-title">📝 自定义学习内容</text>
+        <text class="sheet-title">📝 粘贴文章</text>
         <view class="close-btn" @tap="handleClose">
           <text>✕</text>
         </view>
@@ -100,11 +100,12 @@ async function handleSubmit() {
 }
 
 .modal-sheet {
-  width: 100%;
+  width: calc(100% - 40rpx);   /* 左右各 20rpx，和 page-container 等宽 */
   background: white;
-  border-radius: 40rpx 40rpx 0 0;
-  padding: 40rpx;
-  max-height: 85vh;
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 36rpx 32rpx;
+  padding-bottom: calc(36rpx + env(safe-area-inset-bottom, 0px));
+  max-height: 80vh;
   overflow-y: auto;
 }
 
