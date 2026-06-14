@@ -38,9 +38,6 @@
       <view v-if="contents.length === 0" class="empty-state">
         <text class="icon">📝</text>
         <text class="empty-text">今日还没有学习内容</text>
-        <button class="btn btn-primary" style="margin-top: 32rpx" :disabled="generating" @tap="handleGenerate">
-          <text>{{ generating ? '生成中...' : 'AI 生成今日内容' }}</text>
-        </button>
       </view>
 
       <!-- 文章卡片 -->
@@ -77,26 +74,26 @@
             :class="{ active: idx === currentIdx }"
           ></view>
         </view>
+      </view>
 
-        <!-- 功能按钮 -->
-        <view class="action-bar">
-          <button class="btn btn-primary action-btn" :disabled="generating || remainingCount <= 0" @tap="handleGenerate">
-            <text>{{ generating ? '生成中...' : (remainingCount > 0 ? `✨ 生成 (${remainingCount})` : '已用完') }}</text>
-          </button>
-          <button class="btn btn-outline action-btn" @tap="showCustomContent = true">
-            <text>📝 自定义</text>
-          </button>
-          <button class="btn btn-outline action-btn" @tap="goList">
-            <text>📋 历史</text>
-          </button>
-        </view>
+      <!-- 功能按钮（始终显示） -->
+      <view class="action-bar">
+        <button class="btn btn-primary action-btn" :disabled="generating || remainingCount <= 0" @tap="handleGenerate">
+          <text>{{ generating ? '生成中...' : (remainingCount > 0 ? `✨ 生成 (${remainingCount})` : '已用完') }}</text>
+        </button>
+        <button class="btn btn-outline action-btn" @tap="showCustomContent = true">
+          <text>📝 自定义</text>
+        </button>
+        <button class="btn btn-outline action-btn" @tap="goList">
+          <text>📋 历史</text>
+        </button>
+      </view>
 
-        <!-- 去复习 -->
-        <view class="review-bar">
-          <button class="btn btn-primary btn-block btn-lg" @tap="goReview">
-            <text>去默写 / 复习</text>
-          </button>
-        </view>
+      <!-- 去复习（有内容时） -->
+      <view v-if="contents.length > 0" class="review-bar">
+        <button class="btn btn-primary btn-block btn-lg" @tap="goReview">
+          <text>去默写 / 复习</text>
+        </button>
       </view>
     </template>
 
@@ -187,12 +184,23 @@ async function loadData() {
 }
 
 async function handleGenerate() {
+  if (remainingCount.value <= 0) {
+    uni.showToast({ title: '今日生成次数已用完', icon: 'none' })
+    return
+  }
   generating.value = true
   try {
-    await dailyApi.generate(auth.currentUserId)
+    const res: any = await dailyApi.generate(auth.currentUserId)
+    if (res.statusCode && res.statusCode >= 400) {
+      const msg = res.data?.detail || res.data?.message || `请求失败 (${res.statusCode})`
+      uni.showToast({ title: msg, icon: 'none' })
+      generating.value = false
+      return
+    }
     await loadData()
   } catch (e: any) {
-    uni.showToast({ title: e.data?.detail || '生成失败', icon: 'none' })
+    const msg = e?.errMsg || e?.message || '网络异常'
+    uni.showToast({ title: msg, icon: 'none' })
   }
   generating.value = false
 }
