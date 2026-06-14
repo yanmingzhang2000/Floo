@@ -69,12 +69,12 @@ view, text, button, input, textarea, image { box-sizing: border-box; }
   align-items: center;
   justify-content: space-between;
   height: 88rpx;
-  padding: 0 32rpx;
-  background: #fff;
-  border-bottom: 1rpx solid var(--outline-variant);
+  padding: 0;
+  background: var(--surface);
   position: sticky;
   top: 0;
   z-index: 100;
+  margin-bottom: 8rpx;
 }
 .nav-left { display: flex; align-items: center; gap: 16rpx; min-width: 72rpx; }
 .nav-back {
@@ -243,7 +243,7 @@ view, text, button, input, textarea, image { box-sizing: border-box; }
   border-radius: 24rpx;
   box-shadow: var(--shadow-sm);
   padding: 32rpx;
-  margin: 20rpx 24rpx;
+  margin: 16rpx 0;
   transition: box-shadow 0.2s ease;
 }
 .card:active { box-shadow: var(--shadow-md); }
