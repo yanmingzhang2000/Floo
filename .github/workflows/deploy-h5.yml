@@ -6,46 +6,44 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        run: |
-          git init
-          git remote add origin https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
-          git fetch --depth=1 origin ${{ github.sha }}
-          git checkout ${{ github.sha }}
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
-        run: |
-          curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-          sudo apt-get install -y nodejs
-          echo "node version: $(node -v)"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
       - name: Install dependencies
         working-directory: uni-app
-        run: npm install
+        run: npm ci
 
       - name: Build H5
         working-directory: uni-app
         run: npm run build:h5
 
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: uni-app/dist/build/h5
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy to GitHub Pages
-        run: |
-          cd uni-app/dist/build/h5
-          git init
-          git checkout -b gh-pages
-          git config user.email "actions@github.com"
-          git config user.name "GitHub Actions"
-          touch .nojekyll
-          git add -A
-          git commit -m "deploy: H5 build ${{ github.sha }}"
-          git remote add origin https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
-          git push origin gh-pages --force
+        id: deployment
+        uses: actions/deploy-pages@v4
