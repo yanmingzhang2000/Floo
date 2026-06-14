@@ -1,10 +1,12 @@
 <template>
   <view class="page-container">
-    <!-- 顶部品牌栏：品牌名 + 头像入口 -->
-    <view class="home-header">
-      <text class="home-brand">Floo!</text>
-      <view class="nav-avatar" @tap="showProfile = true">
-        <text>{{ usernameInitial }}</text>
+    <view class="nav-bar">
+      <view class="nav-left"></view>
+      <text class="nav-title">每日学习</text>
+      <view class="nav-right">
+        <view class="nav-avatar" @tap="showProfile = true">
+          <text>{{ usernameInitial }}</text>
+        </view>
       </view>
     </view>
 
@@ -226,23 +228,6 @@ onShow(loadData)
 </script>
 
 <style scoped>
-.home-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 88rpx;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: var(--surface);
-}
-.home-brand {
-  font-size: 40rpx;
-  font-weight: 800;
-  color: var(--primary);
-  letter-spacing: -1rpx;
-}
-
 .card-scroll {
   white-space: nowrap;
   overflow-x: auto;
@@ -307,17 +292,4 @@ onShow(loadData)
 .action-btn { flex: 1; font-size: 24rpx; padding: 20rpx 16rpx; }
 
 .review-bar { padding: 16rpx 0 32rpx; }
-
-.home-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 24rpx 0 16rpx;
-}
-.home-brand {
-  font-size: 40rpx;
-  font-weight: 800;
-  color: var(--primary);
-  letter-spacing: -1rpx;
-}
 </style>

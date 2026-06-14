@@ -4,7 +4,7 @@
       <view class="nav-left"></view>
       <text class="nav-title">打卡</text>
       <view class="nav-right">
-        <view class="nav-avatar">
+        <view class="nav-avatar" @tap="navTo('/pages/preference/index')">
           <text>{{ usernameInitial }}</text>
         </view>
       </view>

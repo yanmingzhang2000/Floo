@@ -70,6 +70,7 @@ view, text, button, input, textarea, image { box-sizing: border-box; }
   justify-content: space-between;
   height: 88rpx;
   padding: 0;
+  padding-top: env(safe-area-inset-top, 0);
   background: var(--surface);
   position: sticky;
   top: 0;

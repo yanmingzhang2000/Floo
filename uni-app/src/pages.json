@@ -82,6 +82,7 @@
     }
   ],
   "globalStyle": {
+    "navigationStyle": "custom",
     "navigationBarTextStyle": "white",
     "navigationBarTitleText": "Floo!",
     "navigationBarBackgroundColor": "#5B9AA8",
