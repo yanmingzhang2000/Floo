@@ -12,7 +12,7 @@
 
     <view class="underline-tabs">
       <view class="underline-tab" :class="{ active: activeTab === 'review' }" @tap="switchTab('review')">
-        <text>复述</text>
+        <text>复习</text>
         <view v-if="dueTasks.length" class="tab-badge"><text>{{ dueTasks.length }}</text></view>
       </view>
       <view class="underline-tab" :class="{ active: activeTab === 'dictation' }" @tap="switchTab('dictation')">
@@ -88,6 +88,28 @@
               <button class="btn btn-sm btn-outline" @tap.stop="startDictation(item)">
                 <text>默写</text>
               </button>
+            </view>
+          </view>
+        </view>
+
+        <view class="section">
+          <view class="section-title-row" @tap="showHistory = !showHistory">
+            <text class="section-title">历史记录</text>
+            <text class="section-toggle">{{ showHistory ? '收起 ▲' : '展开 ▼' }}</text>
+          </view>
+          <view v-if="showHistory">
+            <view v-if="historyList.length === 0" class="empty-state">
+              <text class="icon">📜</text>
+              <text class="empty-text">暂无默写记录</text>
+            </view>
+            <view v-else class="history-list">
+              <view v-for="rec in historyList" :key="rec.dictation_id" class="card history-item">
+                <view class="history-left">
+                  <text class="history-date">{{ formatDate(rec.created_at) }}</text>
+                  <text class="history-accuracy" :class="getScoreClass(rec.accuracy_rate)">{{ rec.accuracy_rate.toFixed(0) }}%</text>
+                </view>
+                <text class="history-points">+{{ rec.earned_points }}</text>
+              </view>
             </view>
           </view>
         </view>
@@ -275,7 +297,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { dailyApi, dictationApi, wordReviewApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { navTo } from '@/utils/router'
-import type { LearningContent, DictationResult, ReviewTask, MemoryProgress } from '@/types'
+import type { LearningContent, DictationResult, DictationHistory, ReviewTask, MemoryProgress } from '@/types'
 
 const auth = useAuthStore()
 const loading = ref(true)
@@ -294,6 +316,8 @@ const showOriginal = ref(false)
 const userInput = ref('')
 const submitting = ref(false)
 const dictResult = ref<DictationResult | null>(null)
+const historyList = ref<DictationHistory[]>([])
+const showHistory = ref(false)
 
 // 背单词
 const vbDueWords = ref<any[]>([])
@@ -328,6 +352,11 @@ function getScoreClass(score: number) {
   if (score >= 80) return 'score-green'
   if (score >= 60) return 'score-orange'
   return 'score-red'
+}
+
+function formatDate(dateStr: string) {
+  const d = new Date(dateStr)
+  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
 // ===== 默写 =====
@@ -467,6 +496,10 @@ async function loadData() {
       }
     }
   } catch {}
+  try {
+    const { data } = await dictationApi.getHistory(auth.currentUserId, 50)
+    historyList.value = Array.isArray(data) ? data : []
+  } catch {}
   await loadVocabReview()
   loading.value = false
 }
@@ -499,6 +532,14 @@ onShow(loadData)
 .content-left { flex: 1; }
 .content-title { font-weight: 600; font-size: 28rpx; display: block; }
 .content-meta { font-size: 24rpx; color: var(--on-surface-variant); margin-top: 4rpx; display: block; }
+.section-title-row { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+.section-toggle { font-size: 24rpx; color: var(--primary); }
+.history-list { display: flex; flex-direction: column; gap: 12rpx; }
+.history-item { display: flex; align-items: center; justify-content: space-between; padding: 20rpx 28rpx; }
+.history-left { display: flex; align-items: center; gap: 20rpx; }
+.history-date { font-size: 24rpx; color: var(--on-surface-variant); }
+.history-accuracy { font-size: 28rpx; font-weight: 700; min-width: 72rpx; }
+.history-points { font-size: 26rpx; color: var(--success); font-weight: 700; }
 
 /* 通用词汇 */
 .vocab-start-card { display: flex; align-items: center; justify-content: space-between; }
