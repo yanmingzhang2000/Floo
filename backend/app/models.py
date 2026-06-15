@@ -246,6 +246,29 @@ class UserFavoriteWord(Base):
     is_mastered = Column(Boolean, default=False, nullable=False)  # 是否已掌握
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
+
+class UserWordProgress(Base):
+    """单词级记忆追踪表 - 支持间隔重复和连续正确隐藏。
+    和 user_favorite_words 配合：只有收藏的单词才进入复习池。"""
+    __tablename__ = "user_word_progress"
+    __table_args__ = (
+        UniqueConstraint("user_id", "word", name="uq_user_word_progress"),
+        Index("idx_word_review_schedule", "user_id", "next_review_at"),
+    )
+
+    progress_id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("user_main.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    word = Column(String(128), nullable=False, index=True)
+    consecutive_correct = Column(Integer, default=0, nullable=False)  # 连续正确次数，>=3 短期不出现
+    current_stage = Column(Integer, default=0, nullable=False)  # 复习阶段 0-4
+    next_review_at = Column(DateTime, nullable=True)  # 下次复习时间
+    total_correct = Column(Integer, default=0, nullable=False)
+    total_wrong = Column(Integer, default=0, nullable=False)
+    last_accuracy = Column(Numeric(5, 2), default=0.00, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class UserPointAccount(Base):
     """用户积分账户表 - 全局积分资产，余额变更必须同步写 point_log_history 流水。"""
     __tablename__ = "user_point_account"

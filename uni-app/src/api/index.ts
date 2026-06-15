@@ -110,6 +110,14 @@ export const shopApi = {
     api.post(`/api/shop/admin/give-points?amount=${amount}`),
 }
 
+// ===== 单词复习 =====
+export const wordReviewApi = {
+  getDue: (userId: number, limit = 15) =>
+    api.get('/api/word-review/due', { params: { user_id: userId, limit } }),
+  submit: (userId: number, word: string, correct: boolean, accuracy = 100) =>
+    api.post('/api/word-review/submit', { user_id: userId, word, correct, accuracy }),
+}
+
 // ===== 语音评测 =====
 export const speechApi = {
   evaluate: (audio: string, text: string, langType = 'en') =>
