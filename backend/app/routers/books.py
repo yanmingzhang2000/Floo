@@ -178,49 +178,66 @@ async def get_book_detail(gutenberg_id: int):
 
 def _parse_chapters(text: str) -> list[dict]:
     """将 Gutenberg 全文按章节标题拆分为章节列表。
-    
-    支持常见格式：Chapter X, CHAPTER X, 第X章, 以及罗马数字章节。
-    如果无法识别章节标记，返回整本书作为单章。
+
+    优先匹配 "Chapter" / "CHAPTER" 前缀（可靠），无匹配时再尝试纯罗马数字模式；
+    纯罗马数字模式下会过滤掉极短的假阳性匹配（如目录行）。
     """
-    # 常见章节标题模式
-    patterns = [
-        r'^(?:CHAPTER|Chapter)\s+([\dIVX]+)',  # Chapter I / CHAPTER 1 / Chapter II
-        r'^(?:BOOK|Book)\s+([\dIVX]+)',         # Book I / Book 1
-        r'^\s*([IVX]+)\.\s+',                    # "I. " 罗马数字开头
-        r'^\s*PART\s+([\dIVX]+)',               # PART I / PART 1
-    ]
-    
     lines = text.split('\n')
-    chapter_starts = []
-    
+
+    # 收集不同模式的匹配
+    reliable_starts: list[tuple[int, str]] = []
+    roman_starts: list[tuple[int, str]] = []
+
     for i, line in enumerate(lines):
         stripped = line.strip()
         if not stripped:
             continue
-        for pat in patterns:
-            m = re.match(pat, stripped)
-            if m:
-                chapter_starts.append((i, stripped))
-                break
-    
+        if re.match(r'^(?:CHAPTER|Chapter)\s+([\dIVX]+)', stripped):
+            reliable_starts.append((i, stripped))
+        elif re.match(r'^(?:BOOK|Book)\s+([\dIVX]+)', stripped):
+            reliable_starts.append((i, stripped))
+        elif re.match(r'^\s*PART\s+([\dIVX]+)', stripped):
+            reliable_starts.append((i, stripped))
+
+    # 优先使用可靠匹配（带 Chapter 前缀），不够时降级到纯罗马数字
+    if len(reliable_starts) >= 2:
+        chapter_starts = reliable_starts
+        use_fallback = False
+    else:
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if re.match(r'^\s*([IVX]+)\.\s+', stripped):
+                roman_starts.append((i, stripped))
+        chapter_starts = roman_starts
+        use_fallback = True
+
     if len(chapter_starts) < 2:
-        # 无法识别章节，截取前 5000 字作为预览
-        preview = text[:5000].strip()
-        return [{"title": "全文", "start": 0, "end": len(text), "preview": preview}]
-    
+        # 无法识别章节，整本书作为单章
+        return [{"title": "全文", "start": 0, "end": len(lines), "preview": text[:5000].strip()}]
+
     chapters = []
     for idx, (start_line, title) in enumerate(chapter_starts):
         end_line = chapter_starts[idx + 1][0] if idx + 1 < len(chapter_starts) else len(lines)
         chapter_text = '\n'.join(lines[start_line:end_line]).strip()
         preview = chapter_text[:500]
+
+        # 降级模式下过滤短章节（目录行等假阳性）
+        if use_fallback and len(chapter_text) < 200:
+            continue
+
         chapters.append({
             "title": title,
             "start": start_line,
             "end": end_line,
             "preview": preview,
         })
-    
-    log.debug("Parsed %d chapters from gutenberg_id=%d", len(chapters), 0)
+
+    if not chapters:
+        return [{"title": "全文", "start": 0, "end": len(lines), "preview": text[:5000].strip()}]
+
+    log.debug("Parsed %d chapters (fallback=%s)", len(chapters), use_fallback)
     return chapters
 
 
