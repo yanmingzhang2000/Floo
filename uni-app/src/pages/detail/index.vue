@@ -111,6 +111,9 @@
         <view class="popup-header">
           <text class="popup-word">{{ wordPopup.word }}</text>
           <view class="speak-btn" @tap="speakWord(wordPopup.word)"><text>🔊</text></view>
+          <view class="fav-btn" :class="{ active: isFavorited }" @tap="toggleFavorite">
+            <text>{{ isFavorited ? '⭐' : '☆' }}</text>
+          </view>
         </view>
         <text v-if="wordPopup.phonetic" class="popup-phonetic">{{ wordPopup.phonetic }}</text>
         <text class="popup-meaning">{{ wordPopup.meaning }}</text>
@@ -123,7 +126,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { dailyApi, dictionaryApi, speechApi } from '@/api'
+import { dailyApi, dictionaryApi, speechApi, favoritesApi } from '@/api'
 import { speakWord, initVoices } from '@/composables/useSpeech'
 import { useRecorder } from '@/composables/useRecorder'
 import { getBaseForm } from '@/composables/useWordForm'
@@ -137,6 +140,7 @@ const loading = ref(true)
 const content = ref<LearningContent | null>(null)
 const wordPopup = ref<{ word: string; phonetic?: string; meaning: string } | null>(null)
 const showTranslation = ref(false)
+const isFavorited = ref(false)
 const { isRecording, startRecording, stopRecording } = useRecorder()
 const evalResult = ref<{ overall: number; pronunciation: number; fluency: number; integrity: number; suggestion: string } | null>(null)
 let contentId = 0
@@ -189,20 +193,49 @@ async function handleWordTap(rawWord: string) {
   const word = getBaseForm(rawWord)
   speakWord(word)
   wordPopup.value = { word, meaning: '查询中...' }
+  isFavorited.value = false
   try {
-    const { data } = await dictionaryApi.lookup(word)
-    const ec = data?.ec?.word?.[0]
+    const [dictRes, favRes] = await Promise.all([
+      dictionaryApi.lookup(word),
+      favoritesApi.check(auth.currentUserId, word),
+    ])
+    const ec = dictRes.data?.ec?.word?.[0]
     const phonetic = ec?.usphone || ec?.ukphone || ''
     const trs = ec?.trs || []
     const meaning = trs.map((t: any) => t?.tr?.[0]?.l?.i?.[0]).filter(Boolean).join('；')
     wordPopup.value = meaning
       ? { word, phonetic: phonetic ? `/${phonetic}/` : undefined, meaning }
       : { word, meaning: '未找到释义' }
+    isFavorited.value = favRes.data?.is_favorited ?? false
   } catch { wordPopup.value = { word, meaning: '查询失败' } }
 }
 
 function showWordDetail(w: WordItem) {
   wordPopup.value = { word: w.word, phonetic: w.phonetic, meaning: w.meaning }
+  checkFavorite(w.word)
+}
+
+async function checkFavorite(word: string) {
+  try {
+    const { data } = await favoritesApi.check(auth.currentUserId, word)
+    isFavorited.value = data?.is_favorited ?? false
+  } catch { isFavorited.value = false }
+}
+
+async function toggleFavorite() {
+  if (!wordPopup.value) return
+  const { word, phonetic, meaning } = wordPopup.value
+  try {
+    if (isFavorited.value) {
+      await favoritesApi.remove(auth.currentUserId, word)
+      isFavorited.value = false
+      uni.showToast({ title: '已取消收藏', icon: 'none' })
+    } else {
+      await favoritesApi.add(auth.currentUserId, word, phonetic || '', meaning, 'article', contentId)
+      isFavorited.value = true
+      uni.showToast({ title: '已收藏', icon: 'success' })
+    }
+  } catch { uni.showToast({ title: '操作失败', icon: 'none' }) }
 }
 
 function goReview() { uni.switchTab({ url: '/pages/review/index' }) }
@@ -274,8 +307,12 @@ function navBack() { navBackSafe() }
 .detail-meta { display: flex; gap: 12rpx; margin-bottom: 20rpx; }
 .detail-title {
   font-size: 36rpx; font-weight: 700; margin-bottom: 24rpx;
-  display: block; line-height: 1.5;
+  display: block; line-height: 1.5; color: #111;
 }
+.article-body { line-height: 1.9; }
+.word-span { font-size: 30rpx; color: #111; line-height: 1.9; }
+.clickable-word { color: #111; }
+.keyword { color: var(--primary); font-weight: 600; }
 
 .section-label {
   font-size: 26rpx; color: var(--on-surface-variant);
@@ -290,6 +327,12 @@ function navBack() { navBackSafe() }
   background: var(--primary-container); border-radius: 50%;
   display: flex; align-items: center; justify-content: center; font-size: 36rpx;
 }
+.fav-btn {
+  width: 72rpx; height: 72rpx;
+  background: var(--surface-container); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 36rpx;
+}
+.fav-btn.active { background: #FFF8E1; }
 
 /* 朗读评测 */
 .eval-card { text-align: center; padding: 32rpx; }
