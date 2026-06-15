@@ -178,10 +178,10 @@ def _parse_chapters(text: str) -> list[dict]:
     """
     # 常见章节标题模式
     patterns = [
-        r'^(?:CHAPTER|Chapter)\s+(\d+[IVX]*)',
-        r'^(?:BOOK|Book)\s+(\d+[IVX]*)',
-        r'^\s*([IVX]+)\.\s+',  # 罗马数字章节 "I. Title"
-        r'^\s*PART\s+(\d+)',
+        r'^(?:CHAPTER|Chapter)\s+([\dIVX]+)',  # Chapter I / CHAPTER 1 / Chapter II
+        r'^(?:BOOK|Book)\s+([\dIVX]+)',         # Book I / Book 1
+        r'^\s*([IVX]+)\.\s+',                    # "I. " 罗马数字开头
+        r'^\s*PART\s+([\dIVX]+)',               # PART I / PART 1
     ]
     
     lines = text.split('\n')
