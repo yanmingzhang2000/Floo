@@ -2,6 +2,7 @@
 import logging
 import re
 from typing import Optional
+from urllib.parse import quote
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -41,7 +42,7 @@ async def get_popular_books(page: int = Query(1, ge=1)):
     """获取热门名著列表，从预设的经典书单 + Gutendex 热门补充。"""
     ids_str = ",".join(str(i) for i in POPULAR_IDS)
     url = f"{GUTENDEX_BASE}/books?ids={ids_str}"
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
         try:
             resp = await client.get(url)
             resp.raise_for_status()
@@ -56,8 +57,9 @@ async def get_popular_books(page: int = Query(1, ge=1)):
 @router.get("/search")
 async def search_books(query: str = Query(...), page: int = Query(1, ge=1)):
     """代理 Gutendex 搜索接口，按书名/作者搜索公版书。"""
-    url = f"{GUTENDEX_BASE}/books?search={query}&page={page}"
-    async with httpx.AsyncClient(timeout=15) as client:
+    encoded_query = quote(query)
+    url = f"{GUTENDEX_BASE}/books?search={encoded_query}&page={page}"
+    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
         try:
             resp = await client.get(url)
             resp.raise_for_status()
@@ -73,7 +75,7 @@ async def search_books(query: str = Query(...), page: int = Query(1, ge=1)):
 async def get_book_detail(gutenberg_id: int):
     """获取单本书详情（元数据）。"""
     url = f"{GUTENDEX_BASE}/books/{gutenberg_id}"
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
         try:
             resp = await client.get(url)
             resp.raise_for_status()
@@ -141,7 +143,7 @@ async def get_chapters(gutenberg_id: int):
     # 先从 Gutendex 获取 txt 下载链接
     detail_url = f"{GUTENDEX_BASE}/books/{gutenberg_id}"
     txt_url = None
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
         try:
             resp = await client.get(detail_url)
             resp.raise_for_status()
@@ -161,7 +163,7 @@ async def get_chapters(gutenberg_id: int):
         return {"chapters": _chapter_cache[gutenberg_id]}
     
     # 下载全文并解析
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
         try:
             resp = await client.get(txt_url)
             resp.raise_for_status()
@@ -181,7 +183,7 @@ async def get_chapter_text(gutenberg_id: int, chapter_idx: int):
     if gutenberg_id not in _chapter_cache:
         detail_url = f"{GUTENDEX_BASE}/books/{gutenberg_id}"
         txt_url = None
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
             try:
                 resp = await client.get(detail_url)
                 resp.raise_for_status()
@@ -194,7 +196,7 @@ async def get_chapter_text(gutenberg_id: int, chapter_idx: int):
         if not txt_url:
             raise HTTPException(404, "无可用文本格式")
         
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
             try:
                 resp = await client.get(txt_url)
                 resp.raise_for_status()
@@ -210,7 +212,7 @@ async def get_chapter_text(gutenberg_id: int, chapter_idx: int):
     # -1 表示全文模式
     if chapter_idx == -1:
         # 返回全文预览（前 5000 字）
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
             detail_url = f"{GUTENDEX_BASE}/books/{gutenberg_id}"
             try:
                 resp = await client.get(detail_url)
@@ -230,7 +232,7 @@ async def get_chapter_text(gutenberg_id: int, chapter_idx: int):
     
     # 下载全文提取该章节
     detail_url = f"{GUTENDEX_BASE}/books/{gutenberg_id}"
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
         try:
             resp = await client.get(detail_url)
             book = resp.json()
@@ -240,7 +242,7 @@ async def get_chapter_text(gutenberg_id: int, chapter_idx: int):
         except httpx.HTTPError:
             raise HTTPException(502, "获取书本信息失败")
     
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
         try:
             resp = await client.get(txt_url)
             resp.raise_for_status()
@@ -268,7 +270,7 @@ async def get_my_books(user_id: int, db: Session = Depends(get_db)):
     # 批量获取书本元数据
     ids_str = ",".join(str(p.gutenberg_id) for p in progress)
     books_meta = {}
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
         try:
             resp = await client.get(f"{GUTENDEX_BASE}/books?ids={ids_str}")
             resp.raise_for_status()
