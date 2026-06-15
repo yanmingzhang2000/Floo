@@ -46,6 +46,8 @@ async def submit_dictation(
     # 调 AI 批改（LLM 不可用时自动降级到本地 diff）
     feedback = await correct_dictation(content.content_text, payload.user_input)
     score = int(feedback.get("score", 0))
+    # 最低保底 50 分，用户练习信心重要
+    score = max(50, score)
     accuracy_rate = float(score)
 
     # 积分规则：正确率 / 10 向下取整，上限 10 分
