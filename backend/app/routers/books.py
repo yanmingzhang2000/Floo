@@ -228,24 +228,32 @@ def _parse_chapters(text: str) -> list[dict]:
 _book_cache: dict[int, dict] = {}
 
 
-async def _resolve_txt_url(gutenberg_id: int) -> str | None:
+async def _resolve_txt_url(gutenberg_id: int) -> Optional[str]:
     """从 Gutendex 获取书的 txt 下载链接。"""
-    detail_url = f"{GUTENDEX_BASE}/books/{gutenberg_id}"
-    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
-        resp = await client.get(detail_url)
-        resp.raise_for_status()
-        book = resp.json()
-        formats = book.get("formats", {})
-        txt_url = formats.get("text/plain; charset=utf-8") or formats.get("text/plain")
-    return txt_url
+    try:
+        detail_url = f"{GUTENDEX_BASE}/books/{gutenberg_id}"
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+            resp = await client.get(detail_url)
+            resp.raise_for_status()
+            book = resp.json()
+            formats = book.get("formats", {})
+            txt_url = formats.get("text/plain; charset=utf-8") or formats.get("text/plain") or formats.get("text/plain; charset=us-ascii") or formats.get("text/plain; charset=iso-8859-1")
+        return txt_url
+    except Exception as e:
+        log.debug("Failed to resolve txt URL for %d: %s", gutenberg_id, e)
+        return None
 
 
-async def _download_full_text(txt_url: str) -> str:
-    """下载 Gutenberg 全文并缓存。"""
-    async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
-        resp = await client.get(txt_url)
-        resp.raise_for_status()
-        return resp.text
+async def _download_full_text(txt_url: str) -> Optional[str]:
+    """下载 Gutenberg 全文。"""
+    try:
+        async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
+            resp = await client.get(txt_url)
+            resp.raise_for_status()
+            return resp.text
+    except Exception as e:
+        log.debug("Failed to download text from %s: %s", txt_url, e)
+        return None
 
 
 async def _ensure_book_cache(gutenberg_id: int):
@@ -255,9 +263,12 @@ async def _ensure_book_cache(gutenberg_id: int):
 
     txt_url = await _resolve_txt_url(gutenberg_id)
     if not txt_url:
-        raise HTTPException(404, "无可用文本格式")
+        raise HTTPException(502, "无法获取本书文本下载链接，Gutenberg 暂不支持此书")
 
     full_text = await _download_full_text(txt_url)
+    if not full_text:
+        raise HTTPException(502, "下载书本文本失败，请稍后重试")
+
     chapters = _parse_chapters(full_text)
     _book_cache[gutenberg_id] = {"chapters": chapters, "text": full_text}
     log.debug("Cached book %d: %d chapters, %d bytes", gutenberg_id, len(chapters), len(full_text))
