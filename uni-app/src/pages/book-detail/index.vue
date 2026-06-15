@@ -25,9 +25,9 @@
           <text>📖</text>
         </view>
         <view class="book-info-text">
-          <text class="book-title-lg">{{ bookInfo?.title || '未知书名' }}</text>
+          <text class="book-title-lg">{{ bookInfo?.cn_title || bookInfo?.title || '未知书名' }}</text>
           <text class="book-author-lg">{{ bookInfo?.authors?.[0]?.name || '未知作者' }}</text>
-          <text class="book-lang">{{ bookInfo?.languages?.[0]?.name || 'English' }}</text>
+          <text class="book-lang">{{ bookInfo?.languages?.[0] || 'English' }}</text>
         </view>
       </view>
 

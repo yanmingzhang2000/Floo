@@ -158,13 +158,19 @@ async def search_books(query: str = Query(...), page: int = Query(1, ge=1)):
 
 @router.get("/{gutenberg_id}")
 async def get_book_detail(gutenberg_id: int):
-    """获取单本书详情（元数据）。"""
+    """获取单本书详情（元数据），带中文名。"""
     url = f"{GUTENDEX_BASE}/books/{gutenberg_id}"
     async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
         try:
             resp = await client.get(url)
             resp.raise_for_status()
-            return resp.json()
+            data = resp.json()
+            # 注入中文名
+            for book in POPULAR_BOOKS:
+                if book["id"] == gutenberg_id:
+                    data["cn_title"] = book["cn"]
+                    break
+            return data
         except httpx.HTTPError as e:
             log.debug("Gutendex detail failed for %d: %s", gutenberg_id, e)
             raise HTTPException(502, "获取书本详情失败")
@@ -218,124 +224,74 @@ def _parse_chapters(text: str) -> list[dict]:
     return chapters
 
 
-# 缓存已解析的章节结构（内存缓存，避免重复下载全文）
-_chapter_cache: dict[int, list[dict]] = {}
+# 缓存：{gutenberg_id: {"chapters": [...], "text": "full_text"}}
+_book_cache: dict[int, dict] = {}
+
+
+async def _resolve_txt_url(gutenberg_id: int) -> str | None:
+    """从 Gutendex 获取书的 txt 下载链接。"""
+    detail_url = f"{GUTENDEX_BASE}/books/{gutenberg_id}"
+    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+        resp = await client.get(detail_url)
+        resp.raise_for_status()
+        book = resp.json()
+        formats = book.get("formats", {})
+        txt_url = formats.get("text/plain; charset=utf-8") or formats.get("text/plain")
+    return txt_url
+
+
+async def _download_full_text(txt_url: str) -> str:
+    """下载 Gutenberg 全文并缓存。"""
+    async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
+        resp = await client.get(txt_url)
+        resp.raise_for_status()
+        return resp.text
+
+
+async def _ensure_book_cache(gutenberg_id: int):
+    """确保书本全文和章节结构已缓存。"""
+    if gutenberg_id in _book_cache:
+        return _book_cache[gutenberg_id]
+
+    txt_url = await _resolve_txt_url(gutenberg_id)
+    if not txt_url:
+        raise HTTPException(404, "无可用文本格式")
+
+    full_text = await _download_full_text(txt_url)
+    chapters = _parse_chapters(full_text)
+    _book_cache[gutenberg_id] = {"chapters": chapters, "text": full_text}
+    log.debug("Cached book %d: %d chapters, %d bytes", gutenberg_id, len(chapters), len(full_text))
+    return _book_cache[gutenberg_id]
 
 
 @router.get("/{gutenberg_id}/chapters")
 async def get_chapters(gutenberg_id: int):
-    """获取书本章节列表（自动解析全文结构）。"""
-    # 先从 Gutendex 获取 txt 下载链接
-    detail_url = f"{GUTENDEX_BASE}/books/{gutenberg_id}"
-    txt_url = None
-    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
-        try:
-            resp = await client.get(detail_url)
-            resp.raise_for_status()
-            book = resp.json()
-            formats = book.get("formats", {})
-            txt_url = formats.get("text/plain; charset=utf-8") or formats.get("text/plain")
-        except httpx.HTTPError as e:
-            log.debug("Failed to get book detail for %d: %s", gutenberg_id, e)
-            return {"chapters": []}
-    
-    if not txt_url:
-        log.debug("No txt format available for %d", gutenberg_id)
-        return {"chapters": []}
-    
-    # 检查缓存
-    if gutenberg_id in _chapter_cache:
-        return {"chapters": _chapter_cache[gutenberg_id]}
-    
-    # 下载全文并解析
-    async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
-        try:
-            resp = await client.get(txt_url)
-            resp.raise_for_status()
-            full_text = resp.text
-            chapters = _parse_chapters(full_text)
-            _chapter_cache[gutenberg_id] = chapters
-            return {"chapters": chapters}
-        except httpx.HTTPError as e:
-            log.debug("Failed to download text for %d: %s", gutenberg_id, e)
-            return {"chapters": []}
+    """获取书本章节列表。"""
+    cached = await _ensure_book_cache(gutenberg_id)
+    return {"chapters": cached["chapters"]}
 
 
 @router.get("/{gutenberg_id}/chapter/{chapter_idx}")
 async def get_chapter_text(gutenberg_id: int, chapter_idx: int):
-    """获取指定章节的完整文本。"""
-    # 先获取章节列表
-    if gutenberg_id not in _chapter_cache:
-        detail_url = f"{GUTENDEX_BASE}/books/{gutenberg_id}"
-        txt_url = None
-        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
-            try:
-                resp = await client.get(detail_url)
-                resp.raise_for_status()
-                book = resp.json()
-                formats = book.get("formats", {})
-                txt_url = formats.get("text/plain; charset=utf-8") or formats.get("text/plain")
-            except httpx.HTTPError:
-                raise HTTPException(502, "获取书本信息失败")
-        
-        if not txt_url:
-            raise HTTPException(404, "无可用文本格式")
-        
-        async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
-            try:
-                resp = await client.get(txt_url)
-                resp.raise_for_status()
-                full_text = resp.text
-                _chapter_cache[gutenberg_id] = _parse_chapters(full_text)
-            except httpx.HTTPError:
-                raise HTTPException(502, "下载书本文本失败")
-    
-    chapters = _chapter_cache.get(gutenberg_id, [])
+    """获取指定章节的完整文本（从缓存提取，不重复下载）。"""
+    cached = await _ensure_book_cache(gutenberg_id)
+    chapters = cached["chapters"]
+
     if not chapters:
         raise HTTPException(404, "章节数据为空")
-    
-    # -1 表示全文模式
+
+    # -1 表示全文预览
     if chapter_idx == -1:
-        # 返回全文预览（前 5000 字）
-        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
-            detail_url = f"{GUTENDEX_BASE}/books/{gutenberg_id}"
-            try:
-                resp = await client.get(detail_url)
-                book = resp.json()
-                txt_url = book.get("formats", {}).get("text/plain; charset=utf-8") or book.get("formats", {}).get("text/plain")
-                if txt_url:
-                    resp2 = await client.get(txt_url)
-                    return {"title": chapters[0]["title"] if chapters else "全文", "text": resp2.text[:5000]}
-            except httpx.HTTPError:
-                pass
-        return {"title": "全文", "text": "加载失败，请重试"}
-    
+        title = chapters[0]["title"] if chapters else "全文"
+        return {"title": title, "text": cached["text"][:5000]}
+
     if chapter_idx < 0 or chapter_idx >= len(chapters):
         raise HTTPException(400, "章节索引无效")
-    
+
     ch = chapters[chapter_idx]
-    
-    # 下载全文提取该章节
-    detail_url = f"{GUTENDEX_BASE}/books/{gutenberg_id}"
-    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
-        try:
-            resp = await client.get(detail_url)
-            book = resp.json()
-            txt_url = book.get("formats", {}).get("text/plain; charset=utf-8") or book.get("formats", {}).get("text/plain")
-            if not txt_url:
-                raise HTTPException(502, "无可用文本")
-        except httpx.HTTPError:
-            raise HTTPException(502, "获取书本信息失败")
-    
-    async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
-        try:
-            resp = await client.get(txt_url)
-            resp.raise_for_status()
-            lines = resp.text.split('\n')
-            chapter_text = '\n'.join(lines[ch["start"]:ch["end"]]).strip()
-            return {"title": ch["title"], "text": chapter_text}
-        except httpx.HTTPError:
-            raise HTTPException(502, "下载章节文本失败")
+    lines = cached["text"].split('\n')
+    chapter_text = '\n'.join(lines[ch["start"]:ch["end"]]).strip()
+    return {"title": ch["title"], "text": chapter_text}
 
 
 @router.get("/my")
