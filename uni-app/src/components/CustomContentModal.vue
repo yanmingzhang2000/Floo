@@ -100,10 +100,11 @@ async function handleSubmit() {
 }
 
 .modal-sheet {
-  width: calc(100% - 40rpx);   /* 左右各 20rpx，和 page-container 等宽 */
+  width: 100%;
+  max-width: 750px;
   background: white;
   border-radius: 32rpx 32rpx 0 0;
-  padding: 36rpx 32rpx;
+  padding: 36rpx 20rpx;
   padding-bottom: calc(36rpx + env(safe-area-inset-bottom, 0px));
   max-height: 80vh;
   overflow-y: auto;
