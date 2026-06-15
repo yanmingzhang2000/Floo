@@ -31,7 +31,7 @@
           <text class="toolbar-icon">{{ showTranslation ? '📖' : '📕' }}</text>
           <text class="toolbar-label">{{ showTranslation ? '隐藏译文' : '查看译文' }}</text>
         </view>
-        <view class="toolbar-item" @tap="goReview">
+        <view class="toolbar-item" @tap="openDictation">
           <text class="toolbar-icon">✏️</text>
           <text class="toolbar-label">默写</text>
         </view>
@@ -99,7 +99,7 @@
 
       <!-- 底部行动栏 -->
       <view class="bottom-actions">
-        <button class="btn btn-primary btn-block btn-lg" @tap="goReview">
+        <button class="btn btn-primary btn-block btn-lg" @tap="openDictation">
           <text>去默写练习</text>
         </button>
       </view>
@@ -119,6 +119,50 @@
         <text class="popup-meaning">{{ wordPopup.meaning }}</text>
       </view>
     </view>
+
+    <!-- 默写弹窗 -->
+    <view v-if="showDictation" class="modal-overlay" @tap="showDictation = false">
+      <view class="dictation-sheet" @tap.stop>
+        <view class="dictation-sheet-top">
+          <text class="tag tag-primary">默写练习</text>
+          <view class="dictation-close" @tap="showDictation = false"><text>✕</text></view>
+        </view>
+        <view class="dictation-hint-card">
+          <text class="dictation-hint-label">中文翻译提示</text>
+          <text class="dictation-hint-text">{{ content?.translation || '暂无翻译' }}</text>
+        </view>
+        <view style="padding: 0 32rpx">
+          <button class="btn btn-sm btn-text" @tap="dictShowOriginal = !dictShowOriginal">
+            <text>{{ dictShowOriginal ? '🙈 隐藏原文' : '👁️ 显示原文' }}</text>
+          </button>
+        </view>
+        <view v-if="dictShowOriginal" class="dictation-original-card">
+          <text class="dictation-original-text">{{ content?.article }}</text>
+        </view>
+        <view class="dictation-input-card">
+          <textarea v-model="dictUserInput" :maxlength="-1" placeholder="在这里输入默写的英文内容..." class="dictation-textarea" />
+        </view>
+        <view class="dictation-submit">
+          <button class="btn btn-primary btn-block btn-lg" :disabled="dictSubmitting || !dictUserInput.trim()" @tap="handleDictSubmit">
+            <text>{{ dictSubmitting ? 'AI 批改中...' : '提交批改' }}</text>
+          </button>
+        </view>
+        <view v-if="dictResult" class="card dictation-result-card">
+          <view class="dictation-score-area">
+            <text class="dictation-score" :class="getDictScoreClass(dictResult.feedback.score)">{{ dictResult.feedback.score }}</text>
+            <view class="dictation-score-meta">
+              <text>准确率 {{ dictResult.accuracy_rate.toFixed(0) }}%</text>
+              <text style="color: var(--success)">+{{ dictResult.earned_points }} 积分</text>
+            </view>
+          </view>
+          <view v-if="dictResult.feedback.summary" class="dictation-feedback">
+            <text class="dictation-feedback-label">AI 总评</text>
+            <text class="dictation-feedback-text">{{ dictResult.feedback.summary }}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
     <AppTabBar />
   </view>
 </template>
@@ -126,7 +170,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { dailyApi, dictionaryApi, speechApi, favoritesApi } from '@/api'
+import { dailyApi, dictionaryApi, speechApi, favoritesApi, dictationApi } from '@/api'
 import { speakWord, initVoices } from '@/composables/useSpeech'
 import { useRecorder } from '@/composables/useRecorder'
 import { getBaseForm } from '@/composables/useWordForm'
@@ -143,6 +187,13 @@ const showTranslation = ref(false)
 const isFavorited = ref(false)
 const { isRecording, startRecording, stopRecording } = useRecorder()
 const evalResult = ref<{ overall: number; pronunciation: number; fluency: number; integrity: number; suggestion: string } | null>(null)
+
+// 默写弹窗
+const showDictation = ref(false)
+const dictUserInput = ref('')
+const dictShowOriginal = ref(false)
+const dictSubmitting = ref(false)
+const dictResult = ref<any>(null)
 let contentId = 0
 
 const usernameInitial = computed(() => (auth.username?.[0] || '?').toUpperCase())
@@ -239,6 +290,29 @@ async function toggleFavorite() {
 }
 
 function goReview() { uni.switchTab({ url: '/pages/review/index' }) }
+
+function openDictation() {
+  dictUserInput.value = ''
+  dictShowOriginal.value = false
+  dictResult.value = null
+  showDictation.value = true
+}
+
+function getDictScoreClass(score: number) {
+  if (score >= 80) return 'score-green'
+  if (score >= 60) return 'score-orange'
+  return 'score-red'
+}
+
+async function handleDictSubmit() {
+  if (!content.value || !dictUserInput.value.trim()) return
+  dictSubmitting.value = true
+  try {
+    const { data } = await dictationApi.submit(auth.currentUserId, contentId, dictUserInput.value)
+    dictResult.value = data
+  } catch { uni.showToast({ title: '提交失败', icon: 'none' }) }
+  dictSubmitting.value = false
+}
 
 function getScoreClass(score: number) {
   if (score >= 90) return 'score-green'
@@ -349,4 +423,24 @@ function navBack() { navBackSafe() }
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.6; transform: scale(1.2); }
 }
+
+/* 默写弹窗 */
+.dictation-sheet { width: 100%; max-width: 600px; max-height: 90vh; background: white; border-radius: 32rpx 32rpx 0 0; overflow-y: auto; padding-bottom: env(safe-area-inset-bottom, 32rpx); }
+.dictation-sheet-top { display: flex; justify-content: space-between; align-items: center; padding: 32rpx 32rpx 0; }
+.dictation-close { width: 56rpx; height: 56rpx; background: var(--surface-container); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28rpx; }
+.dictation-hint-card { margin: 24rpx 32rpx; padding: 28rpx; background: var(--primary-container); border-radius: 16rpx; }
+.dictation-hint-label { font-size: 22rpx; color: var(--on-primary-container); margin-bottom: 12rpx; display: block; }
+.dictation-hint-text { font-size: 28rpx; line-height: 1.6; display: block; color: var(--on-primary-container); }
+.dictation-original-card { margin: 16rpx 32rpx; padding: 28rpx; background: var(--surface-container); border-radius: 16rpx; }
+.dictation-original-text { font-size: 28rpx; line-height: 1.6; display: block; }
+.dictation-input-card { padding: 16rpx 32rpx; }
+.dictation-textarea { width: 100%; height: 280rpx; border: 3rpx solid var(--outline); border-radius: 16rpx; padding: 24rpx; font-size: 28rpx; line-height: 1.6; }
+.dictation-submit { padding: 0 32rpx 24rpx; }
+.dictation-result-card { border-left: 8rpx solid var(--primary); margin: 0 32rpx 32rpx; }
+.dictation-score-area { display: flex; align-items: center; gap: 28rpx; }
+.dictation-score { font-size: 80rpx; font-weight: 800; }
+.dictation-score-meta { font-size: 26rpx; line-height: 1.6; }
+.dictation-feedback { margin-top: 24rpx; padding-top: 20rpx; border-top: 2rpx solid var(--surface-container-high); }
+.dictation-feedback-label { font-size: 24rpx; color: var(--on-surface-variant); margin-bottom: 12rpx; display: block; }
+.dictation-feedback-text { font-size: 26rpx; line-height: 1.6; display: block; }
 </style>
