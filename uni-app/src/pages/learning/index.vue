@@ -158,27 +158,21 @@ const usernameInitial = computed(() => (auth.username?.[0] || '?').toUpperCase()
 
 async function loadData() {
   loading.value = true
-  try {
-    const { data } = await dailyApi.getTodayList(auth.currentUserId)
-    contents.value = data.contents || []
-  } catch {}
-  try {
-    const { data } = await generationLimitApi.getLimit(auth.currentUserId)
-    remainingCount.value = data?.remaining_count ?? 3
-  } catch {}
-  try {
-    const { data } = await dailyApi.getLearnedIds(auth.currentUserId)
-    learnedIds.value = data.content_ids || []
-  } catch {}
-  try {
-    const now = new Date()
-    const { data } = await checkinApi.getCalendar(auth.currentUserId, now.getFullYear(), now.getMonth() + 1)
-    streakDays.value = data?.current_streak_days || 0
-  } catch {}
-  try {
-    const { data } = await shopApi.getBalance(auth.currentUserId)
-    pointBalance.value = data?.available_points || 0
-  } catch {}
+  const userId = auth.currentUserId
+  // 并行请求，任一失败不阻塞其他
+  const safe = (p: Promise<any>) => p.catch(() => null)
+  const [contentRes, limitRes, learnedRes, calendarRes, balanceRes] = await Promise.all([
+    safe(dailyApi.getTodayList(userId)),
+    safe(generationLimitApi.getLimit(userId)),
+    safe(dailyApi.getLearnedIds(userId)),
+    safe(checkinApi.getCalendar(userId, new Date().getFullYear(), new Date().getMonth() + 1)),
+    safe(shopApi.getBalance(userId)),
+  ])
+  if (contentRes?.data) contents.value = contentRes.data.contents || []
+  if (learnedRes?.data) learnedIds.value = learnedRes.data.content_ids || []
+  if (limitRes?.data) remainingCount.value = limitRes.data.remaining_count ?? 3
+  if (calendarRes?.data) streakDays.value = calendarRes.data.current_streak_days || 0
+  if (balanceRes?.data) pointBalance.value = balanceRes.data.available_points || 0
   loading.value = false
 }
 
