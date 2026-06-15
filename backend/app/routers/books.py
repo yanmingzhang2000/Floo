@@ -18,53 +18,138 @@ GUTENDEX_BASE = "https://gutendex.com"
 GUTENBERG_TEXT = "https://www.gutenberg.org/cache/epub"
 
 # 热门英文公版书 ID（精心挑选适合英语学习的经典）
-POPULAR_IDS = [
-    1342,   # Pride and Prejudice
-    11,     # Alice's Adventures in Wonderland
-    84,     # Frankenstein
-    1661,   # The War of the Worlds
-    2701,   # Moby Dick
-    1952,   # The Yellow Wallpaper
-    345,    # Dracula
-    120,    # Treasure Island
-    219,    # Heart of Darkness
-    16328,  # Beowulf
-    98,     # A Tale of Two Cities
-    23,     # Narrative of the Life of Frederick Douglass
-    174,    # The Picture of Dorian Gray
-    74,     # The Adventures of Tom Sawyer
-    2600,   # War and Peace
+# 中文名映射方便用户搜索
+POPULAR_BOOKS = [
+    {"id": 1342, "title": "Pride and Prejudice", "cn": "傲慢与偏见", "author": "Jane Austen"},
+    {"id": 11, "title": "Alice's Adventures in Wonderland", "cn": "爱丽丝梦游仙境", "author": "Lewis Carroll"},
+    {"id": 84, "title": "Frankenstein", "cn": "科学怪人", "author": "Mary Shelley"},
+    {"id": 1661, "title": "The War of the Worlds", "cn": "世界大战", "author": "H.G. Wells"},
+    {"id": 2701, "title": "Moby Dick", "cn": "白鲸记", "author": "Herman Melville"},
+    {"id": 1952, "title": "The Yellow Wallpaper", "cn": "黄色墙纸", "author": "Charlotte Perkins Gilman"},
+    {"id": 345, "title": "Dracula", "cn": "德古拉", "author": "Bram Stoker"},
+    {"id": 120, "title": "Treasure Island", "cn": "金银岛", "author": "Robert Louis Stevenson"},
+    {"id": 219, "title": "Heart of Darkness", "cn": "黑暗之心", "author": "Joseph Conrad"},
+    {"id": 16328, "title": "Beowulf", "cn": "贝奥武夫", "author": "Anonymous"},
+    {"id": 98, "title": "A Tale of Two Cities", "cn": "双城记", "author": "Charles Dickens"},
+    {"id": 23, "title": "Narrative of Frederick Douglass", "cn": "一个美国黑奴的自传", "author": "Frederick Douglass"},
+    {"id": 174, "title": "The Picture of Dorian Gray", "cn": "道林格雷的画像", "author": "Oscar Wilde"},
+    {"id": 74, "title": "The Adventures of Tom Sawyer", "cn": "汤姆索亚历险记", "author": "Mark Twain"},
+    {"id": 2600, "title": "War and Peace", "cn": "战争与和平", "author": "Leo Tolstoy"},
+    {"id": 46, "title": "A Christmas Carol", "cn": "圣诞颂歌", "author": "Charles Dickens"},
+    {"id": 161, "title": "The Great Gatsby", "cn": "了不起的盖茨比", "author": "F. Scott Fitzgerald"},
+    {"id": 76, "title": "Little Women", "cn": "小妇人", "author": "Louisa May Alcott"},
+    {"id": 35, "title": "Jane Eyre", "cn": "简爱", "author": "Charlotte Brontë"},
+    {"id": 145, "title": "Wuthering Heights", "cn": "呼啸山庄", "author": "Emily Brontë"},
 ]
+
+# 中文搜索关键词 → 英文搜索词映射
+_CN_SEARCH_MAP = {
+    "傲慢": "pride and prejudice", "偏见": "pride and prejudice",
+    "爱丽丝": "alice in wonderland", "仙境": "alice in wonderland",
+    "怪人": "frankenstein", "科学怪人": "frankenstein",
+    "世界大战": "war of the worlds", "白鲸": "moby dick",
+    "黄色墙纸": "yellow wallpaper", "德古拉": "dracula", "吸血鬼": "dracula",
+    "金银岛": "treasure island", "黑暗之心": "heart of darkness",
+    "贝奥武夫": "beowulf", "双城记": "tale of two cities",
+    "道林格雷": "picture of dorian gray", "画像": "picture of dorian gray",
+    "汤姆": "tom sawyer", "索亚": "tom sawyer",
+    "战争与和平": "war and peace", "圣诞": "christmas carol",
+    "盖茨比": "great gatsby", "了不起": "great gatsby",
+    "小妇人": "little women", "简爱": "jane eyre",
+    "呼啸山庄": "wuthering heights",
+    "傲慢与偏见": "pride and prejudice",
+    "爱丽丝梦游仙境": "alice in wonderland",
+    "汤姆索亚": "tom sawyer",
+    "一个美国黑奴": "frederick douglass",
+    "道林格雷的画像": "picture of dorian gray",
+    "了不起的盖茨比": "great gatsby",
+}
 
 
 @router.get("/popular")
 async def get_popular_books(page: int = Query(1, ge=1)):
-    """获取热门名著列表，从预设的经典书单 + Gutendex 热门补充。"""
-    ids_str = ",".join(str(i) for i in POPULAR_IDS)
+    """获取热门名著列表，带中文标签。"""
+    ids_str = ",".join(str(b["id"]) for b in POPULAR_BOOKS)
     url = f"{GUTENDEX_BASE}/books?ids={ids_str}"
     async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
         try:
             resp = await client.get(url)
             resp.raise_for_status()
             data = resp.json()
+            # 注入中文名
+            cn_map = {b["id"]: b["cn"] for b in POPULAR_BOOKS}
+            for result in data.get("results", []):
+                if result["id"] in cn_map:
+                    result["cn_title"] = cn_map[result["id"]]
             log.debug("Gutendex popular response: %d books", len(data.get("results", [])))
             return data
         except httpx.HTTPError as e:
-            log.debug("Gutendex popular request failed: %s, falling back to empty", e)
-            return {"count": 0, "results": []}
+            log.debug("Gutendex popular request failed: %s, falling back to local", e)
+            # 兜底：返回本地热门书单
+            return {
+                "count": len(POPULAR_BOOKS),
+                "results": [{
+                    "id": b["id"],
+                    "title": b["title"],
+                    "cn_title": b["cn"],
+                    "authors": [{"name": b["author"]}],
+                    "formats": {},
+                } for b in POPULAR_BOOKS]
+            }
 
 
 @router.get("/search")
 async def search_books(query: str = Query(...), page: int = Query(1, ge=1)):
-    """代理 Gutendex 搜索接口，按书名/作者搜索公版书。"""
-    encoded_query = quote(query)
+    """代理 Gutendex 搜索，支持中英文关键词。"""
+    # 先查本地热门书单中文映射
+    query_lower = query.lower().strip()
+    local_match = None
+    for book in POPULAR_BOOKS:
+        if query_lower in book["cn"] or query_lower in book["title"].lower():
+            local_match = book
+            break
+
+    # 如果本地热门有匹配，直接返回（带 Gutendex 元数据补全封面）
+    if local_match:
+        ids_str = str(local_match["id"])
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+            try:
+                resp = await client.get(f"{GUTENDEX_BASE}/books?ids={ids_str}")
+                resp.raise_for_status()
+                data = resp.json()
+                if data.get("results"):
+                    # 注入中文名
+                    data["results"][0]["cn_title"] = local_match["cn"]
+                    return data
+            except httpx.HTTPError:
+                pass
+        # 兜底：返回本地信息
+        return {"count": 1, "results": [{
+            "id": local_match["id"],
+            "title": local_match["title"],
+            "cn_title": local_match["cn"],
+            "authors": [{"name": local_match["author"]}],
+            "formats": {},
+        }]}
+
+    # 中文关键词 → 英文搜索词
+    en_query = _CN_SEARCH_MAP.get(query_lower, query)
+
+    encoded_query = quote(en_query)
     url = f"{GUTENDEX_BASE}/books?search={encoded_query}&page={page}"
     async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
         try:
             resp = await client.get(url)
             resp.raise_for_status()
             data = resp.json()
-            log.debug("Gutendex search '%s': %d results", query, data.get("count", 0))
+            # 给结果注入中文名（如果本地有映射）
+            for result in data.get("results", []):
+                title_lower = result.get("title", "").lower()
+                for book in POPULAR_BOOKS:
+                    if title_lower == book["title"].lower():
+                        result["cn_title"] = book["cn"]
+                        break
+            log.debug("Gutendex search '%s' -> '%s': %d results", query, en_query, data.get("count", 0))
             return data
         except httpx.HTTPError as e:
             log.debug("Gutendex search failed: %s", e)

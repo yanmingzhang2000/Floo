@@ -150,8 +150,8 @@
               <view v-else class="book-cover book-cover-placeholder">
                 <text>📖</text>
               </view>
-              <text class="book-title">{{ book.title }}</text>
-              <text class="book-author">{{ book.author }}</text>
+              <text class="book-title">{{ book.cn_title || book.title }}</text>
+              <text class="book-author">{{ book.author || book.authors?.[0]?.name || '未知作者' }}</text>
               <text class="book-progress">已学 {{ book.chapters_read || 0 }} 章</text>
             </view>
           </view>
@@ -176,7 +176,7 @@
               <view v-else class="book-cover book-cover-placeholder">
                 <text>📖</text>
               </view>
-              <text class="book-title">{{ book.title }}</text>
+              <text class="book-title">{{ book.cn_title || book.title }}</text>
               <text class="book-author">{{ book.authors?.[0]?.name || '未知作者' }}</text>
             </view>
           </view>
@@ -208,7 +208,7 @@
               <view v-else class="book-cover book-cover-placeholder">
                 <text>📖</text>
               </view>
-              <text class="book-title">{{ book.title }}</text>
+              <text class="book-title">{{ book.cn_title || book.title }}</text>
               <text class="book-author">{{ book.authors?.[0]?.name || '未知作者' }}</text>
             </view>
           </view>
