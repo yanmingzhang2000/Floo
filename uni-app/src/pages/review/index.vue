@@ -18,11 +18,8 @@
       <view class="underline-tab" :class="{ active: activeTab === 'dictation' }" @tap="switchTab('dictation')">
         <text>默写</text>
       </view>
-      <view class="underline-tab" :class="{ active: activeTab === 'wordChoice' }" @tap="switchTab('wordChoice')">
-        <text>单词选义</text>
-      </view>
-      <view class="underline-tab" :class="{ active: activeTab === 'wordDictation' }" @tap="switchTab('wordDictation')">
-        <text>单词默写</text>
+      <view class="underline-tab" :class="{ active: activeTab === 'vocab' }" @tap="switchTab('vocab')">
+        <text>背单词</text>
       </view>
     </view>
 
@@ -96,167 +93,130 @@
         </view>
       </view>
 
-      <!-- ===== 单词选义 ===== -->
-      <view v-show="activeTab === 'wordChoice'">
+      <!-- ===== 背单词（选义 + 默写随机出题） ===== -->
+      <view v-show="activeTab === 'vocab'">
         <!-- 开始前 -->
-        <view v-if="!wcActive" class="section">
-          <text class="section-title">单词选义</text>
-          <view v-if="wcDueWords.length === 0" class="empty-state">
-            <text class="icon">🎯</text>
+        <view v-if="!vbActive" class="section">
+          <text class="section-title">背单词</text>
+          <view v-if="vbDueWords.length === 0" class="empty-state">
+            <text class="icon">📖</text>
             <text class="empty-text">暂无待复习单词</text>
             <text class="empty-hint">收藏更多单词后再来复习</text>
           </view>
-          <view v-else class="card vocab-start-card">
-            <view class="vocab-info">
-              <text class="vocab-info-icon">🎯</text>
-              <view>
-                <text class="vocab-info-label">待复习单词</text>
-                <text class="vocab-info-count">{{ wcDueWords.length }}</text>
+          <view v-else>
+            <view class="card vocab-start-card">
+              <view class="vocab-info">
+                <text class="vocab-info-icon">📖</text>
+                <view>
+                  <text class="vocab-info-label">待复习单词</text>
+                  <text class="vocab-info-count">{{ vbDueWords.length }}</text>
+                </view>
+              </view>
+              <button class="btn btn-primary btn-sm" @tap="startVocab">
+                <text>开始</text>
+              </button>
+            </view>
+            <view class="vb-mode-hints">
+              <view class="vb-mode-hint">
+                <text class="vb-mode-icon">🎯</text>
+                <text class="vb-mode-text">选义：看英文选中文释义</text>
+              </view>
+              <view class="vb-mode-hint">
+                <text class="vb-mode-icon">✏️</text>
+                <text class="vb-mode-text">默写：看中文拼写英文单词</text>
               </view>
             </view>
-            <button class="btn btn-primary btn-sm" @tap="startWordChoice">
-              <text>开始</text>
-            </button>
           </view>
         </view>
 
         <!-- 进行中 -->
-        <view v-else class="wc-active">
+        <view v-else class="vb-active">
           <view class="vocab-progress-bar-bg">
-            <view class="vocab-progress-bar-fill" :style="{ width: `${(wcIdx + 1) / wcWords.length * 100}%` }"></view>
+            <view class="vocab-progress-bar-fill" :style="{ width: ((vbIdx + 1) / vbWords.length * 100) + '%' }"></view>
           </view>
-          <text class="vocab-progress-text">{{ wcIdx + 1 }} / {{ wcWords.length }}</text>
-
-          <!-- 英文单词 -->
-          <view class="card wc-word-card">
-            <text class="wc-word-text">{{ wcCurrentWord?.word }}</text>
-            <text v-if="wcCurrentWord?.phonetic" class="wc-word-phonetic">{{ wcCurrentWord.phonetic }}</text>
+          <view class="vb-progress-row">
+            <text class="vocab-progress-text">{{ vbIdx + 1 }} / {{ vbWords.length }}</text>
+            <text class="vb-mode-tag">{{ vbCurrentMode === 'choice' ? '🎯 选义' : '✏️ 默写' }}</text>
           </view>
 
-          <!-- 四个选项 -->
-          <view class="wc-options">
-            <view
-              v-for="(opt, i) in wcOptions"
-              :key="i"
-              class="card wc-option"
-              :class="{
-                correct: wcShowResult && opt === wcCurrentWord?.meaning,
-                wrong: wcShowResult && wcSelectedIdx === i && opt !== wcCurrentWord?.meaning,
-                selected: !wcShowResult && wcSelectedIdx === i,
-              }"
-              @tap="selectWcOption(i)"
-            >
-              <text class="wc-option-label">{{ ['A', 'B', 'C', 'D'][i] }}</text>
-              <text class="wc-option-text">{{ opt }}</text>
+          <!-- ====== 选义模式 ====== -->
+          <template v-if="vbCurrentMode === 'choice'">
+            <view class="card wc-word-card">
+              <text class="wc-word-text">{{ vbCurrentWord?.word }}</text>
+              <text v-if="vbCurrentWord?.phonetic" class="wc-word-phonetic">{{ vbCurrentWord.phonetic }}</text>
             </view>
-          </view>
+            <view class="wc-options">
+              <view
+                v-for="(opt, i) in vbChoiceOptions"
+                :key="i"
+                class="card wc-option"
+                :class="{
+                  correct: vbShowResult && opt === vbCurrentWord?.meaning,
+                  wrong: vbShowResult && vbSelectedIdx === i && opt !== vbCurrentWord?.meaning,
+                  selected: !vbShowResult && vbSelectedIdx === i,
+                }"
+                @tap="selectVbChoice(i)"
+              >
+                <text class="wc-option-label">{{ ['A', 'B', 'C', 'D'][i] }}</text>
+                <text class="wc-option-text">{{ opt }}</text>
+              </view>
+            </view>
+          </template>
 
-          <!-- 结果提示 -->
-          <view v-if="wcShowResult" class="card wc-result-card" :class="wcIsCorrect ? 'wc-result-correct' : 'wc-result-wrong'">
-            <text>{{ wcIsCorrect ? '✅ 正确！' : '❌ 错误，正确答案：' + wcCurrentWord?.meaning }}</text>
-          </view>
+          <!-- ====== 默写模式 ====== -->
+          <template v-else>
+            <view class="card vocab-hint-card">
+              <text class="vocab-hint-label">中文释义</text>
+              <text class="vocab-hint-meaning">{{ vbCurrentWord?.meaning || '' }}</text>
+            </view>
+            <view class="card vocab-input-card">
+              <input v-model="vbDictInput" type="text" placeholder="输入英文单词..." class="vocab-input" @confirm="vbShowResult ? nextVbWord() : checkVbDict()" />
+            </view>
+          </template>
 
-          <view class="wc-nav">
-            <button v-if="!wcShowResult" class="btn btn-text" @tap="showWcAnswer">
-              <text>不会，看答案</text>
-            </button>
-            <button v-if="wcShowResult" class="btn btn-primary btn-block btn-lg" @tap="nextWcWord">
-              <text>{{ wcIdx < wcWords.length - 1 ? '下一个' : '查看结果' }}</text>
-            </button>
+          <!-- 操作按钮 -->
+          <view class="vb-actions">
+            <template v-if="vbCurrentMode === 'choice'">
+              <view v-if="vbShowResult" class="vb-result-line" :class="vbIsCorrect ? 'vb-correct' : 'vb-wrong'">
+                <text>{{ vbIsCorrect ? '✅ 正确！' : '❌ 错误，正确答案：' + vbCurrentWord?.meaning }}</text>
+              </view>
+              <button v-if="!vbShowResult" class="btn btn-text" @tap="showVbAnswer">
+                <text>不会，看答案</text>
+              </button>
+              <button v-if="vbShowResult" class="btn btn-primary btn-block btn-lg" @tap="nextVbWord">
+                <text>{{ vbIdx < vbWords.length - 1 ? '下一个' : '查看结果' }}</text>
+              </button>
+            </template>
+            <template v-else>
+              <button v-if="!vbShowResult" class="btn btn-primary btn-block btn-lg" :disabled="!vbDictInput.trim()" @tap="checkVbDict">
+                <text>确认</text>
+              </button>
+              <button v-if="!vbShowResult" class="btn btn-text" @tap="showVbAnswer">
+                <text>不会，看答案</text>
+              </button>
+              <view v-if="vbShowResult" class="vb-result-line" :class="vbIsCorrect ? 'vb-correct' : 'vb-wrong'">
+                <text>{{ vbIsCorrect ? '✅ 正确！' : '❌ 错误，正确答案：' + vbCurrentWord?.word }}</text>
+              </view>
+              <button v-if="vbShowResult" class="btn btn-primary btn-block btn-lg" @tap="nextVbWord">
+                <text>{{ vbIdx < vbWords.length - 1 ? '下一个' : '查看结果' }}</text>
+              </button>
+            </template>
           </view>
 
           <!-- 完成 -->
-          <view v-if="wcDone" class="card vocab-done-card">
-            <text class="vocab-done-title">🎉 选义完成</text>
+          <view v-if="vbDone" class="card vocab-done-card">
+            <text class="vocab-done-title">🎉 背单词完成</text>
             <view class="vocab-done-stats">
               <view class="vocab-done-stat">
-                <text class="vocab-done-stat-num" style="color: var(--success)">{{ wcCorrectCount }}</text>
+                <text class="vocab-done-stat-num" style="color: var(--success)">{{ vbCorrectCount }}</text>
                 <text class="vocab-done-stat-label">正确</text>
               </view>
               <view class="vocab-done-stat">
-                <text class="vocab-done-stat-num" style="color: var(--error)">{{ wcWords.length - wcCorrectCount }}</text>
+                <text class="vocab-done-stat-num" style="color: var(--error)">{{ vbWords.length - vbCorrectCount }}</text>
                 <text class="vocab-done-stat-label">错误</text>
               </view>
             </view>
-            <button class="btn btn-primary btn-block" @tap="resetWc">
-              <text>返回</text>
-            </button>
-          </view>
-        </view>
-      </view>
-
-      <!-- ===== 单词默写（接入后端） ===== -->
-      <view v-show="activeTab === 'wordDictation'">
-        <view v-if="!wdActive" class="section">
-          <text class="section-title">单词默写</text>
-          <view v-if="wdDueWords.length === 0" class="empty-state">
-            <text class="icon">✏️</text>
-            <text class="empty-text">暂无待复习单词</text>
-            <text class="empty-hint">收藏更多单词后再来复习</text>
-          </view>
-          <view v-else class="card vocab-start-card">
-            <view class="vocab-info">
-              <text class="vocab-info-icon">✏️</text>
-              <view>
-                <text class="vocab-info-label">待复习单词</text>
-                <text class="vocab-info-count">{{ wdDueWords.length }}</text>
-              </view>
-            </view>
-            <button class="btn btn-primary btn-sm" @tap="startWordDictation">
-              <text>开始</text>
-            </button>
-          </view>
-        </view>
-
-        <view v-else class="vocab-active">
-          <view class="vocab-progress-bar-bg">
-            <view class="vocab-progress-bar-fill" :style="{ width: `${(wdIdx + 1) / wdWords.length * 100}%` }"></view>
-          </view>
-          <text class="vocab-progress-text">{{ wdIdx + 1 }} / {{ wdWords.length }}</text>
-
-          <view class="card vocab-hint-card">
-            <text class="vocab-hint-label">中文释义</text>
-            <text class="vocab-hint-meaning">{{ wdCurrentWord?.meaning || '' }}</text>
-          </view>
-
-          <view class="card vocab-input-card">
-            <input v-model="wdInput" type="text" placeholder="输入英文单词..." class="vocab-input" @confirm="wdShowResult ? nextWdWord() : checkWdWord()" />
-          </view>
-
-          <view class="vocab-buttons">
-            <button v-if="!wdShowResult" class="btn btn-primary btn-block btn-lg" :disabled="!wdInput.trim()" @tap="checkWdWord">
-              <text>确认</text>
-            </button>
-            <button v-if="!wdShowResult" class="btn btn-text btn-block" @tap="showWdAnswer">
-              <text>不会，看答案</text>
-            </button>
-            <button v-if="wdShowResult" class="btn btn-primary btn-block btn-lg" @tap="nextWdWord">
-              <text>{{ wdIdx < wdWords.length - 1 ? '下一个' : '查看结果' }}</text>
-            </button>
-          </view>
-
-          <view v-if="wdShowResult" class="card vocab-result-card">
-            <text class="vocab-result-status" :class="wdIsCorrect ? 'correct' : 'wrong'">
-              {{ wdIsCorrect ? '✅ 正确' : '❌ 错误' }}
-            </text>
-            <text v-if="!wdIsCorrect" class="vocab-result-answer">
-              正确答案：{{ wdCurrentWord?.word }}
-            </text>
-          </view>
-
-          <view v-if="wdDone" class="card vocab-done-card">
-            <text class="vocab-done-title">🎉 默写完成</text>
-            <view class="vocab-done-stats">
-              <view class="vocab-done-stat">
-                <text class="vocab-done-stat-num" style="color: var(--success)">{{ wdCorrectCount }}</text>
-                <text class="vocab-done-stat-label">正确</text>
-              </view>
-              <view class="vocab-done-stat">
-                <text class="vocab-done-stat-num" style="color: var(--error)">{{ wdWords.length - wdCorrectCount }}</text>
-                <text class="vocab-done-stat-label">错误</text>
-              </view>
-            </view>
-            <button class="btn btn-primary btn-block" @tap="resetWd">
+            <button class="btn btn-primary btn-block" @tap="resetVb">
               <text>返回</text>
             </button>
           </view>
@@ -312,14 +272,14 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { dailyApi, dictationApi, favoritesApi, wordReviewApi } from '@/api'
+import { dailyApi, dictationApi, wordReviewApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { navTo } from '@/utils/router'
 import type { LearningContent, DictationResult, ReviewTask, MemoryProgress } from '@/types'
 
 const auth = useAuthStore()
 const loading = ref(true)
-const activeTab = ref<'review' | 'dictation' | 'wordChoice' | 'wordDictation'>('review')
+const activeTab = ref<'review' | 'dictation' | 'vocab'>('review')
 const showProfile = ref(false)
 
 // 复述
@@ -335,32 +295,22 @@ const userInput = ref('')
 const submitting = ref(false)
 const dictResult = ref<DictationResult | null>(null)
 
-// 单词选义
-const wcDueWords = ref<any[]>([])
-const wcDistractors = ref<any[]>([])
-const wcActive = ref(false)
-const wcWords = ref<any[]>([])
-const wcIdx = ref(0)
-const wcOptions = ref<string[]>([])
-const wcSelectedIdx = ref(-1)
-const wcShowResult = ref(false)
-const wcIsCorrect = ref(false)
-const wcDone = ref(false)
-const wcCorrectCount = ref(0)
+// 背单词
+const vbDueWords = ref<any[]>([])
+const vbDistractors = ref<any[]>([])
+const vbActive = ref(false)
+const vbWords = ref<any[]>([])
+const vbIdx = ref(0)
+const vbCurrentMode = ref<'choice' | 'dictation'>('choice')
+const vbChoiceOptions = ref<string[]>([])
+const vbSelectedIdx = ref(-1)
+const vbDictInput = ref('')
+const vbShowResult = ref(false)
+const vbIsCorrect = ref(false)
+const vbDone = ref(false)
+const vbCorrectCount = ref(0)
 
-// 单词默写
-const wdDueWords = ref<any[]>([])
-const wdActive = ref(false)
-const wdWords = ref<any[]>([])
-const wdIdx = ref(0)
-const wdInput = ref('')
-const wdShowResult = ref(false)
-const wdIsCorrect = ref(false)
-const wdDone = ref(false)
-const wdCorrectCount = ref(0)
-
-const wcCurrentWord = computed(() => wcWords.value[wcIdx.value] || null)
-const wdCurrentWord = computed(() => wdWords.value[wdIdx.value] || null)
+const vbCurrentWord = computed(() => vbWords.value[vbIdx.value] || null)
 const usernameInitial = computed(() => (auth.username?.[0] || '?').toUpperCase())
 
 const stageColors: Record<number, string> = {
@@ -370,9 +320,7 @@ const stageColors: Record<number, string> = {
 
 function switchTab(tab: typeof activeTab.value) {
   activeTab.value = tab
-  if ((tab === 'wordChoice' || tab === 'wordDictation') && wcDueWords.value.length === 0) {
-    loadWordReview()
-  }
+  if (tab === 'vocab' && vbDueWords.value.length === 0) loadVocabReview()
 }
 
 function goDetail(contentId: number) { navTo(`/pages/detail/index?id=${contentId}`) }
@@ -400,17 +348,15 @@ async function handleSubmit() {
   submitting.value = false
 }
 
-// ===== 单词复习数据加载 =====
-async function loadWordReview() {
+// ===== 背单词 =====
+async function loadVocabReview() {
   try {
     const { data } = await wordReviewApi.getDue(auth.currentUserId, 20)
-    wcDueWords.value = data.words || []
-    wcDistractors.value = data.distractors || []
-    wdDueWords.value = data.words || []
+    vbDueWords.value = data.words || []
+    vbDistractors.value = data.distractors || []
   } catch {
-    wcDueWords.value = []
-    wcDistractors.value = []
-    wdDueWords.value = []
+    vbDueWords.value = []
+    vbDistractors.value = []
   }
 }
 
@@ -423,92 +369,78 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled
 }
 
-// ===== 单词选义 =====
-function startWordChoice() {
-  if (wcDueWords.value.length === 0) return
-  wcWords.value = shuffleArray(wcDueWords.value).slice(0, Math.min(15, wcDueWords.value.length))
-  wcIdx.value = 0; wcSelectedIdx.value = -1; wcShowResult.value = false
-  wcIsCorrect.value = false; wcDone.value = false; wcCorrectCount.value = 0
-  wcActive.value = true
-  generateWcOptions()
+function pickMode(): 'choice' | 'dictation' {
+  return Math.random() < 0.5 ? 'choice' : 'dictation'
 }
 
-function generateWcOptions() {
-  const current = wcWords.value[wcIdx.value]
+function startVocab() {
+  if (vbDueWords.value.length === 0) return
+  const pool = shuffleArray(vbDueWords.value).slice(0, Math.min(15, vbDueWords.value.length))
+  // 随机为每个词分配模式
+  vbWords.value = pool.map(w => ({ ...w, _mode: pickMode() }))
+  vbIdx.value = 0
+  vbCurrentMode.value = vbWords.value[0]._mode
+  vbSelectedIdx.value = -1
+  vbDictInput.value = ''
+  vbShowResult.value = false
+  vbIsCorrect.value = false
+  vbDone.value = false
+  vbCorrectCount.value = 0
+  vbActive.value = true
+  generateVbOptions()
+}
+
+function generateVbOptions() {
+  const current = vbCurrentWord.value
   if (!current) return
   const correct = current.meaning || ''
-  // 从干扰项中随机抽 3 个
-  const pool = shuffleArray(wcDistractors.value.filter((d: any) => d.meaning && d.meaning !== correct))
+  const pool = shuffleArray(vbDistractors.value.filter((d: any) => d.meaning && d.meaning !== correct))
   const distractorMeanings = pool.slice(0, 3).map((d: any) => d.meaning)
-  // 不够就用占位
-  while (distractorMeanings.length < 3) {
-    distractorMeanings.push('暂无释义')
-  }
-  wcOptions.value = shuffleArray([correct, ...distractorMeanings])
+  while (distractorMeanings.length < 3) distractorMeanings.push('暂无释义')
+  vbChoiceOptions.value = shuffleArray([correct, ...distractorMeanings])
 }
 
-function selectWcOption(idx: number) {
-  if (wcShowResult.value) return
-  wcSelectedIdx.value = idx
-  const correct = wcWords.value[wcIdx.value]?.meaning
-  wcIsCorrect.value = wcOptions.value[idx] === correct
-  wcShowResult.value = true
-  if (wcIsCorrect.value) wcCorrectCount.value++
-  // 提交到后端
-  wordReviewApi.submit(auth.currentUserId, wcWords.value[wcIdx.value].word, wcIsCorrect.value)
+// 选义
+function selectVbChoice(idx: number) {
+  if (vbShowResult.value) return
+  vbSelectedIdx.value = idx
+  const correct = vbCurrentWord.value?.meaning
+  vbIsCorrect.value = vbChoiceOptions.value[idx] === correct
+  vbShowResult.value = true
+  if (vbIsCorrect.value) vbCorrectCount.value++
+  wordReviewApi.submit(auth.currentUserId, vbCurrentWord.value.word, vbIsCorrect.value)
 }
 
-function showWcAnswer() {
-  wcIsCorrect.value = false
-  wcShowResult.value = true
-  wordReviewApi.submit(auth.currentUserId, wcWords.value[wcIdx.value].word, false)
+// 默写
+function checkVbDict() {
+  if (!vbCurrentWord.value || !vbDictInput.value.trim()) return
+  vbIsCorrect.value = vbDictInput.value.trim().toLowerCase() === vbCurrentWord.value.word.toLowerCase()
+  if (vbIsCorrect.value) vbCorrectCount.value++
+  vbShowResult.value = true
+  wordReviewApi.submit(auth.currentUserId, vbCurrentWord.value.word, vbIsCorrect.value, vbIsCorrect.value ? 100 : 0)
 }
 
-function nextWcWord() {
-  if (wcIdx.value < wcWords.value.length - 1) {
-    wcIdx.value++; wcSelectedIdx.value = -1; wcShowResult.value = false; wcIsCorrect.value = false
-    generateWcOptions()
+function showVbAnswer() {
+  vbIsCorrect.value = false
+  vbShowResult.value = true
+  wordReviewApi.submit(auth.currentUserId, vbCurrentWord.value.word, false, 0)
+}
+
+function nextVbWord() {
+  if (vbIdx.value < vbWords.value.length - 1) {
+    vbIdx.value++
+    vbCurrentMode.value = vbWords.value[vbIdx.value]._mode
+    vbSelectedIdx.value = -1
+    vbDictInput.value = ''
+    vbShowResult.value = false
+    vbIsCorrect.value = false
+    if (vbCurrentMode.value === 'choice') generateVbOptions()
   } else {
-    wcDone.value = true
+    vbDone.value = true
   }
 }
 
-function resetWc() { wcActive.value = false }
-
-// ===== 单词默写（后端版） =====
-function startWordDictation() {
-  if (wdDueWords.value.length === 0) return
-  wdWords.value = shuffleArray(wdDueWords.value).slice(0, Math.min(15, wdDueWords.value.length))
-  wdIdx.value = 0; wdInput.value = ''; wdShowResult.value = false
-  wdIsCorrect.value = false; wdDone.value = false; wdCorrectCount.value = 0
-  wdActive.value = true
-}
-
-function checkWdWord() {
-  if (!wdCurrentWord.value || !wdInput.value.trim()) return
-  wdIsCorrect.value = wdInput.value.trim().toLowerCase() === wdCurrentWord.value.word.toLowerCase()
-  if (wdIsCorrect.value) wdCorrectCount.value++
-  wdShowResult.value = true
-  // 提交到后端
-  const accuracy = wdIsCorrect.value ? 100 : 0
-  wordReviewApi.submit(auth.currentUserId, wdCurrentWord.value.word, wdIsCorrect.value, accuracy)
-}
-
-function showWdAnswer() {
-  wdIsCorrect.value = false
-  wdShowResult.value = true
-  wordReviewApi.submit(auth.currentUserId, wdWords.value[wdIdx.value].word, false, 0)
-}
-
-function nextWdWord() {
-  if (wdIdx.value < wdWords.value.length - 1) {
-    wdIdx.value++; wdInput.value = ''; wdShowResult.value = false; wdIsCorrect.value = false
-  } else {
-    wdDone.value = true
-  }
-}
-
-function resetWd() { wdActive.value = false }
+function resetVb() { vbActive.value = false }
 
 // ===== 数据加载 =====
 async function loadData() {
@@ -535,7 +467,7 @@ async function loadData() {
       }
     }
   } catch {}
-  await loadWordReview()
+  await loadVocabReview()
   loading.value = false
 }
 
@@ -568,7 +500,7 @@ onShow(loadData)
 .content-title { font-weight: 600; font-size: 28rpx; display: block; }
 .content-meta { font-size: 24rpx; color: var(--on-surface-variant); margin-top: 4rpx; display: block; }
 
-/* 通用词汇卡片 */
+/* 通用词汇 */
 .vocab-start-card { display: flex; align-items: center; justify-content: space-between; }
 .vocab-info { display: flex; align-items: center; gap: 20rpx; }
 .vocab-info-icon { font-size: 48rpx; }
@@ -576,14 +508,13 @@ onShow(loadData)
 .vocab-info-count { font-size: 32rpx; font-weight: 700; display: block; }
 .vocab-progress-bar-bg { height: 8rpx; background: var(--surface-container); border-radius: 4rpx; margin: 32rpx 32rpx 0; overflow: hidden; }
 .vocab-progress-bar-fill { height: 100%; background: var(--primary); border-radius: 4rpx; transition: width 0.3s; }
-.vocab-progress-text { text-align: center; font-size: 24rpx; color: var(--on-surface-variant); margin-top: 12rpx; display: block; }
+.vocab-progress-text { font-size: 24rpx; color: var(--on-surface-variant); }
 .vocab-hint-card { text-align: center; padding: 40rpx; }
 .vocab-hint-label { font-size: 22rpx; color: var(--on-surface-variant); margin-bottom: 16rpx; display: block; }
 .vocab-hint-meaning { font-size: 40rpx; font-weight: 600; display: block; }
 .vocab-input-card { margin: 0 32rpx 24rpx; }
 .vocab-input { width: 100%; border: none; border-bottom: 3rpx solid var(--outline); padding: 20rpx 0; font-size: 36rpx; text-align: center; outline: none; }
 .vocab-input:focus { border-bottom-color: var(--primary); }
-.vocab-buttons { padding: 0 32rpx 24rpx; display: flex; flex-direction: column; gap: 12rpx; align-items: center; }
 .vocab-result-card { text-align: center; padding: 32rpx; margin: 0 32rpx 24rpx; }
 .vocab-result-status { font-size: 32rpx; font-weight: 700; display: block; margin-bottom: 12rpx; }
 .vocab-result-status.correct { color: var(--success); }
@@ -596,24 +527,29 @@ onShow(loadData)
 .vocab-done-stat-num { font-size: 48rpx; font-weight: 800; }
 .vocab-done-stat-label { font-size: 22rpx; color: var(--on-surface-variant); }
 
-/* 单词选义 */
+/* 背单词专属 */
+.vb-mode-hints { margin-top: 24rpx; display: flex; flex-direction: column; gap: 16rpx; }
+.vb-mode-hint { display: flex; align-items: center; gap: 16rpx; padding: 20rpx 24rpx; background: var(--surface-container); border-radius: 12rpx; }
+.vb-mode-icon { font-size: 32rpx; }
+.vb-mode-text { font-size: 26rpx; color: var(--on-surface-variant); }
+.vb-progress-row { display: flex; justify-content: space-between; align-items: center; padding: 12rpx 32rpx 0; }
+.vb-mode-tag { font-size: 24rpx; color: var(--primary); font-weight: 600; }
+.vb-actions { padding: 16rpx 32rpx 32rpx; display: flex; flex-direction: column; gap: 12rpx; align-items: center; }
+.vb-result-line { text-align: center; font-size: 28rpx; font-weight: 600; padding: 16rpx 0; }
+.vb-correct { color: var(--success); }
+.vb-wrong { color: var(--error); }
+
+/* 选义卡片 */
 .wc-word-card { text-align: center; padding: 48rpx 32rpx; margin: 16rpx 32rpx; }
 .wc-word-text { font-size: 52rpx; font-weight: 800; display: block; }
 .wc-word-phonetic { font-size: 26rpx; color: var(--on-surface-variant); display: block; margin-top: 12rpx; }
 .wc-options { padding: 0 32rpx; display: flex; flex-direction: column; gap: 16rpx; }
-.wc-option {
-  display: flex; align-items: center; gap: 20rpx; padding: 28rpx 24rpx;
-  border: 3rpx solid var(--outline-variant); border-radius: 16rpx; transition: all 0.15s;
-}
+.wc-option { display: flex; align-items: center; gap: 20rpx; padding: 28rpx 24rpx; border: 3rpx solid var(--outline-variant); border-radius: 16rpx; transition: all 0.15s; }
 .wc-option.selected { border-color: var(--primary); background: var(--primary-container); }
 .wc-option.correct { border-color: var(--success); background: var(--success-container); }
 .wc-option.wrong { border-color: var(--error); background: var(--error-container); }
 .wc-option-label { font-size: 28rpx; font-weight: 700; color: var(--on-surface-variant); width: 48rpx; text-align: center; }
 .wc-option-text { font-size: 28rpx; flex: 1; }
-.wc-result-card { margin: 24rpx 32rpx; padding: 24rpx; text-align: center; font-size: 28rpx; font-weight: 600; }
-.wc-result-correct { background: var(--success-container); color: var(--success); }
-.wc-result-wrong { background: var(--error-container); color: var(--error); }
-.wc-nav { padding: 16rpx 32rpx 32rpx; text-align: center; }
 
 /* 默写弹窗 */
 .dictation-sheet { width: 100%; max-width: 600px; max-height: 90vh; background: white; border-radius: 32rpx 32rpx 0 0; overflow-y: auto; padding-bottom: env(safe-area-inset-bottom, 32rpx); }

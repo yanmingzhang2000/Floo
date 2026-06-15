@@ -28,6 +28,18 @@
         </view>
       </view>
 
+      <!-- 背单词入口 -->
+      <view class="vb-entry" @tap="goVocabReview">
+        <view class="vb-entry-left">
+          <text class="vb-entry-icon">📖</text>
+          <view>
+            <text class="vb-entry-title">背单词</text>
+            <text class="vb-entry-desc">选义 + 默写，间隔重复记忆</text>
+          </view>
+        </view>
+        <text class="vb-entry-arrow">›</text>
+      </view>
+
       <!-- 筛选标签：全部 / 未掌握 / 已掌握 -->
       <view class="underline-tabs">
         <view class="underline-tab" :class="{ active: filterTab === 'all' }" @tap="filterTab = 'all'">
@@ -232,8 +244,11 @@ function handleRemove(word: string) {
 }
 
 function navToDict() {
-  // 查词功能通过搜索栏实现，聚焦搜索框
   searchWord.value = ''
+}
+
+function goVocabReview() {
+  uni.switchTab({ url: '/pages/review/index' })
 }
 
 async function loadFavorites() {
@@ -300,4 +315,18 @@ onShow(loadData)
 }
 .mastered-btn.active { background: var(--success-container); }
 .remove-btn { font-size: 24rpx; color: var(--on-surface-muted); }
+
+/* 背单词入口 */
+.vb-entry {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 24rpx 28rpx; margin: 12rpx 0;
+  background: linear-gradient(135deg, var(--primary-container) 0%, #E8F5E9 100%);
+  border-radius: 20rpx;
+}
+.vb-entry:active { opacity: 0.7; }
+.vb-entry-left { display: flex; align-items: center; gap: 20rpx; }
+.vb-entry-icon { font-size: 44rpx; }
+.vb-entry-title { font-size: 30rpx; font-weight: 700; display: block; }
+.vb-entry-desc { font-size: 24rpx; color: var(--on-surface-variant); display: block; margin-top: 4rpx; }
+.vb-entry-arrow { font-size: 36rpx; color: var(--on-surface-muted); }
 </style>
