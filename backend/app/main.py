@@ -12,7 +12,7 @@ from app.core.logging import setup_logging
 from app.database import Base, engine, SessionLocal
 from app.models import Character
 from app.routers import checkin, daily, dictation, dictionary, favorites, shop, speech, tts, word_review
-from app.routers import user
+from app.routers import user, books
 
 setup_logging()
 log = logging.getLogger(__name__)
@@ -123,6 +123,7 @@ app.include_router(shop.router)
 app.include_router(speech.router)
 app.include_router(tts.router)
 app.include_router(word_review.router)
+app.include_router(books.router)
 
 
 @app.get("/")

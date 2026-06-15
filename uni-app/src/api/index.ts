@@ -130,4 +130,22 @@ export const ttsApi = {
     api.post('/api/tts/synthesize', { text, lang_type: langType }),
 }
 
+// ===== 名著书本 =====
+export const booksApi = {
+  search: (query: string, page = 1) =>
+    api.get('/api/books/search', { params: { query, page } }),
+  getPopular: (page = 1) =>
+    api.get('/api/books/popular', { params: { page } }),
+  getDetail: (gutenbergId: number) =>
+    api.get(`/api/books/${gutenbergId}`),
+  getChapters: (gutenbergId: number) =>
+    api.get(`/api/books/${gutenbergId}/chapters`),
+  getChapterText: (gutenbergId: number, chapterIdx: number) =>
+    api.get(`/api/books/${gutenbergId}/chapter/${chapterIdx}`),
+  getMyBooks: (userId: number) =>
+    api.get('/api/books/my', { params: { user_id: userId } }),
+  markChapterRead: (userId: number, gutenbergId: number, chapterIdx: number) =>
+    api.post('/api/books/mark-read', { user_id: userId, gutenberg_id: gutenbergId, chapter_idx: chapterIdx }),
+}
+
 export default api
