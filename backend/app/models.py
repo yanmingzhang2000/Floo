@@ -243,6 +243,7 @@ class UserFavoriteWord(Base):
     meaning = Column(String(512), nullable=True)
     source = Column(String(32), nullable=True)  # 从哪里收藏的：daily/dictation/review
     source_content_id = Column(Integer, nullable=True)  # 来源内容ID
+    is_mastered = Column(Boolean, default=False, nullable=False)  # 是否已掌握
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 class UserPointAccount(Base):

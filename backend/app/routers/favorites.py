@@ -93,6 +93,7 @@ def get_favorites(user_id: int, limit: int = 100, db: Session = Depends(get_db))
             "phonetic": f.phonetic,
             "meaning": f.meaning,
             "source": f.source,
+            "is_mastered": f.is_mastered,
             "created_at": f.created_at.strftime("%Y-%m-%d %H:%M"),
         }
         for f in favs
@@ -111,3 +112,22 @@ def check_favorite(user_id: int, word: str, db: Session = Depends(get_db)):
         .first()
     )
     return {"is_favorite": fav is not None, "id": fav.id if fav else None}
+
+
+@router.patch("/mastered")
+def toggle_mastered(user_id: int, word: str, db: Session = Depends(get_db)):
+    """切换单词的已掌握状态。"""
+    fav = (
+        db.query(UserFavoriteWord)
+        .filter(
+            UserFavoriteWord.user_id == user_id,
+            UserFavoriteWord.word == word.lower()
+        )
+        .first()
+    )
+    if not fav:
+        raise HTTPException(404, "未收藏该单词")
+    fav.is_mastered = not fav.is_mastered
+    db.commit()
+    log.debug("用户 %s 单词 %s mastered=%s", user_id, word, fav.is_mastered)
+    return {"success": True, "is_mastered": fav.is_mastered}

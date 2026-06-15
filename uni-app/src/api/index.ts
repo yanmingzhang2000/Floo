@@ -92,6 +92,8 @@ export const favoritesApi = {
     api.get('/api/favorites/list', { params: { user_id: userId, limit } }),
   check: (userId: number, word: string) =>
     api.get('/api/favorites/check', { params: { user_id: userId, word } }),
+  toggleMastered: (userId: number, word: string) =>
+    api.patch('/api/favorites/mastered', null, { params: { user_id: userId, word } }),
 }
 
 // ===== 积分商城 =====

@@ -23,7 +23,7 @@ log.debug("数据库表已同步")
 
 # 兼容性补丁：检查并补齐缺失列（避免 schema 不匹配导致 500）
 def _patch_missing_columns():
-    """检查 user_main 表是否缺少 openid 列，缺则补上。
+    """检查并补齐缺失列，避免 schema 不匹配导致 500。
     为什么不用 Alembic：MVP 阶段求快速迭代，后续再规范。"""
     from sqlalchemy import text
     db = SessionLocal()
@@ -33,7 +33,6 @@ def _patch_missing_columns():
             "SELECT COUNT(*) FROM information_schema.COLUMNS "
             "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user_main' AND COLUMN_NAME = 'openid'"
         )).scalar()
-        
         if result == 0:
             log.info("检测到 user_main 缺少 openid 列，开始补列")
             db.execute(text(
@@ -44,6 +43,21 @@ def _patch_missing_columns():
             log.info("openid 列已补齐")
         else:
             log.debug("user_main.openid 列已存在，跳过补列")
+
+        # 检查 user_favorite_words.is_mastered 列是否存在
+        result2 = db.execute(text(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user_favorite_words' AND COLUMN_NAME = 'is_mastered'"
+        )).scalar()
+        if result2 == 0:
+            log.info("检测到 user_favorite_words 缺少 is_mastered 列，开始补列")
+            db.execute(text(
+                "ALTER TABLE user_favorite_words ADD COLUMN is_mastered BOOLEAN NOT NULL DEFAULT FALSE"
+            ))
+            db.commit()
+            log.info("is_mastered 列已补齐")
+        else:
+            log.debug("user_favorite_words.is_mastered 列已存在，跳过补列")
     except Exception as e:
         db.rollback()
         log.warning("补列检查失败（如果数据库已正常可忽略）: %s", e)

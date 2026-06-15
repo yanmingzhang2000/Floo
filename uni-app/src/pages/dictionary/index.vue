@@ -2,21 +2,8 @@
   <view class="page-container">
     <view class="nav-bar">
       <view class="nav-left"></view>
-      <text class="nav-title">单词书</text>
-      <view class="nav-right">
-        <view class="nav-avatar" @tap="showProfile = true">
-          <text>{{ usernameInitial }}</text>
-        </view>
-      </view>
-    </view>
-
-    <view class="underline-tabs">
-      <view class="underline-tab" :class="{ active: activeTab === 'search' }" @tap="activeTab = 'search'">
-        <text>查词</text>
-      </view>
-      <view class="underline-tab" :class="{ active: activeTab === 'favorites' }" @tap="activeTab = 'favorites'">
-        <text>收藏 ({{ favorites.length }})</text>
-      </view>
+      <text class="nav-title">我的单词书</text>
+      <view class="nav-right"></view>
     </view>
 
     <view v-if="loading" class="loading">
@@ -24,59 +11,88 @@
     </view>
 
     <template v-else>
-      <!-- 查词结果 -->
-      <view v-show="activeTab === 'search'">
-        <!-- 搜索栏 -->
-        <view class="search-bar">
-          <view class="search-input-wrap">
-            <text class="search-icon">🔍</text>
-            <input v-model="searchWord" type="text" placeholder="输入英文或中文单词..." placeholder-class="search-placeholder" class="search-input" @confirm="handleSearch" />
-            <text v-if="searchWord" class="search-clear" @tap="searchWord = ''; searchResult = null">✕</text>
-          </view>
-        </view>
-        <view v-if="!searchResult && !searching && !searchWord" class="empty-state">
-          <text class="icon">🔍</text>
-          <text class="empty-text">输入单词开始查词</text>
-          <text class="empty-hint">支持中英文查询</text>
-        </view>
-        <view v-if="searching" class="loading">
-          <view class="spinner"></view>
-        </view>
-        <view v-if="searchResult && !searching" class="card search-result-card">
-          <view class="search-result-header">
-            <text class="search-result-word">{{ searchResult.word }}</text>
-            <view class="search-result-actions">
-              <view class="search-result-speak" @tap="playWord(searchResult.word!)"><text>🔊</text></view>
-              <view class="search-result-fav" :class="{ 'is-fav': searchResult.isFavorite }" @tap="toggleFavorite(searchResult.word!)">
-                <text>{{ searchResult.isFavorite ? '★' : '☆' }}</text>
-              </view>
-            </view>
-          </view>
-          <text v-if="searchResult.phonetic" class="search-result-phonetic">{{ searchResult.phonetic }}</text>
-          <text class="search-result-meaning">{{ searchResult.meaning }}</text>
-          <text v-if="searchResult.usage" class="search-result-usage">{{ searchResult.usage }}</text>
+      <!-- 搜索栏：全局，同时支持筛选收藏和查新词 -->
+      <view class="search-bar">
+        <view class="search-input-wrap">
+          <text class="search-icon">🔍</text>
+          <input
+            v-model="searchWord"
+            type="text"
+            placeholder="搜索单词或释义..."
+            placeholder-class="search-placeholder"
+            class="search-input"
+            @input="onSearchInput"
+            @confirm="onSearchConfirm"
+          />
+          <text v-if="searchWord" class="search-clear" @tap="clearSearch">✕</text>
         </view>
       </view>
 
-      <!-- 收藏列表 -->
-      <view v-show="activeTab === 'favorites'">
-        <view v-if="favorites.length === 0" class="empty-state">
-          <text class="icon">📚</text>
-          <text class="empty-text">还没有收藏单词</text>
-          <text class="empty-hint">在阅读页点击单词即可收藏</text>
+      <!-- 筛选标签：全部 / 未掌握 / 已掌握 -->
+      <view class="underline-tabs">
+        <view class="underline-tab" :class="{ active: filterTab === 'all' }" @tap="filterTab = 'all'">
+          <text>全部 ({{ favorites.length }})</text>
         </view>
-        <view v-else class="fav-list">
-          <view v-for="fav in favorites" :key="fav.id" class="card fav-item" @tap="playWord(fav.word)">
-            <view class="fav-main">
-              <text class="fav-word">{{ fav.word }}</text>
-              <view class="fav-remove" @tap.stop="handleRemove(fav.word)">
-                <text>★</text>
-              </view>
+        <view class="underline-tab" :class="{ active: filterTab === 'unmastered' }" @tap="filterTab = 'unmastered'">
+          <text>未掌握 ({{ unmasteredCount }})</text>
+        </view>
+        <view class="underline-tab" :class="{ active: filterTab === 'mastered' }" @tap="filterTab = 'mastered'">
+          <text>已掌握 ({{ masteredCount }})</text>
+        </view>
+      </view>
+
+      <!-- 查词结果弹出层 -->
+      <view v-if="dictResult" class="card dict-result-card">
+        <view class="dict-header">
+          <text class="dict-word">{{ dictResult.word }}</text>
+          <view class="dict-actions">
+            <view class="dict-btn" @tap="playWord(dictResult.word!)"><text>🔊</text></view>
+            <view class="dict-btn" :class="{ 'is-active': dictResult.isFavorite }" @tap="toggleDictFavorite">
+              <text>{{ dictResult.isFavorite ? '★' : '☆' }}</text>
             </view>
-            <text v-if="fav.phonetic" class="fav-phonetic">{{ fav.phonetic }}</text>
-            <text class="fav-meaning">{{ fav.meaning }}</text>
           </view>
         </view>
+        <text v-if="dictResult.phonetic" class="dict-phonetic">{{ dictResult.phonetic }}</text>
+        <text class="dict-meaning">{{ dictResult.meaning }}</text>
+      </view>
+
+      <!-- 单词列表 -->
+      <view v-if="filteredFavorites.length > 0" class="word-list">
+        <view
+          v-for="fav in filteredFavorites"
+          :key="fav.id"
+          class="card word-item"
+        >
+          <view class="word-main">
+            <view class="word-info" @tap="playWord(fav.word)">
+              <text class="word-text">{{ fav.word }}</text>
+              <text v-if="fav.phonetic" class="word-phonetic">{{ fav.phonetic }}</text>
+              <text class="word-meaning">{{ fav.meaning }}</text>
+            </view>
+            <view class="word-actions">
+              <view
+                class="word-action-btn mastered-btn"
+                :class="{ active: fav.is_mastered }"
+                @tap="handleToggleMastered(fav)"
+              >
+                <text>{{ fav.is_mastered ? '✅' : '⬜' }}</text>
+              </view>
+              <view class="word-action-btn remove-btn" @tap="handleRemove(fav.word)">
+                <text>✕</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 空状态 -->
+      <view v-else-if="!dictResult" class="empty-state">
+        <text class="icon">📚</text>
+        <text class="empty-text">{{ searchWord ? '没有匹配的单词' : '还没有收藏单词哦' }}</text>
+        <text class="empty-hint">{{ searchWord ? '换个关键词试试' : '在学习页面点击单词即可收藏，这里会显示你的专属词书' }}</text>
+        <button v-if="!searchWord" class="btn btn-primary btn-sm" style="margin-top: 32rpx;" @tap="navToDict">
+          <text>去查词</text>
+        </button>
       </view>
     </template>
   </view>
@@ -88,27 +104,63 @@ import { onShow } from '@dcloudio/uni-app'
 import { favoritesApi, dictionaryApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { speakWord } from '@/composables/useSpeech'
+import { navTo } from '@/utils/router'
+
+interface FavWord {
+  id: number; word: string; phonetic?: string; meaning?: string;
+  source?: string; is_mastered: boolean; created_at: string
+}
 
 const auth = useAuthStore()
 const loading = ref(true)
-const searching = ref(false)
 const searchWord = ref('')
-const activeTab = ref<'search' | 'favorites'>('search')
-const searchResult = ref<{
-  word?: string; phonetic?: string; meaning: string; usage?: string; isFavorite?: boolean
+const filterTab = ref<'all' | 'unmastered' | 'mastered'>('all')
+const favorites = ref<FavWord[]>([])
+
+const dictResult = ref<{
+  word?: string; phonetic?: string; meaning: string; isFavorite?: boolean
 } | null>(null)
-const favorites = ref<Array<{
-  id: number; word: string; phonetic?: string; meaning?: string; source?: string; created_at: string
-}>>([])
 
-const usernameInitial = computed(() => (auth.username?.[0] || '?').toUpperCase())
+const unmasteredCount = computed(() => favorites.value.filter(f => !f.is_mastered).length)
+const masteredCount = computed(() => favorites.value.filter(f => f.is_mastered).length)
 
-async function handleSearch() {
+const filteredFavorites = computed(() => {
+  let list = favorites.value
+  if (filterTab.value === 'unmastered') list = list.filter(f => !f.is_mastered)
+  if (filterTab.value === 'mastered') list = list.filter(f => f.is_mastered)
+  if (searchWord.value.trim()) {
+    const q = searchWord.value.trim().toLowerCase()
+    list = list.filter(f => f.word.includes(q) || (f.meaning || '').toLowerCase().includes(q))
+  }
+  return list
+})
+
+function onSearchInput() {
+  // 实时筛选收藏列表，如果输入的内容不在收藏中则清空查词结果
+  if (dictResult.value && searchWord.value.trim().toLowerCase() !== dictResult.value.word?.toLowerCase()) {
+    dictResult.value = null
+  }
+}
+
+async function onSearchConfirm() {
   const word = searchWord.value.trim()
   if (!word) return
-  searching.value = true
-  activeTab.value = 'search'
-  searchResult.value = null
+  // 如果收藏里有这个单词，直接筛选；同时查词典获取详细释义
+  const matched = favorites.value.find(f => f.word === word.toLowerCase())
+  if (!matched) {
+    // 收藏里没有，查词典
+    await lookupWord(word)
+  } else {
+    dictResult.value = {
+      word: matched.word,
+      phonetic: matched.phonetic,
+      meaning: matched.meaning || '',
+      isFavorite: true,
+    }
+  }
+}
+
+async function lookupWord(word: string) {
   try {
     const { data } = await dictionaryApi.lookup(word)
     const ec = data?.ec?.word?.[0]
@@ -117,39 +169,54 @@ async function handleSearch() {
     const meaning = trs.map((t: any) => t?.tr?.[0]?.l?.i?.[0]).filter(Boolean).join('；')
     const baseWord = ec?.word?.[0]?.returnPhrase || word
 
-    // 检查是否已收藏
     let isFavorite = false
     try {
       const { data: favData } = await favoritesApi.check(auth.currentUserId, baseWord)
-      isFavorite = favData?.is_favorited || false
+      isFavorite = favData?.is_favorite || false
     } catch {}
 
-    searchResult.value = {
+    dictResult.value = {
       word: baseWord,
       phonetic: phonetic ? `/${phonetic}/` : undefined,
       meaning: meaning || '未找到释义',
       isFavorite,
     }
-  } catch { searchResult.value = { word, meaning: '查询失败' } }
-  searching.value = false
+  } catch {
+    dictResult.value = { word, meaning: '查询失败' }
+  }
 }
 
-async function toggleFavorite(word: string) {
+async function toggleDictFavorite() {
+  if (!dictResult.value?.word) return
+  const word = dictResult.value.word
   try {
-    if (searchResult.value?.isFavorite) {
+    if (dictResult.value.isFavorite) {
       await favoritesApi.remove(auth.currentUserId, word)
-      searchResult.value.isFavorite = false
+      dictResult.value.isFavorite = false
+      favorites.value = favorites.value.filter(f => f.word !== word)
     } else {
-      await favoritesApi.add(auth.currentUserId, word)
-      searchResult.value.isFavorite = true
+      await favoritesApi.add(auth.currentUserId, word, dictResult.value.phonetic, dictResult.value.meaning)
+      dictResult.value.isFavorite = true
+      await loadFavorites()
     }
-    loadFavorites()
   } catch {}
+}
+
+function clearSearch() {
+  searchWord.value = ''
+  dictResult.value = null
 }
 
 function playWord(word: string) { speakWord(word) }
 
-async function handleRemove(word: string) {
+async function handleToggleMastered(fav: FavWord) {
+  try {
+    const { data } = await favoritesApi.toggleMastered(auth.currentUserId, fav.word)
+    fav.is_mastered = data.is_mastered
+  } catch {}
+}
+
+function handleRemove(word: string) {
   uni.showModal({
     title: '取消收藏',
     content: `确定取消收藏 "${word}" 吗？`,
@@ -162,6 +229,11 @@ async function handleRemove(word: string) {
       }
     },
   })
+}
+
+function navToDict() {
+  // 查词功能通过搜索栏实现，聚焦搜索框
+  searchWord.value = ''
 }
 
 async function loadFavorites() {
@@ -182,13 +254,11 @@ onShow(loadData)
 
 <style scoped>
 .search-bar {
-  display: flex; align-items: center; gap: 16rpx;
-  padding: 20rpx 0;
+  padding: 16rpx 0 8rpx;
 }
 .search-input-wrap {
-  flex: 1;
   display: flex; align-items: center;
-  background: var(--surface);
+  background: #fff;
   border-radius: 16rpx;
   padding: 0 20rpx;
   border: 3rpx solid var(--outline-variant);
@@ -200,28 +270,34 @@ onShow(loadData)
 .search-placeholder { color: var(--on-surface-muted); }
 .search-clear { font-size: 28rpx; color: var(--on-surface-muted); padding: 8rpx; }
 
-.search-result-card { margin: 24rpx 0; }
-.search-result-header {
-  display: flex; align-items: center; justify-content: space-between; margin-bottom: 16rpx;
+.dict-result-card { margin: 16rpx 0; }
+.dict-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 12rpx;
 }
-.search-result-word { font-size: 40rpx; font-weight: 700; }
-.search-result-actions { display: flex; gap: 16rpx; }
-.search-result-speak, .search-result-fav {
+.dict-word { font-size: 40rpx; font-weight: 700; }
+.dict-actions { display: flex; gap: 16rpx; }
+.dict-btn {
   width: 64rpx; height: 64rpx; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; font-size: 32rpx;
+  background: var(--surface-container);
 }
-.search-result-speak { background: var(--primary-container); }
-.search-result-fav { background: var(--surface-container); font-size: 36rpx; }
-.search-result-fav.is-fav { color: #f59e0b; }
-.search-result-phonetic { color: var(--on-surface-variant); font-size: 26rpx; display: block; margin-bottom: 12rpx; }
-.search-result-meaning { font-size: 30rpx; line-height: 1.6; display: block; }
-.search-result-usage { margin-top: 16rpx; color: var(--on-surface-variant); font-size: 26rpx; display: block; }
+.dict-btn.is-active { color: #f59e0b; }
+.dict-phonetic { color: var(--on-surface-variant); font-size: 26rpx; display: block; margin-bottom: 8rpx; }
+.dict-meaning { font-size: 30rpx; line-height: 1.6; display: block; }
 
-.fav-list { padding: 16rpx 0; }
-.fav-item { padding: 28rpx; }
-.fav-main { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8rpx; }
-.fav-word { font-size: 34rpx; font-weight: 600; }
-.fav-remove { font-size: 36rpx; color: #f59e0b; padding: 8rpx; }
-.fav-phonetic { font-size: 24rpx; color: var(--on-surface-variant); display: block; margin-bottom: 8rpx; }
-.fav-meaning { font-size: 26rpx; color: var(--on-surface-variant); display: block; }
+.word-list { padding: 8rpx 0; }
+.word-item { padding: 24rpx; margin: 8rpx 0; }
+.word-main { display: flex; align-items: center; justify-content: space-between; }
+.word-info { flex: 1; }
+.word-text { font-size: 32rpx; font-weight: 600; display: block; }
+.word-phonetic { font-size: 24rpx; color: var(--on-surface-variant); display: block; margin: 4rpx 0; }
+.word-meaning { font-size: 26rpx; color: var(--on-surface-variant); display: block; }
+.word-actions { display: flex; gap: 12rpx; align-items: center; }
+.word-action-btn {
+  width: 56rpx; height: 56rpx; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28rpx; background: var(--surface-container);
+}
+.mastered-btn.active { background: var(--success-container); }
+.remove-btn { font-size: 24rpx; color: var(--on-surface-muted); }
 </style>
