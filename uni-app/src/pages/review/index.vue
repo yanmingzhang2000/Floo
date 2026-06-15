@@ -113,7 +113,7 @@
                 </view>
               </view>
               <button class="btn btn-primary btn-sm" @tap="startVocab">
-                <text>开始</text>
+                <text>复习</text>
               </button>
             </view>
             <view class="vb-mode-hints">
@@ -502,7 +502,7 @@ onShow(loadData)
 
 /* 通用词汇 */
 .vocab-start-card { display: flex; align-items: center; justify-content: space-between; }
-.vocab-info { display: flex; align-items: center; gap: 20rpx; }
+.vocab-info { display: flex; align-items: center; gap: 20rpx; flex: 1; }
 .vocab-info-icon { font-size: 48rpx; }
 .vocab-info-label { font-size: 26rpx; color: var(--on-surface-variant); display: block; }
 .vocab-info-count { font-size: 32rpx; font-weight: 700; display: block; }
