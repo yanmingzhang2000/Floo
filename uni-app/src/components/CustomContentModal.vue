@@ -141,7 +141,8 @@ async function handleSubmit() {
 
 .content-input {
   width: 100%;
-  padding: 28rpx;
+  box-sizing: border-box;
+  padding: 24rpx;
   border: 2rpx solid #E0E0E0;
   border-radius: 24rpx;
   font-size: 30rpx;
