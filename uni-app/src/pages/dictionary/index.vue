@@ -10,24 +10,12 @@
       </view>
     </view>
 
-    <!-- 搜索栏 -->
-    <view class="search-bar">
-      <view class="search-input-wrap">
-        <text class="search-icon">🔍</text>
-        <input v-model="searchWord" type="text" placeholder="搜索英文单词..." placeholder-class="search-placeholder" class="search-input" @confirm="handleSearch" />
-        <text v-if="searchWord" class="search-clear" @tap="searchWord = ''; searchResult = null">✕</text>
-      </view>
-      <button class="btn btn-primary btn-sm" @tap="handleSearch" :disabled="!searchWord.trim()">
-        <text>搜索</text>
-      </button>
-    </view>
-
     <view class="underline-tabs">
       <view class="underline-tab" :class="{ active: activeTab === 'search' }" @tap="activeTab = 'search'">
-        <text>查词结果</text>
+        <text>查词</text>
       </view>
       <view class="underline-tab" :class="{ active: activeTab === 'favorites' }" @tap="activeTab = 'favorites'">
-        <text>我的收藏 ({{ favorites.length }})</text>
+        <text>收藏 ({{ favorites.length }})</text>
       </view>
     </view>
 
@@ -38,9 +26,17 @@
     <template v-else>
       <!-- 查词结果 -->
       <view v-show="activeTab === 'search'">
-        <view v-if="!searchResult && !searching" class="empty-state">
+        <!-- 搜索栏 -->
+        <view class="search-bar">
+          <view class="search-input-wrap">
+            <text class="search-icon">🔍</text>
+            <input v-model="searchWord" type="text" placeholder="输入英文或中文单词..." placeholder-class="search-placeholder" class="search-input" @confirm="handleSearch" />
+            <text v-if="searchWord" class="search-clear" @tap="searchWord = ''; searchResult = null">✕</text>
+          </view>
+        </view>
+        <view v-if="!searchResult && !searching && !searchWord" class="empty-state">
           <text class="icon">🔍</text>
-          <text class="empty-text">在上方输入单词搜索</text>
+          <text class="empty-text">输入单词开始查词</text>
           <text class="empty-hint">支持中英文查询</text>
         </view>
         <view v-if="searching" class="loading">
@@ -188,8 +184,6 @@ onShow(loadData)
 .search-bar {
   display: flex; align-items: center; gap: 16rpx;
   padding: 20rpx 0;
-  background: #fff;
-  border-bottom: 2rpx solid var(--outline-variant);
 }
 .search-input-wrap {
   flex: 1;
