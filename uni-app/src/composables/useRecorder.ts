@@ -64,11 +64,29 @@ export function useRecorder() {
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
       const wavBuffer = audioBufferToWav(audioBuffer)
       const base64 = arrayBufferToBase64(wavBuffer)
+      audioContext.close()
       return base64
     } catch (err) {
-      console.error('WAV转换失败:', err)
-      return ''
+      console.error('WAV转换失败，走原始格式兜底:', err)
+      try {
+        const rawBase64 = await blobToBase64(blob)
+        return rawBase64
+      } catch {
+        return ''
+      }
     }
+  }
+
+  function blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        const result = reader.result as string
+        resolve(result.split(',')[1] || '')
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
   }
 
   function audioBufferToWav(buffer: AudioBuffer): ArrayBuffer {
