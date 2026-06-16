@@ -157,8 +157,8 @@ async function handleWechatLogin() {
 
 .wx-section { margin-bottom: 32rpx; }
 .btn-wx {
-  width: 100%; height: 100rpx; line-height: 100rpx;
-  background: #07C160; color: white; font-size: 34rpx;
+  width: 100%; height: 100rpx;
+  background: #07C160; color: white; font-size: 32rpx;
   font-weight: 600; border-radius: 24rpx; text-align: center;
   border: none; box-shadow: 0 4rpx 16rpx rgba(7,193,96,0.3);
 }

@@ -204,7 +204,8 @@ view, text, button, input, textarea, image { box-sizing: border-box; }
   align-items: center;
   justify-content: center;
   gap: 12rpx;
-  padding: 20rpx 40rpx;
+  padding: 0 40rpx;
+  height: 88rpx;
   border-radius: 16rpx;
   font-size: 28rpx;
   font-weight: 600;
@@ -230,13 +231,31 @@ view, text, button, input, textarea, image { box-sizing: border-box; }
 .btn-text {
   background: transparent;
   color: var(--primary);
-  padding: 12rpx 16rpx;
+  padding: 0 16rpx;
+  height: auto;
+  min-height: 64rpx;
 }
 .btn-text[disabled] { opacity: 0.4; }
 
 .btn-block { width: 100%; }
-.btn-sm { padding: 12rpx 28rpx; font-size: 24rpx; border-radius: 32rpx; }
-.btn-lg { padding: 28rpx 48rpx; font-size: 32rpx; border-radius: 24rpx; }
+.btn-sm { padding: 0 28rpx; height: 64rpx; font-size: 24rpx; border-radius: 32rpx; }
+.btn-lg { padding: 0 48rpx; height: 100rpx; font-size: 32rpx; border-radius: 24rpx; }
+
+/* 图标按钮 - 72rpx 正方形 */
+.btn-icon {
+  width: 72rpx;
+  height: 72rpx;
+  padding: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  background: var(--surface-container);
+  border: none;
+  transition: all 0.2s ease;
+}
+.btn-icon:active { transform: scale(0.92); }
 
 .btn-success {
   background: linear-gradient(135deg, var(--success) 0%, #1B5E20 100%);

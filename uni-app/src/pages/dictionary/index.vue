@@ -58,8 +58,8 @@
         <view class="dict-header">
           <text class="dict-word">{{ dictResult.word }}</text>
           <view class="dict-actions">
-            <view class="dict-btn" @tap="playWord(dictResult.word!)"><text>🔊</text></view>
-            <view class="dict-btn" :class="{ 'is-active': dictResult.isFavorite }" @tap="toggleDictFavorite">
+          <view class="btn-icon dict-btn" @tap="playWord(dictResult.word!)"><text>🔊</text></view>
+            <view class="btn-icon dict-btn" :class="{ 'is-active': dictResult.isFavorite }" @tap="toggleDictFavorite">
               <text>{{ dictResult.isFavorite ? '★' : '☆' }}</text>
             </view>
           </view>
@@ -83,13 +83,13 @@
             </view>
             <view class="word-actions">
               <view
-                class="word-action-btn mastered-btn"
+                class="btn-icon mastered-btn"
                 :class="{ active: fav.is_mastered }"
                 @tap="handleToggleMastered(fav)"
               >
                 <text>{{ fav.is_mastered ? '✅' : '⬜' }}</text>
               </view>
-              <view class="word-action-btn remove-btn" @tap="handleRemove(fav.word)">
+              <view class="btn-icon remove-btn" @tap="handleRemove(fav.word)">
                 <text>✕</text>
               </view>
             </view>
@@ -291,11 +291,6 @@ onShow(loadData)
 }
 .dict-word { font-size: 40rpx; font-weight: 700; }
 .dict-actions { display: flex; gap: 16rpx; }
-.dict-btn {
-  width: 64rpx; height: 64rpx; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center; font-size: 32rpx;
-  background: var(--surface-container);
-}
 .dict-btn.is-active { color: #f59e0b; }
 .dict-phonetic { color: var(--on-surface-variant); font-size: 26rpx; display: block; margin-bottom: 8rpx; }
 .dict-meaning { font-size: 30rpx; line-height: 1.6; display: block; }
@@ -308,11 +303,6 @@ onShow(loadData)
 .word-phonetic { font-size: 24rpx; color: var(--on-surface-variant); display: block; margin: 4rpx 0; }
 .word-meaning { font-size: 26rpx; color: var(--on-surface-variant); display: block; }
 .word-actions { display: flex; gap: 12rpx; align-items: center; }
-.word-action-btn {
-  width: 56rpx; height: 56rpx; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 28rpx; background: var(--surface-container);
-}
 .mastered-btn.active { background: var(--success-container); }
 .remove-btn { font-size: 24rpx; color: var(--on-surface-muted); }
 

@@ -256,7 +256,7 @@
       <view class="dictation-sheet" @tap.stop>
         <view class="dictation-sheet-top">
           <text class="tag tag-primary">默写练习</text>
-          <view class="dictation-close" @tap="dictatingContent = null"><text>✕</text></view>
+          <view class="btn-icon dictation-close" @tap="dictatingContent = null"><text>✕</text></view>
         </view>
         <view class="dictation-hint-card">
           <text class="dictation-hint-label">中文翻译提示</text>
@@ -629,7 +629,7 @@ onShow(loadData)
 /* 默写弹窗 */
 .dictation-sheet { width: 100%; max-width: 600px; max-height: 90vh; background: white; border-radius: 32rpx 32rpx 0 0; overflow-y: auto; padding-bottom: env(safe-area-inset-bottom, 32rpx); }
 .dictation-sheet-top { display: flex; justify-content: space-between; align-items: center; padding: 32rpx 32rpx 0; }
-.dictation-close { width: 56rpx; height: 56rpx; background: var(--surface-container); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28rpx; }
+.dictation-close { background: var(--surface-container); }
 .dictation-hint-card { margin: 24rpx 32rpx; padding: 28rpx; background: var(--primary-container); border-radius: 16rpx; }
 .dictation-hint-label { font-size: 22rpx; color: var(--on-primary-container); margin-bottom: 12rpx; display: block; }
 .dictation-hint-text { font-size: 28rpx; line-height: 1.6; display: block; color: var(--on-primary-container); }

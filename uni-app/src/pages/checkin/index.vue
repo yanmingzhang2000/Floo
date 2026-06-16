@@ -49,9 +49,9 @@
       <!-- 日历热力图 -->
       <view class="card calendar-card">
         <view class="calendar-header">
-          <view class="month-btn" @tap="changeMonth(-1)"><text>‹</text></view>
+          <view class="btn-icon month-btn" @tap="changeMonth(-1)"><text>‹</text></view>
           <text class="month-title">{{ currentYear }}年{{ currentMonth }}月</text>
-          <view class="month-btn" @tap="changeMonth(1)"><text>›</text></view>
+          <view class="btn-icon month-btn" @tap="changeMonth(1)"><text>›</text></view>
         </view>
         <view class="calendar-grid">
           <text v-for="d in ['日','一','二','三','四','五','六']" :key="d" class="weekday">{{ d }}</text>
@@ -181,11 +181,6 @@ onShow(loadData)
 .calendar-card { margin: 0 0 24rpx; padding: 28rpx; }
 .calendar-header {
   display: flex; justify-content: space-between; align-items: center; margin-bottom: 24rpx;
-}
-.month-btn {
-  width: 72rpx; height: 72rpx;
-  background: var(--surface-container); border-radius: 50%;
-  display: flex; align-items: center; justify-content: center; font-size: 36rpx;
 }
 .month-title { font-size: 30rpx; font-weight: 700; }
 

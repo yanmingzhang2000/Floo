@@ -15,10 +15,10 @@
     <template v-else>
       <!-- 阅读工具栏 -->
       <view class="reading-toolbar">
-        <button class="tool-btn" @tap="toggleTTS">
+        <button class="btn-sm tool-btn" @tap="toggleTTS">
           <text>{{ ttsPlaying ? '⏸️ 停止' : '🔊 朗读' }}</text>
         </button>
-        <button class="tool-btn" @tap="showTranslation = !showTranslation">
+        <button class="btn-sm tool-btn" @tap="showTranslation = !showTranslation">
           <text>{{ showTranslation ? '隐藏译文' : '📖 译文' }}</text>
         </button>
       </view>
@@ -123,14 +123,7 @@ async function markRead() {
   gap: 16rpx;
   padding: 16rpx 0;
 }
-.tool-btn {
-  flex: 1;
-  background: var(--surface-container);
-  border-radius: 12rpx;
-  padding: 16rpx;
-  font-size: 26rpx;
-  text-align: center;
-}
+.tool-btn { flex: 1; background: var(--surface-container); }
 .tool-btn:active { opacity: 0.7; }
 
 .chapter-content {
