@@ -5,12 +5,13 @@
 两者耦合度高，放在一起方便统计查询复用同一个 db session。
 """
 import logging
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 from sqlalchemy.orm import Session
+from sqlalchemy import func as sql_func
 
-from app.models import UserCheckinRecord, UserWeeklySummary
+from app.models import UserCheckinRecord, UserDictationHistory, UserWeeklySummary, PointLogHistory
 
 log = logging.getLogger(__name__)
 
@@ -130,13 +131,92 @@ def increment_weekly_checkin(db: Session, user_id: int, year_week: str) -> None:
               summary.total_checkin_days, user_id, year_week)
 
 
+def _year_week_to_range(year_week: str) -> tuple[date, date]:
+    """
+    将 YYYYWW 格式的周次字符串转为 [周一, 下周一) 日期区间。
+
+    为什么用 ISO week：create_checkin 和 dictation_repo 都用 ISO week number，
+    周报统计的时间范围必须与它们一致，否则会漏数据。
+    """
+    year = int(year_week[:4])
+    week = int(year_week[4:])
+    # ISO 周一：从第 1 周周一开始
+    jan4 = date(year, 1, 4)
+    start_of_week1 = jan4 - timedelta(days=jan4.isocalendar()[2] - 1)
+    monday = start_of_week1 + timedelta(weeks=week - 1)
+    next_monday = monday + timedelta(weeks=1)
+    return monday, next_monday
+
+
 def get_weekly_summary(
     db: Session,
     user_id: int,
     year_week: str,
 ) -> Optional[UserWeeklySummary]:
-    """查询指定周的汇总数据。"""
-    return db.query(UserWeeklySummary).filter(
-        UserWeeklySummary.user_id == user_id,
-        UserWeeklySummary.year_week == year_week,
-    ).first()
+    """
+    从原始数据实时计算本周学习汇总。
+
+    为什么不走预计算的 user_weekly_summary 表：该表目前只在打卡时更新
+    total_checkin_days，其他字段从未写入（历史原因），直接查原始数据更可靠。
+    未来如果性能瓶颈可加缓存，但当前用户量不需要。
+    """
+    monday, next_monday = _year_week_to_range(year_week)
+
+    # 本周打卡天数
+    checkin_count = (
+        db.query(sql_func.count(UserCheckinRecord.checkin_id))
+        .filter(
+            UserCheckinRecord.user_id == user_id,
+            UserCheckinRecord.checkin_date >= monday,
+            UserCheckinRecord.checkin_date < next_monday,
+        )
+        .scalar()
+        or 0
+    )
+
+    # 本周默写次数 & 平均正确率
+    dict_stats = (
+        db.query(
+            sql_func.count(UserDictationHistory.dictation_id).label("cnt"),
+            sql_func.avg(UserDictationHistory.accuracy_rate).label("avg_acc"),
+        )
+        .filter(
+            UserDictationHistory.user_id == user_id,
+            UserDictationHistory.created_at >= datetime.combine(monday, datetime.min.time()),
+            UserDictationHistory.created_at < datetime.combine(next_monday, datetime.min.time()),
+        )
+        .first()
+    )
+    if dict_stats:
+        learned_count = dict_stats.cnt or 0
+        avg_acc = float(dict_stats.avg_acc or 0.0)
+    else:
+        learned_count = 0
+        avg_acc = 0.0
+
+    # 本周获得积分（正数流水之和）
+    points_result = (
+        db.query(sql_func.coalesce(sql_func.sum(PointLogHistory.change_amount), 0))
+        .filter(
+            PointLogHistory.user_id == user_id,
+            PointLogHistory.change_amount > 0,
+            PointLogHistory.created_at >= datetime.combine(monday, datetime.min.time()),
+            PointLogHistory.created_at < datetime.combine(next_monday, datetime.min.time()),
+        )
+        .scalar()
+        or 0
+    )
+
+    log.debug("周报动态计算 user_id=%s week=%s checkins=%s dicts=%s avg_acc=%.1f points=%s",
+              user_id, year_week, checkin_count, learned_count, avg_acc, points_result)
+
+    # 构造一个临时的 ORM 对象，不持久化，仅用于 response
+    summary = UserWeeklySummary(
+        user_id=user_id,
+        year_week=year_week,
+        total_checkin_days=checkin_count,
+        total_learned_count=learned_count,
+        avg_accuracy_rate=round(avg_acc, 2),
+        total_earned_points=points_result,
+        weekly_review_status=0,
+    )

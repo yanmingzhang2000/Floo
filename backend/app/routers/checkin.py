@@ -124,7 +124,7 @@ def get_weekly_summary(
     year_week: str | None = None,
     db: Session = Depends(get_db),
 ):
-    """查询周报数据，默认返回本周。"""
+    """查询周报数据，默认返回本周。实时从原始数据计算。"""
     user = user_repo.get_user(db, user_id)
     if not user:
         log.debug("user_id=%s 不存在", user_id)
@@ -133,8 +133,5 @@ def get_weekly_summary(
     from datetime import datetime
     target_week = year_week or get_year_week(datetime.utcnow())
     summary = checkin_repo.get_weekly_summary(db, user_id, target_week)
-    if not summary:
-        log.debug("user_id=%s week=%s 无周报数据", user_id, target_week)
-        raise HTTPException(404, "本周暂无学习数据")
 
     return summary
