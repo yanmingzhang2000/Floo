@@ -98,13 +98,13 @@ const usernameInitial = computed(() => (auth.username?.[0] || '?').toUpperCase()
 async function loadData() {
   loading.value = true
   try {
-    const [balRes, colRes] = await Promise.all([
-      shopApi.getBalance(auth.currentUserId),
-      shopApi.getCollection(auth.currentUserId),
-    ])
+    const balRes = await shopApi.getBalance(auth.currentUserId).catch(() => ({ data: { available_points: 0 } }))
     balance.value = balRes.data.available_points || 0
-    collection.value = colRes.data || []
-  } catch {}
+  } catch { console.error('加载积分余额失败') }
+  try {
+    const colRes = await shopApi.getCollection(auth.currentUserId).catch(() => ({ data: { collection: [] } }))
+    collection.value = colRes.data.collection || []
+  } catch { console.error('加载收藏列表失败') }
   loading.value = false
 }
 
@@ -117,12 +117,9 @@ async function handleOpen(count: number) {
     animationIndex.value = 0
     showAnimation.value = true
 
-    const [balRes, colRes] = await Promise.all([
-      shopApi.getBalance(auth.currentUserId),
-      shopApi.getCollection(auth.currentUserId),
-    ])
-    balance.value = balRes.data.available_points || 0
-    collection.value = colRes.data || []
+    // 后台刷新积分和收藏（各自独立，互不影响）
+    shopApi.getBalance(auth.currentUserId).then(r => { balance.value = r.data.available_points || 0 }).catch(() => {})
+    shopApi.getCollection(auth.currentUserId).then(r => { collection.value = r.data.collection || [] }).catch(() => {})
   } catch { uni.showToast({ title: '开盒失败', icon: 'none' }) }
   opening.value = false
 }

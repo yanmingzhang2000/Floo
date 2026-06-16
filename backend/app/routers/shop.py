@@ -50,10 +50,18 @@ def get_characters(user_id: int, db: Session = Depends(get_db)):
 
 @router.get("/balance")
 def get_balance(user_id: int, db: Session = Depends(get_db)):
-    """获取用户积分余额。"""
+    """获取用户积分余额，无账户时自动创建。"""
     account = db.query(UserPointAccount).filter(UserPointAccount.user_id == user_id).first()
     if not account:
-        raise HTTPException(status_code=404, detail="积分账户不存在")
+        account = UserPointAccount(
+            user_id=user_id,
+            total_earned_points=0,
+            available_points=0,
+            total_consumed_points=0,
+        )
+        db.add(account)
+        db.flush()
+        log.debug("user_id=%s 无积分账户，已自动创建", user_id)
     return {"available_points": account.available_points}
 
 
