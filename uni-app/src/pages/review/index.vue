@@ -73,42 +73,47 @@
 
       <!-- ===== 默写 ===== -->
       <view v-show="activeTab === 'dictation'">
+        <!-- 历史记录优先展示，因为默写入口在文章详情页 -->
         <view class="section">
-          <text class="section-title">今日学习内容</text>
-          <view v-if="todayContents.length === 0" class="empty-state">
-            <text class="icon">📝</text>
-            <text class="empty-text">暂无内容</text>
+          <text class="section-title">默写记录</text>
+          <view v-if="historyList.length === 0" class="empty-state">
+            <text class="icon">📜</text>
+            <text class="empty-text">暂无默写记录</text>
+            <text class="empty-hint">在文章阅读页点击「默写」开始练习</text>
           </view>
-          <view v-else class="content-list">
-            <view v-for="item in todayContents" :key="item.id" class="card content-item" @tap="startDictation(item)">
-              <view class="content-left">
-                <text class="content-title">{{ item.title }}</text>
-                <text class="content-meta">{{ item.content_date }} · {{ item.difficulty_level }}</text>
+          <view v-else class="history-list">
+            <view v-for="rec in historyList" :key="rec.dictation_id" class="card history-item">
+              <view class="history-left">
+                <text class="history-date">{{ formatDate(rec.created_at) }}</text>
+                <text class="history-title ellipsis">{{ rec.content_title || '默写练习' }}</text>
               </view>
-              <button class="btn btn-sm btn-outline" @tap.stop="startDictation(item)">
-                <text>默写</text>
-              </button>
+              <view class="history-right">
+                <text class="history-accuracy" :class="getScoreClass(rec.accuracy_rate)">{{ rec.accuracy_rate.toFixed(0) }}%</text>
+                <text class="history-points">+{{ rec.earned_points }}</text>
+              </view>
             </view>
           </view>
         </view>
 
         <view class="section">
-          <view class="section-title-row" @tap="showHistory = !showHistory">
-            <text class="section-title">历史记录</text>
-            <text class="section-toggle">{{ showHistory ? '收起 ▲' : '展开 ▼' }}</text>
+          <view class="section-title-row" @tap="showTodayContent = !showTodayContent">
+            <text class="section-title">今日学习内容</text>
+            <text class="section-toggle">{{ showTodayContent ? '收起 ▲' : '展开 ▼' }}</text>
           </view>
-          <view v-if="showHistory">
-            <view v-if="historyList.length === 0" class="empty-state">
-              <text class="icon">📜</text>
-              <text class="empty-text">暂无默写记录</text>
+          <view v-if="showTodayContent">
+            <view v-if="todayContents.length === 0" class="empty-state">
+              <text class="icon">📝</text>
+              <text class="empty-text">暂无内容</text>
             </view>
-            <view v-else class="history-list">
-              <view v-for="rec in historyList" :key="rec.dictation_id" class="card history-item">
-                <view class="history-left">
-                  <text class="history-date">{{ formatDate(rec.created_at) }}</text>
-                  <text class="history-accuracy" :class="getScoreClass(rec.accuracy_rate)">{{ rec.accuracy_rate.toFixed(0) }}%</text>
+            <view v-else class="content-list">
+              <view v-for="item in todayContents" :key="item.id" class="card content-item" @tap="startDictation(item)">
+                <view class="content-left">
+                  <text class="content-title">{{ item.title }}</text>
+                  <text class="content-meta">{{ item.content_date }} · {{ item.difficulty_level }}</text>
                 </view>
-                <text class="history-points">+{{ rec.earned_points }}</text>
+                <button class="btn btn-sm btn-outline" @tap.stop="startDictation(item)">
+                  <text>默写</text>
+                </button>
               </view>
             </view>
           </view>
@@ -337,7 +342,7 @@ const userInput = ref('')
 const submitting = ref(false)
 const dictResult = ref<DictationResult | null>(null)
 const historyList = ref<DictationHistory[]>([])
-const showHistory = ref(false)
+const showTodayContent = ref(false)
 
 // 背单词
 const vbDueWords = ref<any[]>([])
@@ -555,11 +560,13 @@ onShow(loadData)
 .section-title-row { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
 .section-toggle { font-size: 24rpx; color: var(--primary); }
 .history-list { display: flex; flex-direction: column; gap: 12rpx; }
-.history-item { display: flex; align-items: center; justify-content: space-between; padding: 20rpx 28rpx; }
-.history-left { display: flex; align-items: center; gap: 20rpx; }
-.history-date { font-size: 24rpx; color: var(--on-surface-variant); }
-.history-accuracy { font-size: 28rpx; font-weight: 700; min-width: 72rpx; }
-.history-points { font-size: 26rpx; color: var(--success); font-weight: 700; }
+.history-item { display: flex; align-items: center; padding: 20rpx 28rpx; }
+.history-left { flex: 1; display: flex; flex-direction: column; gap: 4rpx; min-width: 0; }
+.history-right { display: flex; align-items: center; gap: 16rpx; flex-shrink: 0; }
+.history-title { font-size: 26rpx; font-weight: 500; }
+.history-date { font-size: 22rpx; color: var(--on-surface-variant); }
+.history-accuracy { font-size: 32rpx; font-weight: 700; min-width: 72rpx; text-align: right; }
+.history-points { font-size: 24rpx; color: var(--success); font-weight: 700; }
 
 /* 通用词汇 */
 .vocab-start-card { display: flex; align-items: center; justify-content: space-between; }

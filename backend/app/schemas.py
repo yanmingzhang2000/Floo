@@ -161,6 +161,7 @@ class DictationHistoryOut(BaseModel):
 
     dictation_id: int
     content_id: Optional[int]
+    content_title: Optional[str] = None
     accuracy_rate: float
     time_spent_seconds: Optional[int]
     earned_points: int

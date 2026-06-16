@@ -81,6 +81,7 @@ export interface DictationResult {
 export interface DictationHistory {
   dictation_id: number
   content_id?: number
+  content_title?: string
   accuracy_rate: number
   time_spent_seconds?: number
   earned_points: number

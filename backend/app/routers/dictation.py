@@ -109,11 +109,29 @@ def get_history(
     limit: int = 1000,
     db: Session = Depends(get_db),
 ):
-    """查询用户最近的默写记录。"""
+    """查询用户最近的默写记录，带上学习内容标题。"""
     user = user_repo.get_user(db, user_id)
     if not user:
         log.debug("user_id=%s 不存在", user_id)
         raise HTTPException(404, "用户不存在")
     records = dictation_repo.list_user_dictations(db, user_id, limit=limit)
-    log.debug("返回默写历史 user_id=%s count=%s", user_id, len(records))
-    return records
+
+    # 批量查询学习内容标题
+    content_ids = [r.content_id for r in records if r.content_id]
+    titles = {}
+    if content_ids:
+        from app.models import LearningContent
+        contents = db.query(LearningContent.id, LearningContent.title).filter(
+            LearningContent.id.in_(content_ids)
+        ).all()
+        titles = {c.id: c.title for c in contents}
+
+    # 构造输出，注入 content_title
+    out = []
+    for r in records:
+        d = r.__dict__.copy()
+        d["content_title"] = titles.get(r.content_id)
+        out.append(DictationHistoryOut(**d))
+
+    log.debug("返回默写历史 user_id=%s count=%s", user_id, len(out))
+    return out
