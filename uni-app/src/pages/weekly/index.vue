@@ -17,8 +17,8 @@
     </view>
 
     <view v-else-if="!weekly" class="empty-state">
-      <text class="icon">📊</text>
-      <text class="empty-text">暂无周报数据</text>
+      <text class="icon">⚠️</text>
+      <text class="empty-text">加载失败</text>
     </view>
 
     <view v-else class="weekly-wrap">
@@ -77,7 +77,7 @@ onMounted(async () => {
   try {
     const { data } = await checkinApi.getWeekly(auth.currentUserId)
     weekly.value = data
-  } catch { weekly.value = null }
+  } catch (e) { console.error('周报加载失败', e); weekly.value = null }
   loading.value = false
 })
 </script>
