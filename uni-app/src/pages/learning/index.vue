@@ -275,7 +275,7 @@
     </view>
 
     <!-- 自定义内容弹窗 -->
-    <CustomContentModal :visible="showCustomContent" @close="showCustomContent = false" @created="loadData" />
+    <CustomContentModal :visible="showCustomContent" @close="showCustomContent = false" @created="onCustomCreated" />
     <OnboardingGuide />
   </view>
 </template>
@@ -361,8 +361,14 @@ async function loadCustomContents() {
   const userId = auth.currentUserId
   try {
     const { data } = await dailyApi.getCustomContents(userId)
-    customContents.value = data || []
+    customContents.value = data?.contents || []
   } catch { customContents.value = [] }
+}
+
+function onCustomCreated() {
+  // 创建成功后切到自定义 Tab 并刷新列表
+  activeTab.value = 'custom'
+  loadCustomContents()
 }
 
 async function loadPastContents() {
