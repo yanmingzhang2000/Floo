@@ -86,7 +86,7 @@ async function handleSubmit() {
     if (rememberMe.value) {
       storage.set('session_expiry', Date.now() + 30 * 24 * 60 * 60 * 1000)
     }
-    navReLaunch('/pages/learning/index')
+    navReLaunch('/pages/home/index')
   } catch (e: any) {
     error.value = e.data?.detail || e.errMsg || '操作失败，请重试'
   }
@@ -103,7 +103,7 @@ async function handleWechatLogin() {
     const { data } = await userApi.wechatLogin(loginRes.code)
     storage.set('user_id', data.user_id)
     storage.set('username', data.username)
-    navReLaunch('/pages/learning/index')
+    navReLaunch('/pages/home/index')
   } catch (e: any) {
     error.value = e.data?.detail || e.errMsg || '微信登录失败'
   }

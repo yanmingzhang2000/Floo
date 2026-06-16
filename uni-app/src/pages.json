@@ -1,6 +1,14 @@
 {
   "pages": [
     {
+      "path": "pages/home/index",
+      "style": {
+        "navigationBarTitleText": "Floo!",
+        "navigationBarBackgroundColor": "#5B9AA8",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
       "path": "pages/learning/index",
       "style": {
         "navigationBarTitleText": "每日学习",

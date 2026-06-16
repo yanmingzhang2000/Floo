@@ -318,7 +318,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { dailyApi, dictationApi, wordReviewApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { navTo } from '@/utils/router'
@@ -366,6 +366,11 @@ const stageColors: Record<number, string> = {
   0: '#9E9E9E', 1: '#F44336', 2: '#FF9800',
   3: '#FFC107', 4: '#4CAF50', 5: '#2196F3',
 }
+
+onLoad((options) => {
+  if (options?.tab === 'dictation') activeTab.value = 'dictation'
+  if (options?.tab === 'vocab') activeTab.value = 'vocab'
+})
 
 function switchTab(tab: typeof activeTab.value) {
   activeTab.value = tab

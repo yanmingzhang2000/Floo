@@ -282,7 +282,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { dailyApi, generationLimitApi, checkinApi, shopApi, booksApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { navTo, navReLaunch } from '@/utils/router'
@@ -306,6 +306,11 @@ const streakDays = ref(0)
 const pointBalance = ref(0)
 
 const activeTab = ref<'ai' | 'custom' | 'books' | 'past'>('ai')
+
+onLoad((options) => {
+  if (options?.tab === 'custom') activeTab.value = 'custom'
+  if (options?.tab === 'books') activeTab.value = 'books'
+})
 
 const bookSearch = ref('')
 const searchResults = ref<any[]>([])
