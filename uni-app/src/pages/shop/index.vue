@@ -4,7 +4,7 @@
       <view class="nav-left">
         <view class="nav-back" @tap="navBackSafe"><text>‹</text></view>
       </view>
-      <text class="nav-title">积分商店</text>
+      <text class="nav-title">Floo！</text>
       <view class="nav-right">
         <view class="nav-avatar">
           <text>{{ usernameInitial }}</text>

@@ -75,7 +75,7 @@
     {
       "path": "pages/shop/index",
       "style": {
-        "navigationBarTitleText": "Floo! 商店",
+        "navigationBarTitleText": "Floo！",
         "navigationBarBackgroundColor": "#5B9AA8",
         "navigationBarTextStyle": "white"
       }

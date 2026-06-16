@@ -264,7 +264,7 @@
           </view>
           <view class="avatar-menu-item" @tap="goShop">
             <text class="avatar-menu-item-icon">✨</text>
-            <text>积分商店</text>
+            <text>Floo！</text>
           </view>
           <view class="avatar-menu-item danger" @tap="handleLogout">
             <text class="avatar-menu-item-icon">🚪</text>
