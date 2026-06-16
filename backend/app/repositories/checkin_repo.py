@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func as sql_func
 
 from app.models import UserCheckinRecord, UserDictationHistory, UserWeeklySummary, PointLogHistory
+from app.schemas import WeeklySummaryOut
 
 log = logging.getLogger(__name__)
 
@@ -152,7 +153,7 @@ def get_weekly_summary(
     db: Session,
     user_id: int,
     year_week: str,
-) -> Optional[UserWeeklySummary]:
+) -> WeeklySummaryOut:
     """
     从原始数据实时计算本周学习汇总。
 
@@ -188,8 +189,8 @@ def get_weekly_summary(
         .first()
     )
     if dict_stats:
-        learned_count = dict_stats.cnt or 0
-        avg_acc = float(dict_stats.avg_acc or 0.0)
+        learned_count = dict_stats[0] or 0
+        avg_acc = float(dict_stats[1] or 0.0) if dict_stats[1] is not None else 0.0
     else:
         learned_count = 0
         avg_acc = 0.0
@@ -210,9 +211,8 @@ def get_weekly_summary(
     log.debug("周报动态计算 user_id=%s week=%s checkins=%s dicts=%s avg_acc=%.1f points=%s",
               user_id, year_week, checkin_count, learned_count, avg_acc, points_result)
 
-    # 构造一个临时的 ORM 对象，不持久化，仅用于 response
-    summary = UserWeeklySummary(
-        user_id=user_id,
+    # 直接返回 Pydantic 模型，避免未持久化 ORM 实例序列化异常
+    return WeeklySummaryOut(
         year_week=year_week,
         total_checkin_days=checkin_count,
         total_learned_count=learned_count,
