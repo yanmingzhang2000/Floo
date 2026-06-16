@@ -529,7 +529,9 @@ async function loadData() {
   try {
     const { data } = await dictationApi.getHistory(auth.currentUserId, 50)
     historyList.value = Array.isArray(data) ? data : []
-  } catch {}
+  } catch (e) {
+    console.error('加载默写历史失败', e)
+  }
   await loadVocabReview()
   loading.value = false
 }

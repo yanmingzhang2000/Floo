@@ -129,9 +129,9 @@ def get_history(
     # 构造输出，注入 content_title
     out = []
     for r in records:
-        d = r.__dict__.copy()
-        d["content_title"] = titles.get(r.content_id)
-        out.append(DictationHistoryOut(**d))
+        item = DictationHistoryOut.model_validate(r)
+        item.content_title = titles.get(r.content_id)
+        out.append(item)
 
     log.debug("返回默写历史 user_id=%s count=%s", user_id, len(out))
     return out
