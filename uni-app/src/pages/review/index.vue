@@ -274,6 +274,7 @@
           </button>
         </view>
         <view v-if="dictResult" class="card dictation-result-card">
+          <!-- 分数行 -->
           <view class="dictation-score-area">
             <text class="dictation-score" :class="getScoreClass(dictResult.feedback.score)">{{ dictResult.feedback.score }}</text>
             <view class="dictation-score-meta">
@@ -281,9 +282,28 @@
               <text style="color: var(--success)">+{{ dictResult.earned_points }} 积分</text>
             </view>
           </view>
+          <!-- AI 总评 -->
           <view v-if="dictResult.feedback.summary" class="dictation-feedback">
             <text class="dictation-feedback-label">AI 总评</text>
             <text class="dictation-feedback-text">{{ dictResult.feedback.summary }}</text>
+          </view>
+          <!-- 错误明细 -->
+          <view v-if="dictResult.feedback.diffs && dictResult.feedback.diffs.length" class="dictation-diffs">
+            <text class="dictation-feedback-label">错误明细</text>
+            <view v-for="(d, i) in dictResult.feedback.diffs" :key="i" class="diff-item">
+              <text class="diff-type" :class="'diff-' + d.type">{{ { missing: '漏写', wrong: '写错', extra: '多写' }[d.type] || d.type }}</text>
+              <view class="diff-detail">
+                <text v-if="d.expected" class="diff-expected">✓ {{ d.expected }}</text>
+                <text v-if="d.actual && d.type !== 'missing'" class="diff-actual">✗ {{ d.actual }}</text>
+              </view>
+            </view>
+          </view>
+          <!-- 学习建议 -->
+          <view v-if="dictResult.feedback.suggestions && dictResult.feedback.suggestions.length" class="dictation-suggestions">
+            <text class="dictation-feedback-label">建议</text>
+            <view v-for="(s, i) in dictResult.feedback.suggestions" :key="i" class="suggestion-item">
+              <text class="suggestion-text">• {{ s }}</text>
+            </view>
           </view>
         </view>
       </view>
@@ -614,4 +634,18 @@ onShow(loadData)
 .dictation-feedback { margin-top: 24rpx; padding-top: 20rpx; border-top: 2rpx solid var(--surface-container-high); }
 .dictation-feedback-label { font-size: 24rpx; color: var(--on-surface-variant); margin-bottom: 12rpx; display: block; }
 .dictation-feedback-text { font-size: 26rpx; line-height: 1.6; display: block; }
+
+.dictation-diffs { margin-top: 20rpx; padding-top: 16rpx; border-top: 2rpx solid var(--surface-container-high); }
+.diff-item { display: flex; gap: 12rpx; margin-bottom: 12rpx; padding: 12rpx; background: var(--surface-container); border-radius: 8rpx; }
+.diff-type { font-size: 22rpx; font-weight: 600; padding: 4rpx 12rpx; border-radius: 12rpx; flex-shrink: 0; }
+.diff-type.diff-missing { background: #FFF3E0; color: #E65100; }
+.diff-type.diff-wrong { background: #FFEBEE; color: #C62828; }
+.diff-type.diff-extra { background: #E3F2FD; color: #1565C0; }
+.diff-detail { flex: 1; display: flex; flex-direction: column; gap: 4rpx; }
+.diff-expected { font-size: 24rpx; color: var(--success); }
+.diff-actual { font-size: 24rpx; color: var(--error); text-decoration: line-through; }
+
+.dictation-suggestions { margin-top: 20rpx; padding-top: 16rpx; border-top: 2rpx solid var(--surface-container-high); }
+.suggestion-item { margin-bottom: 8rpx; }
+.suggestion-text { font-size: 24rpx; color: var(--on-surface); line-height: 1.6; }
 </style>
