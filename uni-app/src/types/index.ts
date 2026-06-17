@@ -17,6 +17,7 @@ export interface WordItem {
   phonetic?: string
   meaning: string
   usage?: string
+  is_phrase?: boolean
 }
 
 export interface LearningContent {

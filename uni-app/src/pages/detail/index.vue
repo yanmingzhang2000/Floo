@@ -229,21 +229,50 @@ const articleParts = computed(() => {
   if (!content.value) return []
   const article = content.value.article || ''
   const words = content.value.words || []
-  const keyWords = new Set(words.map(w => w.word.toLowerCase()))
+  
+  // 构建关键词/词组映射（大小写不敏感）
+  const keyMap = new Map<string, boolean>()
+  words.forEach(w => keyMap.set(w.word.toLowerCase(), true))
+  
+  // 提取所有词组（含空格或 is_phrase 标记），按长度降序排列
+  const phrases = words
+    .filter(w => w.word.includes(' ') || w.is_phrase)
+    .map(w => w.word)
+    .sort((a, b) => b.length - a.length)
+  
   const parts: { text: string; isWord: boolean; isKey: boolean }[] = []
-  let lastEnd = 0
-  const re = /[a-zA-Z]+(?:'[a-zA-Z]+)?/g
-  let m: RegExpExecArray | null
-  while ((m = re.exec(article)) !== null) {
-    if (m.index > lastEnd) {
-      parts.push({ text: article.slice(lastEnd, m.index), isWord: false, isKey: false })
+  let i = 0
+  
+  while (i < article.length) {
+    // 1. 尝试匹配词组（贪心：最长优先）
+    let matched = false
+    for (const phrase of phrases) {
+      const chunk = article.slice(i, i + phrase.length)
+      if (chunk.toLowerCase() === phrase.toLowerCase()) {
+        parts.push({ text: chunk, isWord: true, isKey: true })
+        i += phrase.length
+        matched = true
+        break
+      }
     }
-    parts.push({ text: m[0], isWord: true, isKey: keyWords.has(m[0].toLowerCase()) })
-    lastEnd = m.index + m[0].length
+    if (matched) continue
+    
+    // 2. 尝试匹配单个单词
+    const wordMatch = article.slice(i).match(/^[a-zA-Z]+(?:'[a-zA-Z]+)?/)
+    if (wordMatch) {
+      const word = wordMatch[0]
+      parts.push({ text: word, isWord: true, isKey: keyMap.has(word.toLowerCase()) })
+      i += word.length
+      continue
+    }
+    
+    // 3. 非单词字符，收集到下一个单词/词组开始
+    let j = i + 1
+    while (j < article.length && !/[a-zA-Z]/.test(article[j])) j++
+    parts.push({ text: article.slice(i, j), isWord: false, isKey: false })
+    i = j
   }
-  if (lastEnd < article.length) {
-    parts.push({ text: article.slice(lastEnd), isWord: false, isKey: false })
-  }
+  
   return parts
 })
 
@@ -263,6 +292,21 @@ function speakContent() {
 async function handleWordTap(rawWord: string) {
   const word = getBaseForm(rawWord)
   speakWord(word)
+  
+  // 先检查是否是 AI 已提供的词汇/词组
+  const knownWord = content.value?.words?.find(w => w.word.toLowerCase() === word.toLowerCase())
+  if (knownWord) {
+    // 直接用 AI 给的释义，不查字典
+    wordPopup.value = { 
+      word: knownWord.word, 
+      phonetic: knownWord.phonetic, 
+      meaning: knownWord.meaning 
+    }
+    checkFavorite(knownWord.word)
+    return
+  }
+  
+  // 未知词：查字典
   wordPopup.value = { word, meaning: '查询中...' }
   isFavorited.value = false
   try {

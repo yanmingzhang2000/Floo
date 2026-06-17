@@ -549,7 +549,7 @@ async def _process_custom_content(text: str) -> dict:
   "lexicon": [
     {
       "word": "单词或短语",
-      "phonetic": "音标",
+      "phonetic": "音标（仅单词，词组留空）",
       "meaning": "中文释义，含词性",
       "usage": "原文中包含该词的完整句子"
     }
@@ -558,9 +558,13 @@ async def _process_custom_content(text: str) -> dict:
 
 生词提取规则：
 - 优先选择 CET-4/CET-6 级别的实词（名词、动词、形容词、副词）
-- 避免冠词、介词、代词等虚词
+- **同时提取常见词组**：2-4 词的固定搭配、习语、高频词块（如 break down, come across, in terms of）
+- 词组的 word 字段直接填多词短语（如 "break down"），phonetic 留空字符串
+- 词组的 meaning 解释其整体含义，不要逐词翻译
+- 避免冠词、介词、代词等虚词（单独出现时）
 - 每个 usage 必须是原文中的原句
-- 如果文本较短，可以少提取，但至少提取 3 个"""
+- 如果文本较短，可以少提取，但至少提取 3 个
+- lexicon 中单词和词组混合，总数 5-10 个"""
 
     user_prompt = f"请处理以下英文文本：\n\n{text}"
 

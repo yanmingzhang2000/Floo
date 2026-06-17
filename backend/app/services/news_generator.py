@@ -45,25 +45,27 @@ def _build_batch_system_prompt(theme: str) -> str:
   "news_3": {{ "title_en": "...", "title_cn": "...", "source_link": "...", "summary_en": "...", "summary_cn": "...", "keywords": ["..."] }},
   "lexicon": [
     {{
-      "word_phrase": "单词或短语",
-      "phonetic": "音标，如 /ˈwɜːrdz/",
-      "meaning_cn": "中文释义",
-      "usage": "从文章正文中提取的原句，必须包含该词"
+      "word_phrase": "单词或词组（单词如 reshape，词组如 set a record、break through）",
+      "phonetic": "音标，词组可留空字符串",
+      "meaning_cn": "中文释义，含词性，如：v. 重塑；词组：创纪录",
+      "usage": "从文章正文中提取的原句，必须包含该词或词组",
+      "is_phrase": false
     }}
   ]
 }}
 
 【极其重要】lexicon 生成规则：
-- 先写完 3 篇文章的 summary_en，再从中提取词汇
+- 先写完 3 篇文章的 summary_en，再从中提取词汇和词组
 - 每个 word_phrase 必须在某篇 summary_en 中**逐字出现**（大小写不敏感）
-- usage 必须是 summary_en 中包含该词的**完整原句**，不能改写
+- usage 必须是 summary_en 中包含该词/词组的**完整原句**，不能改写
 - 提取前请逐词核对：在文章中找不到的词**绝对不要**放进 lexicon
-- 优先提取有学习价值的词：CET-6 难度的实词（名词、动词、形容词、副词）
-- 避免提取：冠词(a/the)、介词(in/on)、代词(he/she)、极常用词(good/make)
+- 词汇（单词）：CET-6 难度的实词（名词、动词、形容词、副词），设 is_phrase=false
+- 词组：2-4 词的固定搭配、动词短语或高频词块（如 set a goal、in response to、play a role），设 is_phrase=true
+- 避免：冠词(a/the)、简单介词短语(in the)、极常用词(good/make)
 
 要求：
 - 3 篇新闻话题不重复，覆盖不同子方向
-- lexicon 共 8-12 个词条，必须从上面 3 篇文章的正文中提取，难度适合 CET-6
+- lexicon 共 10-14 个词条，其中单词 6-8 个、词组 3-5 个，全部来自正文
 - 每篇 keywords 与 lexicon 中的词条有重叠，方便关联
 - source_link 格式为知名媒体域名 + 合理路径
 - 只返回 JSON，禁止输出任何解释性文字"""
@@ -134,50 +136,58 @@ _MOCK_BATCH_RESULT: dict[str, Any] = {
         {
             "word_phrase": "reshaping",
             "phonetic": "/riːˈʃeɪpɪŋ/",
-            "meaning_cn": "重塑；改变",
+            "meaning_cn": "v. 重塑；改变",
             "usage": "Artificial intelligence is reshaping how people learn languages.",
+            "is_phrase": False,
         },
         {
-            "word_phrase": "personalized",
-            "phonetic": "/ˈpɜːrsənəlaɪzd/",
-            "meaning_cn": "个性化的",
+            "word_phrase": "personalized reading materials",
+            "phonetic": "",
+            "meaning_cn": "个性化阅读材料（固定搭配）",
             "usage": "New AI-powered apps can generate personalized reading materials.",
+            "is_phrase": True,
         },
         {
             "word_phrase": "retention",
             "phonetic": "/rɪˈtenʃən/",
-            "meaning_cn": "记忆保持；留存",
+            "meaning_cn": "n. 记忆保持；留存率",
             "usage": "This approach significantly improves retention compared to traditional methods.",
+            "is_phrase": False,
         },
         {
-            "word_phrase": "installations",
-            "phonetic": "/ˌɪnstəˈleɪʃənz/",
-            "meaning_cn": "安装；装机量",
+            "word_phrase": "broke global records",
+            "phonetic": "",
+            "meaning_cn": "打破全球纪录（动词短语）",
             "usage": "Solar and wind power installations broke global records last year.",
+            "is_phrase": True,
         },
         {
             "word_phrase": "accelerating",
             "phonetic": "/əkˈseləreɪtɪŋ/",
-            "meaning_cn": "加速的；不断加快的",
+            "meaning_cn": "v. 加速；不断加快",
             "usage": "Governments are accelerating renewable energy targets.",
+            "is_phrase": False,
         },
         {
-            "word_phrase": "dependency",
-            "phonetic": "/dɪˈpendənsi/",
-            "meaning_cn": "依赖；依靠",
+            "word_phrase": "fossil fuel dependency",
+            "phonetic": "",
+            "meaning_cn": "对化石燃料的依赖（名词短语）",
             "usage": "Fossil fuel dependency will decline sharply over the next decade.",
+            "is_phrase": True,
         },
         {
             "word_phrase": "vacancy",
             "phonetic": "/ˈveɪkənsi/",
-            "meaning_cn": "空缺；空置",
+            "meaning_cn": "n. 空缺；空置率",
             "usage": "Office vacancy rates in major cities remain elevated.",
+            "is_phrase": False,
         },
         {
             "word_phrase": "repurposing",
             "phonetic": "/ˌriːˈpɜːrpəsɪŋ/",
-            "meaning_cn": "重新利用；改作他用",
+            "meaning_cn": "v. 重新利用；改作他用",
             "usage": "Urban planners are repurposing empty commercial buildings into residential units.",
+            "is_phrase": False,
         },
     ],
 }
@@ -300,6 +310,7 @@ def _parse_lexicon(raw_items: list) -> list[dict]:
             "phonetic": (item.get("phonetic") or "").strip(),
             "meaning": (item.get("meaning_cn") or "").strip(),
             "usage": (item.get("usage") or "").strip(),
+            "is_phrase": bool(item.get("is_phrase")) or " " in phrase,
             "is_long_word": len(phrase) >= 8,
             "order_index": idx,
         })
