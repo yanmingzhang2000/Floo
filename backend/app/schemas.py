@@ -156,7 +156,7 @@ class DictationSubmitResponse(BaseModel):
 
 
 class DictationHistoryOut(BaseModel):
-    """默写历史记录。"""
+    """默写历史记录（列表用）。"""
     model_config = ConfigDict(from_attributes=True)
 
     dictation_id: int
@@ -165,6 +165,23 @@ class DictationHistoryOut(BaseModel):
     accuracy_rate: float
     time_spent_seconds: Optional[int]
     earned_points: int
+    created_at: datetime
+
+
+class DictationHistoryDetailOut(BaseModel):
+    """默写历史记录详情（单条查看）。"""
+    model_config = ConfigDict(from_attributes=True)
+
+    dictation_id: int
+    content_id: Optional[int]
+    content_title: Optional[str] = None
+    original_text: str
+    user_input: str
+    accuracy_rate: float
+    time_spent_seconds: Optional[int] = None
+    earned_points: int
+    ai_feedback: Optional[DictationFeedback] = None
+    error_words: list[str] = []
     created_at: datetime
 
 

@@ -58,6 +58,8 @@ export const dictationApi = {
     api.post('/api/dictation/submit', { user_id: userId, content_id: contentId, user_input: userInput }),
   getHistory: (userId: number, limit = 1000) =>
     api.get('/api/dictation/history', { params: { user_id: userId, limit } }),
+  getHistoryDetail: (dictationId: number, userId: number) =>
+    api.get(`/api/dictation/history/${dictationId}`, { params: { user_id: userId } }),
 }
 
 // ===== 打卡 =====

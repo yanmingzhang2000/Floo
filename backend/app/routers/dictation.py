@@ -13,6 +13,7 @@ from app.database import get_db
 from app.repositories import content_repo, dictation_repo, user_repo
 from app.schemas import (
     DictationFeedback,
+    DictationHistoryDetailOut,
     DictationHistoryOut,
     DictationSubmitRequest,
     DictationSubmitResponse,
@@ -139,3 +140,60 @@ def get_history(
 
     log.debug("返回默写历史 user_id=%s count=%s", user_id, len(out))
     return out
+
+
+@router.get("/history/{dictation_id}", response_model=DictationHistoryDetailOut)
+def get_history_detail(
+    dictation_id: int,
+    user_id: int = 1,
+    db: Session = Depends(get_db),
+):
+    """查询单条默写记录详情，包含原文、用户输入和 AI 批改结果。"""
+    from app.models import UserDictationHistory, LearningContent
+
+    record = db.query(UserDictationHistory).filter(
+        UserDictationHistory.dictation_id == dictation_id,
+        UserDictationHistory.user_id == user_id,
+    ).first()
+    if not record:
+        log.debug("dictation_id=%s user_id=%s 不存在", dictation_id, user_id)
+        raise HTTPException(404, "记录不存在")
+
+    # 查内容标题
+    content_title = None
+    if record.content_id:
+        content = db.query(LearningContent.title).filter(
+            LearningContent.content_id == record.content_id
+        ).first()
+        if content:
+            content_title = content.title
+
+    # 解析 JSON 字符串
+    import json
+    ai_feedback = None
+    if record.ai_feedback:
+        try:
+            ai_feedback = DictationFeedback(**json.loads(record.ai_feedback))
+        except Exception as e:
+            log.debug("解析 ai_feedback 失败 dictation_id=%s: %s", dictation_id, e)
+
+    error_words = []
+    if record.error_words:
+        try:
+            error_words = json.loads(record.error_words)
+        except Exception:
+            pass
+
+    return DictationHistoryDetailOut(
+        dictation_id=record.dictation_id,
+        content_id=record.content_id,
+        content_title=content_title,
+        original_text=record.original_text,
+        user_input=record.user_input,
+        accuracy_rate=float(record.accuracy_rate),
+        time_spent_seconds=record.time_spent_seconds,
+        earned_points=record.earned_points,
+        ai_feedback=ai_feedback,
+        error_words=error_words,
+        created_at=record.created_at,
+    )

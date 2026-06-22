@@ -89,6 +89,18 @@ export interface DictationHistory {
   created_at: string
 }
 
+export interface DictationHistoryDetail extends DictationHistory {
+  original_text: string
+  user_input: string
+  ai_feedback?: {
+    score: number
+    summary: string
+    diffs: { type: string; expected?: string; actual?: string }[]
+    suggestions: string[]
+  }
+  error_words: string[]
+}
+
 export interface CheckinCalendar {
   user_id: number
   year: number

@@ -87,7 +87,7 @@
             <text class="empty-hint">在文章阅读页点击「默写」开始练习</text>
           </view>
           <view v-else class="history-list">
-            <view v-for="rec in historyList" :key="rec.dictation_id" class="card history-item">
+            <view v-for="rec in historyList" :key="rec.dictation_id" class="card history-item" @tap="goDictationDetail(rec.dictation_id)">
               <view class="history-left">
                 <text class="history-date">{{ formatDate(rec.created_at) }}</text>
                 <text class="history-title ellipsis">{{ rec.content_title || '默写练习' }}</text>
@@ -383,6 +383,7 @@ function switchTab(tab: typeof activeTab.value) {
 }
 
 function goDetail(contentId: number) { navTo(`/pages/detail/index?id=${contentId}`) }
+function goDictationDetail(dictationId: number) { navTo(`/pages/dictation-detail/index?id=${dictationId}`) }
 function getScoreClass(score: number) {
   if (score >= 80) return 'score-green'
   if (score >= 60) return 'score-orange'
@@ -630,7 +631,7 @@ onShow(loadData)
 .section-title-row { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
 .section-toggle { font-size: 24rpx; color: var(--primary); }
 .history-list { display: flex; flex-direction: column; gap: 12rpx; }
-.history-item { display: flex; align-items: center; padding: 20rpx 28rpx; }
+.history-item { display: flex; align-items: center; padding: 20rpx 28rpx; cursor: pointer; }
 .history-left { flex: 1; display: flex; flex-direction: column; gap: 4rpx; min-width: 0; }
 .history-right { display: flex; align-items: center; gap: 16rpx; flex-shrink: 0; }
 .history-title { font-size: 26rpx; font-weight: 500; }
