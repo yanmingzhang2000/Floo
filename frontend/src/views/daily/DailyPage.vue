@@ -5,9 +5,9 @@
       <h1>今日英语 · {{ themeLabel }}</h1>
       <p class="subtitle">共 {{ totalCount }} 篇</p>
       <div class="actions">
-        <button class="btn btn-sm btn-header" @click="handleGenerate" :disabled="generating || remainingCount <= 0">
-          {{ generating ? '生成中...' : remainingCount > 0 ? `✨ 生成新内容 (${remainingCount}次)` : '今日已用完' }}
-        </button>
+        <LoadingButton variant="header" size="sm" :loading="generating" :disabled="remainingCount <= 0" @click="handleGenerate">
+          {{ remainingCount > 0 ? `✨ 生成新内容 (${remainingCount}次)` : '今日已用完' }}
+        </LoadingButton>
         <router-link to="/learning/list" class="btn btn-sm btn-header">
           📋 历史内容
         </router-link>
@@ -22,9 +22,9 @@
     <div v-else-if="contents.length === 0" class="empty-state">
       <div class="icon">📝</div>
       <p>今日还没有学习内容</p>
-      <button class="btn btn-primary" style="margin-top:16px" @click="handleGenerate" :disabled="generating">
+      <LoadingButton variant="primary" :loading="generating" style="margin-top:16px" @click="handleGenerate">
         AI 生成今日内容
-      </button>
+      </LoadingButton>
     </div>
 
     <div v-else>
@@ -142,11 +142,14 @@ import { speakWord, initVoices, toggleReading, useReadingState } from '@/composa
 import { renderArticle } from '@/composables/useArticleRender'
 import { useWordPopup } from '@/composables/useWordPopup'
 import { useSpeechEval } from '@/composables/useSpeechEval'
+import { useToast } from '@/composables/useToast'
+import LoadingButton from '@/components/LoadingButton.vue'
 import OnboardingGuide from '@/components/OnboardingGuide.vue'
 import CustomContentModal from '@/components/CustomContentModal.vue'
 import type { LearningContent } from '@/types'
 
 const auth = useAuthStore()
+const toast = useToast()
 const loading = ref(true)
 const generating = ref(false)
 const showCustomContent = ref(false)
@@ -222,7 +225,7 @@ async function loadData() {
 
 async function handleGenerate() {
   if (remainingCount.value <= 0) {
-    alert('今日生成次数已达上限（每天最多3次），请明天再来')
+    toast.warning('今日生成次数已达上限（每天最多3次），请明天再来')
     return
   }
 

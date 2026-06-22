@@ -16,6 +16,37 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+// 全局错误拦截：网络异常、500 等不再静默吞掉
+api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    // 组件内部如果有 catch 并想自定义处理，可设 skipToast 跳过
+    const skipToast = err.config?.skipToast
+    if (!skipToast) {
+      // 动态 import 避免循环依赖，仅在需要时加载
+      import('../composables/useToast').then(({ useToast }) => {
+        const toast = useToast()
+        const status = err.response?.status
+        const msg = err.response?.data?.detail || err.message || '网络异常'
+        if (status === 401) {
+          toast.error('登录已过期，请重新登录')
+        } else if (status === 403) {
+          toast.error('没有权限执行此操作')
+        } else if (status === 404) {
+          toast.warning('请求的资源不存在')
+        } else if (status === 429) {
+          toast.warning('请求太频繁，请稍后再试')
+        } else if (status >= 500) {
+          toast.error('服务器繁忙，请稍后再试')
+        } else {
+          toast.error(msg)
+        }
+      })
+    }
+    return Promise.reject(err)
+  }
+)
+
 // ===== 用户 =====
 export const userApi = {
   login: (data: { username: string; password: string }) =>

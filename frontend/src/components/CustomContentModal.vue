@@ -19,13 +19,17 @@
             <p class="char-count">{{ inputText.length }} 字</p>
             <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
             <div v-if="successMsg" class="success-msg">{{ successMsg }}</div>
-            <button
+            <LoadingButton
+              variant="primary"
+              size="lg"
+              block
+              :loading="loading"
+              :disabled="!inputText.trim()"
               class="submit-btn"
-              :disabled="!inputText.trim() || loading"
               @click="handleSubmit"
             >
-              {{ loading ? 'AI 处理中...' : '开始处理' }}
-            </button>
+              开始处理
+            </LoadingButton>
           </div>
         </div>
       </div>
@@ -37,6 +41,7 @@
 import { ref, watch } from 'vue'
 import { dailyApi } from '@/api'
 import { useAuthStore } from '@/stores'
+import LoadingButton from '@/components/LoadingButton.vue'
 
 const props = defineProps<{ visible: boolean }>()
 const emit = defineEmits<{ close: []; created: [] }>()
@@ -113,35 +118,35 @@ async function handleSubmit() {
 .sheet-header h3 {
   font-size: 18px;
   font-weight: 700;
-  color: #2C3E50;
+  color: var(--on-surface);
 }
 
 .close-btn {
   background: none;
   border: none;
   font-size: 20px;
-  color: #999;
+  color: var(--on-surface-variant);
   cursor: pointer;
   padding: 4px;
 }
 
 .hint {
   font-size: 13px;
-  color: #999;
+  color: var(--on-surface-variant);
   margin-bottom: 12px;
 }
 
 .content-input {
   width: 100%;
   padding: 14px;
-  border: 1px solid #E0E0E0;
+  border: 1px solid var(--outline);
   border-radius: 12px;
   font-size: 15px;
   line-height: 1.6;
   resize: vertical;
   font-family: inherit;
-  background: #FAFAFA;
-  color: #333;
+  background: var(--surface-container);
+  color: var(--on-surface);
 }
 
 .content-input:focus {
@@ -157,15 +162,15 @@ async function handleSubmit() {
 .char-count {
   text-align: right;
   font-size: 12px;
-  color: #bbb;
+  color: var(--on-surface-variant);
   margin: 6px 0 0;
 }
 
 .error-msg {
   margin-top: 10px;
   padding: 10px 14px;
-  background: #FFF0F0;
-  color: #D32F2F;
+  background: #FFEBEE;
+  color: var(--error);
   border-radius: 8px;
   font-size: 13px;
 }
@@ -173,29 +178,14 @@ async function handleSubmit() {
 .success-msg {
   margin-top: 10px;
   padding: 10px 14px;
-  background: #F0FFF4;
-  color: #2E7D32;
+  background: #E8F5E9;
+  color: var(--success);
   border-radius: 8px;
   font-size: 13px;
 }
 
 .submit-btn {
-  width: 100%;
   margin-top: 16px;
-  padding: 14px;
-  background: var(--primary);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.submit-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .fade-enter-active, .fade-leave-active { transition: opacity 0.25s ease; }

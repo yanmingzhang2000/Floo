@@ -31,8 +31,10 @@ import { ref, onMounted } from 'vue'
 import { favoritesApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { speakWord } from '@/composables/useSpeech'
+import { useConfirm } from '@/composables/useConfirm'
 
 const auth = useAuthStore()
+const { confirm } = useConfirm()
 const loading = ref(true)
 const favorites = ref<Array<{
   id: number
@@ -58,7 +60,13 @@ function playWord(word: string) {
 }
 
 async function handleRemove(word: string) {
-  if (!confirm(`确定取消收藏 "${word}" 吗？`)) return
+  const ok = await confirm({
+    title: '取消收藏',
+    message: `确定取消收藏 "${word}" 吗？`,
+    confirmText: '取消收藏',
+    confirmClass: 'btn-danger',
+  })
+  if (!ok) return
   try {
     await favoritesApi.remove(auth.currentUserId, word)
     favorites.value = favorites.value.filter(f => f.word !== word)
