@@ -38,10 +38,12 @@
       <div v-if="currentItem" class="content-card card">
         <div class="card-header">
           <span class="tag tag-primary">{{ currentItem.content_type === 'overview' ? '今日总览' : `文章 ${currentIdx + 1}` }}</span>
+          <span v-if="currentItem.creator_type === 1" class="tag tag-warning">自定义</span>
           <span class="tag tag-success">{{ currentItem.difficulty_level }}</span>
           <button class="read-btn" @click.stop="toggleReading(currentItem.article)" :class="{ active: readState === 'playing' }">
             {{ readState === 'playing' ? '⏸ 暂停' : readState === 'paused' ? '▶ 继续' : '🔊 朗读' }}
           </button>
+          <button v-if="currentItem.creator_type === 1" class="delete-btn" @click.stop="deleteCurrentCustom" title="删除">🗑️</button>
         </div>
         <h3 class="card-title">{{ currentItem.title }}</h3>
 
@@ -195,6 +197,7 @@ async function loadLearnedIds() {
 const themeLabels: Record<string, string> = {
   ai_tech: 'AI科技', product_tech: '产品技术', business: '财经商业',
   daily_news: '日常新闻', self_growth: '个人成长', all_random: '随机主题',
+  custom: '自定义',
 }
 const themeLabel = computed(() => themeLabels[contents.value[0]?.theme_type] || '每日学习')
 const totalCount = computed(() => contents.value.length)
@@ -241,6 +244,20 @@ function toggleTranslation(id: number) {
   const s = new Set(expandedTranslations.value)
   s.has(id) ? s.delete(id) : s.add(id)
   expandedTranslations.value = s
+}
+
+async function deleteCurrentCustom() {
+  const item = currentItem.value
+  if (!item || !auth.currentUserId || item.creator_type !== 1) return
+  if (!confirm('删除后无法恢复，关联的复习记录也将清除，确定删除？')) return
+  try {
+    await dailyApi.deleteCustomContent(item.id, auth.currentUserId)
+    contents.value = contents.value.filter(c => c.id !== item.id)
+    currentIdx.value = Math.min(currentIdx.value, contents.value.length - 1)
+    toast.success('已删除')
+  } catch (e: any) {
+    toast.error(e.response?.data?.detail || '删除失败')
+  }
 }
 </script>
 
@@ -290,6 +307,10 @@ function toggleTranslation(id: number) {
 .learned-toggle:active { transform: scale(0.95); }
 .learned-icon { font-size: 16px; }
 .learned-text { font-weight: 500; }
+
+.tag-warning { background: #FFF3E0; color: #E65100; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+.delete-btn { background: none; border: none; font-size: 16px; cursor: pointer; padding: 4px 8px; border-radius: 8px; transition: background 0.2s; }
+.delete-btn:hover { background: var(--surface-container); }
 
 .read-btn {
   margin-left: auto;

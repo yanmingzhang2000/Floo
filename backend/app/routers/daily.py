@@ -42,6 +42,7 @@ def _content_to_out(content, words: list) -> LearningContentOut:
         difficulty_level=content.difficulty_level,
         theme_type=content.theme_type,
         words=words,
+        creator_type=content.creator_type,
     )
 
 
@@ -66,22 +67,23 @@ async def generate_daily(
     force = payload.model_dump().get('force', False)
     log.debug("收到生成请求 user_id=%s force=%s", payload.user_id, force)
 
-    # 检查每日生成次数限制（每天最多3次）
+    # 检查每日 AI 生成次数限制（每天最多3次）
     today = date.today()
     limit_record = (
         db.query(DailyGenerationLimit)
         .filter(
             DailyGenerationLimit.user_id == payload.user_id,
-            DailyGenerationLimit.limit_date == today
+            DailyGenerationLimit.limit_date == today,
+            DailyGenerationLimit.limit_type == "ai",
         )
         .first()
     )
     
     if limit_record and limit_record.generation_count >= 3 and not force:
-        log.debug("用户 %s 今日已生成 %s 次，达到上限", payload.user_id, limit_record.generation_count)
-        raise HTTPException(429, "今日生成次数已达上限（每天最多3次），请明天再来")
+        log.debug("用户 %s 今日已 AI 生成 %s 次，达到上限", payload.user_id, limit_record.generation_count)
+        raise HTTPException(429, "今日 AI 生成次数已达上限（每天最多3次），请明天再来")
     
-    log.debug("用户 %s 今日已生成 %s 次，继续执行", payload.user_id, limit_record.generation_count if limit_record else 0)
+    log.debug("用户 %s 今日已 AI 生成 %s 次，继续执行", payload.user_id, limit_record.generation_count if limit_record else 0)
 
     # 读取用户偏好 theme
     user = user_repo.get_user(db, payload.user_id)
@@ -130,15 +132,16 @@ async def generate_daily(
     # 更新每日生成次数限制
     if limit_record:
         limit_record.generation_count += 1
-        log.debug("更新生成次数 user_id=%s count=%s", payload.user_id, limit_record.generation_count)
+        log.debug("更新 AI 生成次数 user_id=%s count=%s", payload.user_id, limit_record.generation_count)
     else:
         new_limit = DailyGenerationLimit(
             user_id=payload.user_id,
             limit_date=today,
-            generation_count=1
+            limit_type="ai",
+            generation_count=1,
         )
         db.add(new_limit)
-        log.debug("创建生成次数记录 user_id=%s date=%s", payload.user_id, today)
+        log.debug("创建 AI 生成次数记录 user_id=%s date=%s", payload.user_id, today)
     db.commit()
     
     log.info("批量生成完成 theme=%s content_ids=%s", actual_theme, content_ids)
@@ -231,14 +234,19 @@ def get_today_list(user_id: int = 1, db: Session = Depends(get_db)):
     contents = content_repo.get_today_content_list_by_theme(db, theme)
     log.debug("today-list theme=%s count=%s daily_goal=%s", theme, len(contents), daily_goal)
 
-    # 追加用户的自定义内容
+    # 追加用户今日的自定义内容（按 created_at 日期过滤）
+    from datetime import datetime
     from app.models import LearningContent as LC
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = datetime.utcnow().replace(hour=23, minute=59, second=59, microsecond=999999)
     custom_contents = (
         db.query(LC)
         .filter(
             LC.user_id == user_id,
             LC.creator_type == 1,
             LC.is_active == True,
+            LC.created_at >= today_start,
+            LC.created_at <= today_end,
         )
         .order_by(LC.created_at.desc())
         .all()
@@ -340,29 +348,36 @@ def get_all_progress(user_id: int = 1, db: Session = Depends(get_db)):
 
 @router.get("/generation-limit")
 def get_generation_limit(user_id: int = 1, db: Session = Depends(get_db)):
-    """获取用户今日剩余生成次数。"""
+    """获取用户今日剩余生成次数（AI 和自定义内容独立计数）。"""
     from datetime import date
     from app.models import DailyGenerationLimit
 
     today = date.today()
-    limit_record = (
-        db.query(DailyGenerationLimit)
-        .filter(
-            DailyGenerationLimit.user_id == user_id,
-            DailyGenerationLimit.limit_date == today
+
+    def _get_used(limit_type: str) -> int:
+        record = (
+            db.query(DailyGenerationLimit)
+            .filter(
+                DailyGenerationLimit.user_id == user_id,
+                DailyGenerationLimit.limit_date == today,
+                DailyGenerationLimit.limit_type == limit_type,
+            )
+            .first()
         )
-        .first()
-    )
-    
-    used_count = limit_record.generation_count if limit_record else 0
-    remaining = max(0, 3 - used_count)
-    
-    log.debug("生成次数限制 user_id=%s used=%s remaining=%s", user_id, used_count, remaining)
+        return record.generation_count if record else 0
+
+    ai_used = _get_used("ai")
+    custom_used = _get_used("custom")
+
+    log.debug("生成次数限制 user_id=%s ai_used=%s custom_used=%s", user_id, ai_used, custom_used)
     return {
         "user_id": user_id,
-        "used_count": used_count,
-        "remaining_count": remaining,
-        "max_count": 3
+        "used_count": ai_used,
+        "remaining_count": max(0, 3 - ai_used),
+        "max_count": 3,
+        "custom_used_count": custom_used,
+        "custom_remaining_count": max(0, 3 - custom_used),
+        "custom_max_count": 3,
     }
 
 
@@ -534,7 +549,12 @@ def get_learned_review_tasks(user_id: int = 1, db: Session = Depends(get_db)):
 # ============== 自定义学习内容 ==============
 
 async def _process_custom_content(text: str) -> dict:
-    """调用 LLM 处理用户粘贴的文本，生成翻译和生词。"""
+    """
+    调用 LLM 处理用户粘贴的文本，生成翻译和生词。
+
+    当前仅支持英文输入（LLM prompt 固定为英文教学场景）。
+    如需支持多语言，需根据语言检测结果动态切换 system prompt。
+    """
     from app.services.llm_client import chat_json
 
     system_prompt = """你是一位英语教学专家。用户会粘贴一段英文文本，请完成以下任务：
@@ -589,7 +609,7 @@ async def create_custom_content(
     if not text:
         raise HTTPException(status_code=400, detail="内容不能为空")
 
-    # 检查每日限额（和 AI 生成共用）
+    # 检查每日自定义内容限额（和 AI 生成独立计数）
     from datetime import date
     from app.models import DailyGenerationLimit
 
@@ -599,13 +619,14 @@ async def create_custom_content(
         .filter(
             DailyGenerationLimit.user_id == payload.user_id,
             DailyGenerationLimit.limit_date == today,
+            DailyGenerationLimit.limit_type == "custom",
         )
         .first()
     )
     used_count = limit_record.generation_count if limit_record else 0
     if used_count >= 3:
-        log.debug("用户 %s 今日已生成 %s 次，自定义内容达上限", payload.user_id, used_count)
-        raise HTTPException(status_code=429, detail="今日生成次数已用完（每天 3 篇）")
+        log.debug("用户 %s 今日已提交自定义内容 %s 次，达上限", payload.user_id, used_count)
+        raise HTTPException(status_code=429, detail="今日自定义内容已达上限（每天最多 3 篇）")
 
     # 调用 AI 处理文本
     log.debug("开始处理自定义内容 user_id=%s text_len=%s", payload.user_id, len(text))
@@ -632,7 +653,7 @@ async def create_custom_content(
     # 初始化记忆进度
     content_repo.init_memory_progress(db, payload.user_id, content.content_id)
 
-    # 更新生成次数
+    # 更新自定义内容生成次数（与 AI 生成独立计数）
     if limit_record:
         limit_record.generation_count += 1
     else:
@@ -640,6 +661,7 @@ async def create_custom_content(
         db.add(DGL(
             user_id=payload.user_id,
             limit_date=today,
+            limit_type="custom",
             generation_count=1,
         ))
     db.commit()
@@ -680,8 +702,11 @@ def delete_custom_content(
     user_id: int = 1,
     db: Session = Depends(get_db),
 ):
-    """删除用户的自定义学习内容（只能删自己的）。"""
-    from app.models import LearningContent as LC
+    """
+    删除用户的自定义学习内容（只能删自己的）。
+    user_id 通过 query param 传入以兼容 REST DELETE 语义。
+    """
+    from app.models import LearningContent as LC, UserMemoryProgress
 
     content = (
         db.query(LC)
@@ -696,6 +721,14 @@ def delete_custom_content(
         raise HTTPException(status_code=404, detail="内容不存在或无权删除")
 
     content.is_active = False
+
+    # 同步清理关联的记忆进度，避免孤立数据
+    deleted_progress = (
+        db.query(UserMemoryProgress)
+        .filter(UserMemoryProgress.content_id == content_id)
+        .delete()
+    )
     db.commit()
-    log.debug("自定义内容已删除 content_id=%s user_id=%s", content_id, user_id)
+    log.debug("自定义内容已删除 content_id=%s user_id=%s, 清理记忆进度 %s 条",
+              content_id, user_id, deleted_progress)
     return {"message": "已删除"}

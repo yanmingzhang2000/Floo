@@ -216,15 +216,19 @@ class UserWeeklySummary(Base):
 # ============== 业务集群四：游戏化激励 ==============
 
 class DailyGenerationLimit(Base):
-    """每日内容生成次数限制表 - 每用户每天最多生成3次。"""
+    """
+    每日内容生成次数限制表 - 每用户每天最多生成3次。
+    limit_type 区分 AI 生成（ai）和自定义内容（custom），两者独立计数。
+    """
     __tablename__ = "daily_generation_limit"
     __table_args__ = (
-        UniqueConstraint("user_id", "limit_date", name="uq_user_date_limit"),
+        UniqueConstraint("user_id", "limit_date", "limit_type", name="uq_user_date_limit_type"),
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("user_main.user_id", ondelete="CASCADE"), nullable=False, index=True)
     limit_date = Column(Date, nullable=False, index=True)
+    limit_type = Column(String(16), default="ai", nullable=False)
     generation_count = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 

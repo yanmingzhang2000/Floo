@@ -31,6 +31,7 @@ export interface LearningContent {
   theme_type: string
   words: WordItem[]
   content_type: string
+  creator_type: number  // 0=AI生成, 1=用户自定义
 }
 
 export interface TodayContentList {

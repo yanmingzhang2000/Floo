@@ -99,16 +99,18 @@
             v-for="item in customContents"
             :key="item.id"
             class="list-card"
-            @tap="goDetail(item.id)"
           >
             <view class="list-card-header">
               <text class="tag tag-warning">自定义</text>
-              <text class="list-card-status" :class="learnedIds.includes(item.id) ? 'done' : 'todo'">
-                {{ learnedIds.includes(item.id) ? '✅已学' : '未学' }}
-              </text>
+              <view class="list-card-actions">
+                <text class="list-card-status" :class="learnedIds.includes(item.id) ? 'done' : 'todo'">
+                  {{ learnedIds.includes(item.id) ? '✅已学' : '未学' }}
+                </text>
+                <text class="delete-btn" @tap.stop="deleteCustomContent(item.id)">🗑️</text>
+              </view>
             </view>
-            <text class="list-card-title">{{ item.title }}</text>
-            <text class="list-card-desc">{{ item.article?.slice(0, 60) }}...</text>
+            <text class="list-card-title" @tap="goDetail(item.id)">{{ item.title }}</text>
+            <text class="list-card-desc" @tap="goDetail(item.id)">{{ item.article?.slice(0, 60) }}...</text>
           </view>
         </view>
       </view>
@@ -321,6 +323,7 @@ const booksLoading = ref(false)
 const themeLabels: Record<string, string> = {
   ai_tech: 'AI科技', product_tech: '产品技术', business: '财经商业',
   daily_news: '日常新闻', self_growth: '个人成长', all_random: '随机',
+  custom: '自定义',
 }
 const totalCount = computed(() => contents.value.length)
 const usernameInitial = computed(() => (auth.username?.[0] || '?').toUpperCase())
@@ -369,6 +372,25 @@ function onCustomCreated() {
   // 创建成功后切到自定义 Tab 并刷新列表
   activeTab.value = 'custom'
   loadCustomContents()
+}
+
+async function deleteCustomContent(contentId: number) {
+  const userId = auth.currentUserId
+  uni.showModal({
+    title: '确认删除',
+    content: '删除后无法恢复，关联的复习记录也将清除',
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          await dailyApi.deleteCustomContent(contentId, userId)
+          customContents.value = customContents.value.filter(c => c.id !== contentId)
+          uni.showToast({ title: '已删除', icon: 'success' })
+        } catch {
+          uni.showToast({ title: '删除失败', icon: 'none' })
+        }
+      }
+    },
+  })
 }
 
 async function loadPastContents() {
@@ -502,9 +524,11 @@ onShow(loadData)
   align-items: center;
   margin-bottom: 12rpx;
 }
+.list-card-actions { display: flex; align-items: center; gap: 16rpx; }
 .list-card-status { font-size: 22rpx; }
 .list-card-status.done { color: var(--success); font-weight: 600; }
 .list-card-status.todo { color: var(--on-surface-muted); }
+.delete-btn { font-size: 28rpx; padding: 8rpx; }
 .list-card-title {
   font-size: 30rpx;
   font-weight: 700;

@@ -70,6 +70,7 @@ class LearningContentOut(BaseModel):
     """
     学习内容输出 - 兼容旧前端的 DailyContentOut。
     前端仍用 content_date/article 字段，内部映射到 created_at/content_text。
+    creator_type=0 为 AI 生成，creator_type=1 为用户自定义。
     """
     model_config = ConfigDict(from_attributes=True)
 
@@ -84,10 +85,11 @@ class LearningContentOut(BaseModel):
     # key_words 从 JSON 字符串解析后返回
     words: list[dict[str, Any]] = []  # 临时用 dict，后续可拆单独表
     content_type: str = "article"
+    creator_type: int = 0  # 0=AI生成, 1=用户自定义
 
 
 # 合法 theme 枚举值
-THEME_OPTIONS = ("ai_tech", "product_tech", "business", "daily_news", "self_growth", "all_random")
+THEME_OPTIONS = ("ai_tech", "product_tech", "business", "daily_news", "self_growth", "all_random", "custom")
 
 
 class GenerateContentRequest(BaseModel):
