@@ -82,7 +82,7 @@ async function handleSubmit() {
   loading.value = true; error.value = ''
   try {
     const api = isRegister.value ? userApi.register : userApi.login
-    const { data } = await api(form.value.username, form.value.password)
+    const { data } = await api({ username: form.value.username, password: form.value.password })
     auth.setSession(data.user_id, data.username, rememberMe.value)
     navReLaunch('/pages/home/index')
   } catch (e: any) {
