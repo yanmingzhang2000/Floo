@@ -96,9 +96,12 @@ def get_due_words(user_id: int, limit: int = 15, db: Session = Depends(get_db)):
             prog = progress_map.get(fav.word)
             result.append(_word_to_dict(fav, prog))
 
-    # 干扰项：从所有收藏词中随机抽（排除当前轮的词），取 meaning 非空的
+    # 干扰项：从所有收藏词中随机抽（排除当前轮的词），取 meaning 非空且非空字符串的
     current_words = {w["word"] for w in result}
-    distractor_pool = [f for f in all_favs if f.word not in current_words and f.meaning]
+    distractor_pool = [
+        f for f in all_favs
+        if f.word not in current_words and f.meaning and f.meaning.strip()
+    ]
     random.shuffle(distractor_pool)
     distractors = [
         {"word": f.word, "meaning": f.meaning}

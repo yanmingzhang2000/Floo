@@ -76,7 +76,12 @@
         <!-- 历史记录优先展示，因为默写入口在文章详情页 -->
         <view class="section">
           <text class="section-title">默写记录</text>
-          <view v-if="historyList.length === 0" class="empty-state">
+          <view v-if="historyLoadError" class="empty-state" style="cursor: pointer" @tap="loadData">
+            <text class="icon">⚠️</text>
+            <text class="empty-text">加载失败</text>
+            <text class="empty-hint">点此重试</text>
+          </view>
+          <view v-else-if="historyList.length === 0" class="empty-state">
             <text class="icon">📜</text>
             <text class="empty-text">暂无默写记录</text>
             <text class="empty-hint">在文章阅读页点击「默写」开始练习</text>
@@ -342,6 +347,7 @@ const userInput = ref('')
 const submitting = ref(false)
 const dictResult = ref<DictationResult | null>(null)
 const historyList = ref<DictationHistory[]>([])
+const historyLoadError = ref(false)
 const showTodayContent = ref(false)
 
 // 背单词
@@ -374,7 +380,6 @@ onLoad((options) => {
 
 function switchTab(tab: typeof activeTab.value) {
   activeTab.value = tab
-  if (tab === 'vocab' && vbDueWords.value.length === 0) loadVocabReview()
 }
 
 function goDetail(contentId: number) { navTo(`/pages/detail/index?id=${contentId}`) }
@@ -453,10 +458,13 @@ function generateVbOptions() {
   const current = vbCurrentWord.value
   if (!current) return
   const correct = current.meaning || ''
-  const pool = shuffleArray(vbDistractors.value.filter((d: any) => d.meaning && d.meaning !== correct))
+  const pool = shuffleArray(vbDistractors.value.filter((d: any) => d.meaning && d.meaning.trim() && d.meaning !== correct))
   const distractorMeanings = pool.slice(0, 3).map((d: any) => d.meaning)
-  while (distractorMeanings.length < 3) distractorMeanings.push('暂无释义')
-  vbChoiceOptions.value = shuffleArray([correct, ...distractorMeanings])
+  if (distractorMeanings.length === 0) {
+    vbChoiceOptions.value = [correct]
+  } else {
+    vbChoiceOptions.value = shuffleArray([correct, ...distractorMeanings])
+  }
 }
 
 // 选义
@@ -504,35 +512,70 @@ function resetVb() { vbActive.value = false }
 // ===== 数据加载 =====
 async function loadData() {
   loading.value = true
-  try {
-    const { data } = await dailyApi.getReviewTasks(auth.currentUserId)
-    dueTasks.value = data.tasks || []
-  } catch {}
-  try {
-    const { data } = await dailyApi.getAllProgress(auth.currentUserId)
-    progressList.value = data.items || []
-    masteredCount.value = data.mastered_count || 0
-  } catch {}
-  try {
-    const { data } = await dailyApi.getTodayList(auth.currentUserId)
-    todayContents.value = data.contents || []
-  } catch {}
-  try {
-    const { data } = await dailyApi.getList(30)
-    if (Array.isArray(data)) {
+
+  // 并行加载所有独立的 API 请求
+  const [
+    reviewTasksRes,
+    allProgressRes,
+    todayListRes,
+    listRes,
+    historyRes,
+    vocabRes
+  ] = await Promise.allSettled([
+    dailyApi.getReviewTasks(auth.currentUserId),
+    dailyApi.getAllProgress(auth.currentUserId),
+    dailyApi.getTodayList(auth.currentUserId),
+    dailyApi.getList(30),
+    dictationApi.getHistory(auth.currentUserId, 50),
+    wordReviewApi.getDue(auth.currentUserId, 20)
+  ])
+
+  // 处理复习任务
+  if (reviewTasksRes.status === 'fulfilled') {
+    dueTasks.value = reviewTasksRes.value.data.tasks || []
+  }
+
+  // 处理进度
+  if (allProgressRes.status === 'fulfilled') {
+    progressList.value = allProgressRes.value.data.items || []
+    masteredCount.value = allProgressRes.value.data.mastered_count || 0
+  }
+
+  // 处理今日内容
+  if (todayListRes.status === 'fulfilled') {
+    todayContents.value = todayListRes.value.data.contents || []
+  }
+
+  // 补充更多内容
+  if (listRes.status === 'fulfilled') {
+    const items = listRes.value.data
+    if (Array.isArray(items)) {
       const ids = new Set(todayContents.value.map(c => c.id))
-      for (const item of data) {
+      for (const item of items) {
         if (!ids.has(item.id)) todayContents.value.push(item)
       }
     }
-  } catch {}
-  try {
-    const { data } = await dictationApi.getHistory(auth.currentUserId, 50)
-    historyList.value = Array.isArray(data) ? data : []
-  } catch (e) {
-    console.error('加载默写历史失败', e)
   }
-  await loadVocabReview()
+
+  // 处理默写历史
+  if (historyRes.status === 'fulfilled') {
+    const res = historyRes.value
+    if (res.statusCode >= 400) {
+      historyLoadError.value = true
+    } else if (Array.isArray(res.data)) {
+      historyList.value = res.data
+      historyLoadError.value = false
+    }
+  } else {
+    historyLoadError.value = true
+  }
+
+  // 处理背单词数据
+  if (vocabRes.status === 'fulfilled') {
+    vbDueWords.value = vocabRes.value.data.words || []
+    vbDistractors.value = vocabRes.value.data.distractors || []
+  }
+
   loading.value = false
 }
 
@@ -587,8 +630,8 @@ onShow(loadData)
 .vocab-hint-card { text-align: center; padding: 40rpx; }
 .vocab-hint-label { font-size: 22rpx; color: var(--on-surface-variant); margin-bottom: 16rpx; display: block; }
 .vocab-hint-meaning { font-size: 40rpx; font-weight: 600; display: block; }
-.vocab-input-card { margin: 0 32rpx 24rpx; }
-.vocab-input { width: 100%; border: none; border-bottom: 3rpx solid var(--outline); padding: 20rpx 0; font-size: 36rpx; text-align: center; outline: none; }
+.vocab-input-card { margin: 0 32rpx 24rpx; padding: 0; }
+.vocab-input { width: 100%; border: none; border-bottom: 3rpx solid var(--outline); padding: 28rpx 16rpx; min-height: 88rpx; font-size: 36rpx; text-align: center; outline: none; color: var(--on-surface); background: transparent; line-height: 1.4; box-sizing: border-box; }
 .vocab-input:focus { border-bottom-color: var(--primary); }
 .vocab-result-card { text-align: center; padding: 32rpx; margin: 0 32rpx 24rpx; }
 .vocab-result-status { font-size: 32rpx; font-weight: 700; display: block; margin-bottom: 12rpx; }

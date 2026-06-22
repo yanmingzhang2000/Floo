@@ -127,11 +127,15 @@ def get_history(
         titles = {c.id: c.title for c in contents}
 
     # 构造输出，注入 content_title
+    # 单条记录序列化失败不中断整个接口，跳过并记录日志
     out = []
     for r in records:
-        item = DictationHistoryOut.model_validate(r)
-        item.content_title = titles.get(r.content_id)
-        out.append(item)
+        try:
+            item = DictationHistoryOut.model_validate(r)
+            item.content_title = titles.get(r.content_id)
+            out.append(item)
+        except Exception as e:
+            log.debug("跳过序列化失败的默写记录 dictation_id=%s: %s", r.dictation_id, e)
 
     log.debug("返回默写历史 user_id=%s count=%s", user_id, len(out))
     return out
