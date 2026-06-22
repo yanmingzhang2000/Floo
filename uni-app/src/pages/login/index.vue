@@ -65,8 +65,10 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { userApi } from '@/api'
-import { storage } from '@/utils/storage'
 import { navReLaunch } from '@/utils/router'
+import { useAuthStore } from '@/stores'
+
+const auth = useAuthStore()
 
 const loading = ref(false)
 const error = ref('')
@@ -81,11 +83,7 @@ async function handleSubmit() {
   try {
     const api = isRegister.value ? userApi.register : userApi.login
     const { data } = await api(form.value.username, form.value.password)
-    storage.set('user_id', data.user_id)
-    storage.set('username', data.username)
-    if (rememberMe.value) {
-      storage.set('session_expiry', Date.now() + 30 * 24 * 60 * 60 * 1000)
-    }
+    auth.setSession(data.user_id, data.username, rememberMe.value)
     navReLaunch('/pages/home/index')
   } catch (e: any) {
     error.value = e.data?.detail || e.errMsg || '操作失败，请重试'
@@ -101,8 +99,7 @@ async function handleWechatLogin() {
       uni.login({ success: resolve, fail: reject })
     })
     const { data } = await userApi.wechatLogin(loginRes.code)
-    storage.set('user_id', data.user_id)
-    storage.set('username', data.username)
+    auth.setSession(data.user_id, data.username)
     navReLaunch('/pages/home/index')
   } catch (e: any) {
     error.value = e.data?.detail || e.errMsg || '微信登录失败'
