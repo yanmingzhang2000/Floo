@@ -5,13 +5,13 @@
       <h1>今日英语 · {{ themeLabel }}</h1>
       <p class="subtitle">共 {{ totalCount }} 篇</p>
       <div class="actions">
-        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white" @click="handleGenerate" :disabled="generating || remainingCount <= 0">
+        <button class="btn btn-sm btn-header" @click="handleGenerate" :disabled="generating || remainingCount <= 0">
           {{ generating ? '生成中...' : remainingCount > 0 ? `✨ 生成新内容 (${remainingCount}次)` : '今日已用完' }}
         </button>
-        <router-link to="/learning/list" class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white">
+        <router-link to="/learning/list" class="btn btn-sm btn-header">
           📋 历史内容
         </router-link>
-        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white" @click="showCustomContent = true">
+        <button class="btn btn-sm btn-header" @click="showCustomContent = true">
           📝 自定义内容
         </button>
       </div>
@@ -62,7 +62,7 @@
         <div v-if="currentItem.words?.length" class="words-section">
           <h4>核心词汇</h4>
           <div class="words-wrap">
-            <div v-for="w in currentItem.words" :key="w.word" class="word-chip" @click="showWordDetail(w)">
+            <div v-for="w in currentItem.words" :key="w.word" class="word-chip" @click="showWordFromChip(w)">
               <span class="word-text">{{ w.word }}</span>
               <span class="word-phonetic" v-if="w.phonetic">{{ w.phonetic }}</span>
               <span class="word-meaning">{{ w.meaning }}</span>
@@ -135,16 +135,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { dailyApi, generationLimitApi, favoritesApi, speechApi } from '@/api'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { dailyApi, generationLimitApi } from '@/api'
 import { useAuthStore } from '@/stores'
-import { dictionaryApi } from '@/api'
-import { speakWord, initVoices, toggleReading, stopReading, useReadingState } from '@/composables/useSpeech'
-import { useRecorder } from '@/composables/useRecorder'
-import { getBaseForm } from '@/composables/useWordForm'
+import { speakWord, initVoices, toggleReading, useReadingState } from '@/composables/useSpeech'
+import { renderArticle } from '@/composables/useArticleRender'
+import { useWordPopup } from '@/composables/useWordPopup'
+import { useSpeechEval } from '@/composables/useSpeechEval'
 import OnboardingGuide from '@/components/OnboardingGuide.vue'
 import CustomContentModal from '@/components/CustomContentModal.vue'
-import type { LearningContent, WordItem } from '@/types'
+import type { LearningContent } from '@/types'
 
 const auth = useAuthStore()
 const loading = ref(true)
@@ -152,38 +152,14 @@ const generating = ref(false)
 const showCustomContent = ref(false)
 const contents = ref<LearningContent[]>([])
 const expandedTranslations = ref(new Set<number>())
-const wordPopup = ref<{ word: string; phonetic?: string; meaning: string; usage?: string; isFavorite?: boolean } | null>(null)
 const remainingCount = ref(3)
 const { readState } = useReadingState()
-const cardRefs = ref<(Element | null)[]>([])
-const activeAnchor = ref(0)
 
-// 录音和语音评测
-const { isRecording, startRecording, stopRecording } = useRecorder()
-const evalResult = ref<{
-  overall: number;
-  pronunciation: number;
-  fluency: number;
-  integrity: number;
-  suggestion: string;
-} | null>(null)
-const recordingTime = ref(0)
-let recordingTimer: ReturnType<typeof setInterval> | null = null
-
-// 单词查询缓存
-const wordCache = new Map<string, { word: string; phonetic?: string; meaning: string }>()
-
-function getCachedWord(word: string) {
-  return wordCache.get(word.toLowerCase())
-}
-
-function setCachedWord(word: string, result: { word: string; phonetic?: string; meaning: string }) {
-  wordCache.set(word.toLowerCase(), result)
-  if (wordCache.size > 500) {
-    const firstKey = wordCache.keys().next().value
-    if (firstKey) wordCache.delete(firstKey)
-  }
-}
+// 使用 composable
+const { wordPopup, handleWordClick, toggleFavorite, showWordFromChip } = useWordPopup(() => auth.currentUserId)
+const { isRecording, evalResult, recordingTime, startEval, resetEval, getScoreClass } = useSpeechEval(
+  () => currentItem.value?.article
+)
 
 // 已学内容
 const learnedIds = ref(new Set<number>())
@@ -213,32 +189,6 @@ async function loadLearnedIds() {
   }
 }
 
-function scrollToCard(idx: number) {
-  const el = cardRefs.value[idx]
-  if (el) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    activeAnchor.value = idx
-  }
-}
-
-function setCardRef(idx: number) {
-  return (el: any) => {
-    cardRefs.value[idx] = el?.$el || el
-  }
-}
-
-// 单词弹窗5秒自动收起
-let wordPopupTimer: ReturnType<typeof setTimeout> | null = null
-function clearWordPopupTimer() {
-  if (wordPopupTimer) { clearTimeout(wordPopupTimer); wordPopupTimer = null }
-}
-watch(wordPopup, (val) => {
-  clearWordPopupTimer()
-  if (val) {
-    wordPopupTimer = setTimeout(() => { wordPopup.value = null }, 5000)
-  }
-})
-
 const themeLabels: Record<string, string> = {
   ai_tech: 'AI科技', product_tech: '产品技术', business: '财经商业',
   daily_news: '日常新闻', self_growth: '个人成长', all_random: '随机主题',
@@ -253,92 +203,17 @@ const hasNext = computed(() => currentIdx.value < contents.value.length - 1)
 function goNext() { if (hasNext.value) currentIdx.value++ }
 function goPrev() { if (hasPrev.value) currentIdx.value-- }
 
-// 发音评测
-async function startEval() {
-  if (isRecording.value) {
-    // 正在录音，停止并评测
-    const audioBase64 = await stopRecording()
-    if (recordingTimer) { clearInterval(recordingTimer); recordingTimer = null }
-    
-    if (!audioBase64 || !currentItem.value) return
-    
-    // 发送到后端评测
-    try {
-      const { data } = await speechApi.evaluate(audioBase64, currentItem.value.article, 'en')
-      // 检查是否有错误
-      if (data.error) {
-        evalResult.value = { overall: 0, pronunciation: 0, fluency: 0, integrity: 0, suggestion: data.error }
-      } else {
-        evalResult.value = {
-          overall: data.overall,
-          pronunciation: data.pronunciation,
-          fluency: data.fluency,
-          integrity: data.integrity,
-          suggestion: data.suggestion,
-        }
-      }
-    } catch (err) {
-      evalResult.value = { overall: 0, pronunciation: 0, fluency: 0, integrity: 0, suggestion: '评测失败，请稍后重试' }
-    }
-    return
-  }
-  
-  // 开始录音
-  const started = await startRecording()
-  if (!started) {
-    alert('无法获取录音权限，请在浏览器设置中允许麦克风访问')
-    return
-  }
-  
-  // 开始计时
-  recordingTime.value = 0
-  recordingTimer = setInterval(() => { recordingTime.value++ }, 1000)
-}
-
-// 重置评测
-function resetEval() {
-  evalResult.value = null
-  recordingTime.value = 0
-}
-
-// 根据分数返回CSS类名
-function getScoreClass(score: number) {
-  if (score >= 90) return 'score-excellent'
-  if (score >= 80) return 'score-good'
-  if (score >= 70) return 'score-ok'
-  if (score >= 60) return 'score-fair'
-  return 'score-poor'
-}
-
 onMounted(() => {
   initVoices()
   loadData()
   loadLearnedIds()
-  window.addEventListener('scroll', handleScroll)
 })
-
-onUnmounted(() => {
-  clearWordPopupTimer()
-  window.removeEventListener('scroll', handleScroll)
-})
-
-function handleScroll() {
-  const scrollY = window.scrollY + 120
-  for (let i = cardRefs.value.length - 1; i >= 0; i--) {
-    const el = cardRefs.value[i] as HTMLElement | null
-    if (el && el.offsetTop <= scrollY) {
-      activeAnchor.value = i
-      break
-    }
-  }
-}
 
 async function loadData() {
   loading.value = true
   try {
     const { data } = await dailyApi.getTodayList(auth.currentUserId)
     contents.value = data.contents || []
-    // 加载生成次数限制
     const { data: limitData } = await generationLimitApi.getLimit(auth.currentUserId)
     remainingCount.value = limitData.remaining_count
   } catch { contents.value = [] }
@@ -346,12 +221,11 @@ async function loadData() {
 }
 
 async function handleGenerate() {
-  // 检查生成次数限制
   if (remainingCount.value <= 0) {
     alert('今日生成次数已达上限（每天最多3次），请明天再来')
     return
   }
-  
+
   generating.value = true
   try {
     await dailyApi.generate(auth.currentUserId)
@@ -364,85 +238,6 @@ function toggleTranslation(id: number) {
   const s = new Set(expandedTranslations.value)
   s.has(id) ? s.delete(id) : s.add(id)
   expandedTranslations.value = s
-}
-
-function renderArticle(item: LearningContent) {
-  const words = item.words || []
-  // 先用占位符保护HTML标签
-  let html = item.article.replace(/<[^>]+>/g, (tag) => `___TAG${tag}___`)
-
-  // 把所有英文单词包裹成span
-  html = html.replace(/\b([a-zA-Z]+(?:'[a-zA-Z]+)?)\b/g, (match, word) => {
-    const isKey = words.some(w => w.word.toLowerCase() === word.toLowerCase())
-    if (isKey) {
-      return `<mark class="keyword" data-word="${word}"><strong>${word}</strong></mark>`
-    }
-    return `<span class="clickable-word" data-word="${word}">${word}</span>`
-  })
-
-  // 恢复HTML标签
-  html = html.replace(/___TAG([^_]+)___/g, '$1')
-  return html
-}
-
-async function handleWordClick(e: Event, item: LearningContent) {
-  const target = e.target as HTMLElement
-  const rawWord = target.dataset.word || target.textContent || ''
-  if (!rawWord || !target.classList.contains('keyword') && !target.classList.contains('clickable-word')) return
-
-  // 词形还原：获取单词原型
-  const word = getBaseForm(rawWord)
-
-  speakWord(word)
-
-  // 先查缓存
-  const cached = getCachedWord(word)
-  if (cached) {
-    const { data: favData } = await favoritesApi.check(auth.currentUserId, word).catch(() => ({ data: { is_favorite: false } }))
-    wordPopup.value = { ...cached, isFavorite: favData.is_favorite }
-    return
-  }
-
-  // 缓存没有，调API
-  wordPopup.value = { word, meaning: '查询中...' }
-
-  try {
-    const { data } = await dictionaryApi.lookup(word)
-    const ec = data?.ec?.word?.[0]
-    const phonetic = ec?.usphone || ec?.ukphone || ''
-    const trs = ec?.trs || []
-    const meaning = trs.map((t: any) => t?.tr?.[0]?.l?.i?.[0]).filter(Boolean).join('；')
-    if (meaning) {
-      const result = { word, phonetic: phonetic ? `/${phonetic}/` : undefined, meaning }
-      setCachedWord(word, result)
-      const { data: favData } = await favoritesApi.check(auth.currentUserId, word)
-      wordPopup.value = { ...result, isFavorite: favData.is_favorite }
-    } else {
-      wordPopup.value = { word, meaning: '未找到释义' }
-    }
-  } catch (err) {
-    console.error('Dictionary lookup failed:', err)
-    wordPopup.value = { word, meaning: '查询失败，请稍后重试' }
-  }
-}
-
-function showWordDetail(w: WordItem) {
-  wordPopup.value = { word: w.word, phonetic: w.phonetic, meaning: w.meaning, usage: w.usage }
-}
-
-async function toggleFavorite() {
-  if (!wordPopup.value || !auth.currentUserId) return
-  const { word, phonetic, meaning, isFavorite } = wordPopup.value
-
-  try {
-    if (isFavorite) {
-      await favoritesApi.remove(auth.currentUserId, word)
-      wordPopup.value = { ...wordPopup.value, isFavorite: false }
-    } else {
-      await favoritesApi.add(auth.currentUserId, word, phonetic, meaning)
-      wordPopup.value = { ...wordPopup.value, isFavorite: true }
-    }
-  } catch { /* ignore */ }
 }
 </script>
 
@@ -733,9 +528,5 @@ async function toggleFavorite() {
   font-size: 13px;
   color: var(--on-surface-variant);
   text-align: center;
-}
-.btn-sm {
-  padding: 6px 16px;
-  font-size: 13px;
 }
 </style>

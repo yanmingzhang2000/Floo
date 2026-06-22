@@ -1,6 +1,7 @@
 <template>
   <div class="page-container">
     <div class="page-header">
+      <button class="btn-back" @click="router.back()">← 返回</button>
       <h1>每周学习报告</h1>
     </div>
 
@@ -48,10 +49,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { checkinApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import type { WeeklySummary } from '@/types'
 
+const router = useRouter()
 const auth = useAuthStore()
 const loading = ref(true)
 const summary = ref<WeeklySummary | null>(null)

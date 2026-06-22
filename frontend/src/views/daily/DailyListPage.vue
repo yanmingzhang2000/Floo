@@ -1,6 +1,7 @@
 <template>
   <div class="page-container">
     <div class="page-header">
+      <button class="btn-back" @click="router.back()">← 返回</button>
       <h1>历史内容</h1>
     </div>
 
@@ -29,9 +30,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { dailyApi } from '@/api'
 import type { LearningContent } from '@/types'
 
+const router = useRouter()
 const loading = ref(true)
 const list = ref<LearningContent[]>([])
 
