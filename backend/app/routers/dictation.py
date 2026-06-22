@@ -121,10 +121,10 @@ def get_history(
     titles = {}
     if content_ids:
         from app.models import LearningContent
-        contents = db.query(LearningContent.id, LearningContent.title).filter(
-            LearningContent.id.in_(content_ids)
+        contents = db.query(LearningContent.content_id, LearningContent.title).filter(
+            LearningContent.content_id.in_(content_ids)
         ).all()
-        titles = {c.id: c.title for c in contents}
+        titles = {c.content_id: c.title for c in contents}
 
     # 构造输出，注入 content_title
     # 单条记录序列化失败不中断整个接口，跳过并记录日志
