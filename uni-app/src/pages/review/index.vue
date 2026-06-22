@@ -454,17 +454,37 @@ function startVocab() {
   generateVbOptions()
 }
 
+// 兜底干扰词：当用户自己的词库不够时补充，保证始终 4 个选项
+const FALLBACK_DISTRACTORS = [
+  'n. 城市', 'v. 走路', 'n. 太阳', 'v. 喜爱', 'adj. 大的',
+  'n. 书本', 'v. 学习', 'n. 家庭', 'adj. 漂亮的', 'v. 运动',
+  'n. 时间', 'v. 写作', 'n. 水果', 'adj. 快乐的', 'n. 动物',
+  'v. 阅读', 'n. 音乐', 'adj. 聪明的', 'v. 思考', 'n. 食物',
+  'n. 道路', 'v. 跑步', 'n. 花朵', 'adj. 温暖的', 'n. 故事',
+  'v. 唱歌', 'n. 图片', 'adj. 重要的', 'v. 帮助', 'n. 电影',
+  'n. 早晨', 'v. 休息', 'n. 眼睛', 'adj. 安静的', 'n. 椅子',
+  'v. 等待', 'n. 月亮', 'adj. 新的', 'v. 站立', 'n. 电话',
+  'n. 礼物', 'v. 微笑', 'n. 雨伞', 'adj. 高的', 'n. 窗户',
+]
+
 function generateVbOptions() {
   const current = vbCurrentWord.value
   if (!current) return
   const correct = current.meaning || ''
-  const pool = shuffleArray(vbDistractors.value.filter((d: any) => d.meaning && d.meaning.trim() && d.meaning !== correct))
+
+  // 1. 从用户自己的干扰项池取有效释义
+  const pool = shuffleArray(vbDistractors.value.filter((d: any) => d.meaning && d.meaning.trim() && d.meaning.trim() !== correct))
   const distractorMeanings = pool.slice(0, 3).map((d: any) => d.meaning)
-  if (distractorMeanings.length === 0) {
-    vbChoiceOptions.value = [correct]
-  } else {
-    vbChoiceOptions.value = shuffleArray([correct, ...distractorMeanings])
+
+  // 2. 不够 3 个则从兜底词库补（排除与正确答案重复的）
+  if (distractorMeanings.length < 3) {
+    const fallbackPool = shuffleArray(FALLBACK_DISTRACTORS.filter(m => m !== correct && !distractorMeanings.includes(m)))
+    while (distractorMeanings.length < 3 && fallbackPool.length > 0) {
+      distractorMeanings.push(fallbackPool.pop()!)
+    }
   }
+
+  vbChoiceOptions.value = shuffleArray([correct, ...distractorMeanings])
 }
 
 // 选义
