@@ -445,3 +445,15 @@ view, text, button, input, textarea, image { box-sizing: border-box; }
     right: calc(50% - 375px) !important;
   }
 }
+
+/* ===== H5 输入框修复 ===== */
+uni-input {
+  height: auto !important;
+  min-height: 1.4em;
+}
+
+input, textarea {
+  -webkit-user-select: auto !important;
+  user-select: auto !important;
+  -webkit-touch-callout: default !important;
+}
