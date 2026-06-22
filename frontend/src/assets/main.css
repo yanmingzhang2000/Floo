@@ -55,7 +55,6 @@ body {
   min-height: 100vh;
   background: var(--surface);
   position: relative;
-  padding-bottom: 70px;
 }
 
 .page-header {
@@ -242,10 +241,37 @@ body {
 .page-leave-to { opacity: 0; transform: translateY(-4px); }
 
 /* ===== 响应式布局 ===== */
-/* 平板及以上：3列网格变成更宽的容器 */
 @media (min-width: 600px) {
   .grid-3 {
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
+}
+
+/* ===== 卡片交互效果 ===== */
+.card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:active {
+  transform: scale(0.98);
+}
+
+@media (hover: hover) {
+  .card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    transform: translateY(-1px);
+  }
+}
+
+/* ===== 安全区域适配 ===== */
+@supports (padding: env(safe-area-inset-top)) {
+  .top-nav {
+    padding-top: env(safe-area-inset-top);
+    height: calc(52px + env(safe-area-inset-top));
+  }
+
+  .app-content {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
 

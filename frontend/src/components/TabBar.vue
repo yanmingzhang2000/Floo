@@ -1,30 +1,43 @@
+/**
+ * 顶部导航栏（合并 logo + tabs + 个人中心）
+ *
+ * 为什么从底部移到顶部：底部 TabBar 在 iPhone 上被 Home Indicator 遮挡，
+ * 且 sub-pages（DailyList / Weekly 等）已经有顶部返回按钮，导航逻辑分散。
+ * 合并为单顶栏后，导航体验统一，也不需要在 sub-pages 重复加返回按钮。
+ */
 <template>
-  <div class="tab-bar">
-    <!-- 顶部导航栏 -->
+  <div class="app-layout">
     <header class="top-nav">
-      <div class="top-left">
+      <div class="nav-left">
         <router-link to="/learning" class="logo-link">
           <img :src="'/Floo/logo.jpg'" alt="Floo!" class="logo-img" />
           <span class="logo-text">Floo!</span>
         </router-link>
       </div>
-      <div class="top-right">
-        <div class="profile-btn" @click="showProfile = true">
+
+      <nav class="nav-tabs">
+        <router-link
+          v-for="tab in tabs"
+          :key="tab.path"
+          :to="tab.path"
+          class="tab-item"
+          :class="{ active: isActive(tab.path) }"
+        >
+          <span class="tab-icon">{{ tab.icon }}</span>
+          <span class="tab-label">{{ tab.label }}</span>
+        </router-link>
+      </nav>
+
+      <div class="nav-right">
+        <div class="avatar-btn" @click="showProfile = true">
           <span class="avatar-text">{{ auth.username?.[0]?.toUpperCase() || '?' }}</span>
         </div>
       </div>
     </header>
 
-    <div class="tab-content">
+    <main class="app-content">
       <router-view />
-    </div>
-
-    <nav class="bottom-nav">
-      <router-link v-for="tab in tabs" :key="tab.path" :to="tab.path" class="nav-item" :class="{ active: $route.path === tab.path }">
-        <span class="nav-icon">{{ tab.icon }}</span>
-        <span class="nav-label">{{ tab.label }}</span>
-      </router-link>
-    </nav>
+    </main>
 
     <!-- 个人设置弹窗 -->
     <Teleport to="body">
@@ -55,19 +68,24 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 const showProfile = ref(false)
 
 const tabs = [
-  { path: '/learning', label: '每日学习', icon: '📖' },
-  { path: '/dictionary', label: '单词书', icon: '📚' },
+  { path: '/learning', label: '学习', icon: '📖' },
+  { path: '/dictionary', label: '单词', icon: '📚' },
   { path: '/review', label: '复习', icon: '🔄' },
   { path: '/checkin', label: '打卡', icon: '📅' },
 ]
+
+function isActive(path: string) {
+  return route.path === path || route.path.startsWith(path + '/')
+}
 
 function handleLogout() {
   auth.logout()
@@ -77,12 +95,13 @@ function handleLogout() {
 </script>
 
 <style scoped>
-.tab-bar {
+.app-layout {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
 }
 
+/* ===== 顶栏 ===== */
 .top-nav {
   position: fixed;
   top: 0;
@@ -90,24 +109,89 @@ function handleLogout() {
   transform: translateX(-50%);
   width: 100%;
   max-width: 480px;
-  height: 52px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 12px;
+  height: 52px;
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
   z-index: 90;
+  gap: 8px;
 }
 
-.top-left { display: flex; align-items: center; }
-.logo-link { text-decoration: none; display: flex; align-items: center; gap: 6px; }
-.logo-img { width: 28px; height: 28px; border-radius: 6px; object-fit: contain; }
-.logo-text { color: white; font-size: 20px; font-weight: 800; }
+.nav-left {
+  flex-shrink: 0;
+}
 
-.profile-btn {
-  width: 36px;
-  height: 36px;
-  background: rgba(255,255,255,0.25);
+.logo-link {
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.logo-img {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  object-fit: contain;
+}
+
+.logo-text {
+  color: white;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+/* ===== Tabs ===== */
+.nav-tabs {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+  justify-content: center;
+}
+
+.tab-item {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 10px;
+  border-radius: 20px;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.tab-item:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.tab-item.active {
+  color: white;
+  background: rgba(255, 255, 255, 0.25);
+  font-weight: 600;
+}
+
+.tab-icon {
+  font-size: 15px;
+}
+
+.tab-label {
+  font-size: 12px;
+}
+
+/* ===== 头像 ===== */
+.nav-right {
+  flex-shrink: 0;
+}
+
+.avatar-btn {
+  width: 34px;
+  height: 34px;
+  background: rgba(255, 255, 255, 0.25);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -115,47 +199,31 @@ function handleLogout() {
   cursor: pointer;
   transition: background 0.2s;
 }
-.profile-btn:hover { background: rgba(255,255,255,0.4); }
-.avatar-text { color: white; font-size: 16px; font-weight: 700; }
 
-.tab-content {
+.avatar-btn:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.avatar-text {
+  color: white;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* ===== 内容区 ===== */
+.app-content {
   flex: 1;
   padding-top: 52px;
-  padding-bottom: 64px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-.bottom-nav {
+/* ===== Profile Sheet ===== */
+.modal-overlay {
   position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 480px;
-  display: flex;
-  background: #fff;
-  border-top: 1px solid var(--surface-container-high);
-  padding: 6px 0;
-  z-index: 100;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 150;
 }
-
-.nav-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 6px 0;
-  text-decoration: none;
-  color: var(--on-surface-variant);
-  transition: color 0.2s;
-}
-
-.nav-item.active {
-  color: var(--primary);
-}
-
-.nav-icon { font-size: 20px; }
-.nav-label { font-size: 11px; font-weight: 500; }
 
 .profile-sheet {
   position: fixed;
@@ -167,6 +235,7 @@ function handleLogout() {
   background: white;
   border-radius: 20px 20px 0 0;
   padding: 20px;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   z-index: 200;
 }
 
@@ -192,7 +261,10 @@ function handleLogout() {
   font-weight: 700;
 }
 
-.username { font-size: 18px; font-weight: 600; }
+.username {
+  font-size: 18px;
+  font-weight: 600;
+}
 
 .sheet-item {
   display: block;
@@ -204,12 +276,7 @@ function handleLogout() {
   border-bottom: 1px solid var(--surface-container);
 }
 
-.sheet-item.danger { color: var(--error); }
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.3);
-  z-index: 150;
+.sheet-item.danger {
+  color: var(--error);
 }
 </style>
