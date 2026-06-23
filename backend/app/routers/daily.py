@@ -481,6 +481,25 @@ def toggle_learned(user_id: int, content_id: int, db: Session = Depends(get_db))
         return {"learned": True}
 
 
+@router.post("/learned/mark")
+def mark_learned(user_id: int, content_id: int, db: Session = Depends(get_db)):
+    """幂等标记已学 — 仅当未标记时才写入，已存在则直接返回。"""
+    from app.models import UserLearnedContent
+
+    existing = (
+        db.query(UserLearnedContent)
+        .filter(UserLearnedContent.user_id == user_id, UserLearnedContent.content_id == content_id)
+        .first()
+    )
+    if existing:
+        return {"learned": True}
+    record = UserLearnedContent(user_id=user_id, content_id=content_id)
+    db.add(record)
+    db.commit()
+    log.debug("自动标记已学 user_id=%s content_id=%s", user_id, content_id)
+    return {"learned": True}
+
+
 @router.get("/learned/check")
 def check_learned(user_id: int, content_id: int, db: Session = Depends(get_db)):
     """检查内容是否已学。"""
@@ -588,7 +607,7 @@ async def _process_custom_content(text: str) -> dict:
 
     user_prompt = f"请处理以下英文文本：\n\n{text}"
 
-    result = await chat_json(system_prompt, user_prompt, temperature=0.3)
+    result = await chat_json(system_prompt, user_prompt, temperature=0.3, timeout=30.0)
     if not result:
         log.debug("LLM 返回空结果，使用降级方案")
         return {
