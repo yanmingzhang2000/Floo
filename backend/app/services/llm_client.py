@@ -21,7 +21,7 @@ async def chat_json(
     user_prompt: str,
     temperature: float = 0.3,
     timeout: float = 90.0,  # 生成3篇文章需要更长时间，Railway冷启动也有延迟
-) -> dict[str, Any]:
+) -> dict[str, Any] | None:
     """调用 LLM 并解析返回的 JSON。
 
     为什么不传 response_format：Gemini 兼容层不支持 json_object 参数，
@@ -29,8 +29,8 @@ async def chat_json(
     模型会自然遵守；容错逻辑会剥掉 ```json 包裹。
     """
     if not settings.LLM_API_KEY:
-        log.debug("LLM_API_KEY 未配置，返回空 dict 让调用方走 mock")
-        return {}
+        log.debug("LLM_API_KEY 未配置，返回 None 让调用方走降级")
+        return None
 
     # response_format=json_object 是 OpenAI 专属，Gemini 兼容层不支持会返回 400
     # 所有 prompt 已在 system_prompt 里明确要求返回 JSON，模型会自然遵守
@@ -48,20 +48,24 @@ async def chat_json(
     }
     log.debug("调用 LLM model=%s temperature=%s", settings.LLM_MODEL, temperature)
 
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        resp = await client.post(
-            f"{settings.LLM_BASE_URL}/chat/completions",
-            json=payload,
-            headers=headers,
-        )
-        resp.raise_for_status()
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            resp = await client.post(
+                f"{settings.LLM_BASE_URL}/chat/completions",
+                json=payload,
+                headers=headers,
+            )
+            resp.raise_for_status()
 
-    data = resp.json()
-    content = data["choices"][0]["message"]["content"]
-    # 容错：有些模型返回时带 ```json 包裹
-    content = re.sub(
-        r"^```(?:json)?|```$", "", content.strip(), flags=re.MULTILINE
-    ).strip()
-    result = json.loads(content)
-    log.debug("LLM 返回 JSON keys=%s", list(result.keys()))
-    return result
+        data = resp.json()
+        content = data["choices"][0]["message"]["content"]
+        # 容错：有些模型返回时带 ```json 包裹
+        content = re.sub(
+            r"^```(?:json)?|```$", "", content.strip(), flags=re.MULTILINE
+        ).strip()
+        result = json.loads(content)
+        log.debug("LLM 返回 JSON keys=%s", list(result.keys()))
+        return result
+    except Exception as e:
+        log.debug("LLM 调用失败: %s", e)
+        return None

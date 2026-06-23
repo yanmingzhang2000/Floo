@@ -7,6 +7,8 @@ import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 
 from app.core.logging import setup_logging
 from app.database import Base, engine, SessionLocal
@@ -58,6 +60,31 @@ def _patch_missing_columns():
             log.info("is_mastered 列已补齐")
         else:
             log.debug("user_favorite_words.is_mastered 列已存在，跳过补列")
+
+        # 检查 daily_generation_limit.limit_type 列是否存在
+        result3 = db.execute(text(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'daily_generation_limit' AND COLUMN_NAME = 'limit_type'"
+        )).scalar()
+        if result3 == 0:
+            log.info("检测到 daily_generation_limit 缺少 limit_type 列，开始补列")
+            db.execute(text(
+                "ALTER TABLE daily_generation_limit "
+                "ADD COLUMN limit_type VARCHAR(16) NOT NULL DEFAULT 'ai'"
+            ))
+            # 尝试删除旧唯一索引并创建新索引
+            try:
+                db.execute(text("ALTER TABLE daily_generation_limit DROP INDEX uq_user_date_limit"))
+            except Exception:
+                log.debug("旧索引 uq_user_date_limit 不存在，跳过删除")
+            db.execute(text(
+                "CREATE UNIQUE INDEX uq_user_date_limit_type "
+                "ON daily_generation_limit (user_id, limit_date, limit_type)"
+            ))
+            db.commit()
+            log.info("limit_type 列已补齐")
+        else:
+            log.debug("daily_generation_limit.limit_type 列已存在，跳过补列")
     except Exception as e:
         db.rollback()
         log.warning("补列检查失败（如果数据库已正常可忽略）: %s", e)
@@ -99,6 +126,25 @@ _seed_characters()
 
 app = FastAPI(title="English Learning App API", version="0.1.0")
 
+
+class _CorsFallbackMiddleware(BaseHTTPMiddleware):
+    """兜底 CORS 中间件：确保所有响应（含 500）都带上 CORS 头。
+
+    如果 upstream 的 CORSMiddleware 因异常路径漏加头，这里补上。
+    """
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        origin = request.headers.get("origin")
+        if origin and "access-control-allow-origin" not in {k.lower() for k in response.headers}:
+            log.debug("CORS 头缺失，兜底补上 origin=%s", origin)
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "*"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+        return response
+
+
+app.add_middleware(_CorsFallbackMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
