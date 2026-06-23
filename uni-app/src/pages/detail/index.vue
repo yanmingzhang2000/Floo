@@ -38,12 +38,17 @@
       </view>
 
       <!-- 文章内容 -->
-      <view class="card detail-card">
+        <view class="card detail-card">
         <view class="detail-meta">
           <text class="tag tag-primary">{{ content.content_date }}</text>
           <text class="tag tag-success">{{ content.difficulty_level }}</text>
         </view>
         <text class="detail-title">{{ content.title }}</text>
+
+        <view class="learned-toggle" @tap="toggleLearned">
+          <text class="learned-icon">{{ learnedIds.includes(content.id) ? '✅' : '☑️' }}</text>
+          <text class="learned-text">{{ learnedIds.includes(content.id) ? '已学过' : '标记已学' }}</text>
+        </view>
 
         <view class="article-body">
           <text
@@ -120,77 +125,14 @@
       </view>
     </view>
 
-    <!-- 默写弹窗 -->
-    <view v-if="showDictation" class="modal-overlay" @tap="showDictation = false">
-      <view class="dictation-sheet" @tap.stop>
-        <view class="dictation-sheet-top">
-          <text class="tag tag-primary">默写练习</text>
-          <view class="btn-icon dictation-close" @tap="showDictation = false"><text>✕</text></view>
-        </view>
-        <view class="dictation-hint-card">
-          <text class="dictation-hint-label">中文翻译提示</text>
-          <text class="dictation-hint-text">{{ content?.translation || '暂无翻译' }}</text>
-        </view>
-        <view style="padding: 0 32rpx">
-          <button class="btn btn-sm btn-text" @tap="dictShowOriginal = !dictShowOriginal">
-            <text>{{ dictShowOriginal ? '🙈 隐藏原文' : '👁️ 显示原文' }}</text>
-          </button>
-        </view>
-        <view v-if="dictShowOriginal" class="dictation-original-card">
-          <text class="dictation-original-text">{{ content?.article }}</text>
-        </view>
-        <view class="dictation-input-card">
-          <textarea v-model="dictUserInput" :maxlength="-1" placeholder="在这里输入默写的英文内容..." class="dictation-textarea" />
-        </view>
-        <view class="dictation-submit">
-          <button class="btn btn-primary btn-block btn-lg" :disabled="dictSubmitting || !dictUserInput.trim()" @tap="handleDictSubmit">
-            <text>{{ dictSubmitting ? 'AI 批改中...' : '提交批改' }}</text>
-          </button>
-        </view>
-        <view v-if="dictResult" class="card dictation-result-card">
-          <!-- 分数行 -->
-          <view class="dictation-score-area">
-            <text class="dictation-score" :class="getDictScoreClass(dictResult.feedback.score)">{{ dictResult.feedback.score }}</text>
-            <view class="dictation-score-meta">
-              <text>准确率 {{ dictResult.accuracy_rate.toFixed(0) }}%</text>
-              <text style="color: var(--success)">+{{ dictResult.earned_points }} 积分</text>
-            </view>
-          </view>
-          <!-- AI 总评 -->
-          <view v-if="dictResult.feedback.summary" class="dictation-feedback">
-            <text class="dictation-feedback-label">AI 总评</text>
-            <text class="dictation-feedback-text">{{ dictResult.feedback.summary }}</text>
-          </view>
-          <!-- 错误明细 -->
-          <view v-if="dictResult.feedback.diffs && dictResult.feedback.diffs.length" class="dictation-diffs">
-            <text class="dictation-feedback-label">错误明细</text>
-            <view v-for="(d, i) in dictResult.feedback.diffs" :key="i" class="diff-item">
-              <text class="diff-type" :class="'diff-' + d.type">{{ { missing: '漏写', wrong: '写错', extra: '多写' }[d.type] || d.type }}</text>
-              <view class="diff-detail">
-                <text v-if="d.expected" class="diff-expected">✓ {{ d.expected }}</text>
-                <text v-if="d.actual && d.type !== 'missing'" class="diff-actual">✗ {{ d.actual }}</text>
-              </view>
-            </view>
-          </view>
-          <!-- 学习建议 -->
-          <view v-if="dictResult.feedback.suggestions && dictResult.feedback.suggestions.length" class="dictation-suggestions">
-            <text class="dictation-feedback-label">建议</text>
-            <view v-for="(s, i) in dictResult.feedback.suggestions" :key="i" class="suggestion-item">
-              <text class="suggestion-text">• {{ s }}</text>
-            </view>
-          </view>
-        </view>
-      </view>
-    </view>
-
     <AppTabBar />
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
-import { dailyApi, dictionaryApi, speechApi, favoritesApi, dictationApi } from '@/api'
+import { ref, computed } from 'vue'
+import { onLoad, onShow, onHide } from '@dcloudio/uni-app'
+import { dailyApi, dictionaryApi, speechApi, favoritesApi } from '@/api'
 import { speakWord, initVoices } from '@/composables/useSpeech'
 import { useRecorder } from '@/composables/useRecorder'
 import { getBaseForm } from '@/composables/useWordForm'
@@ -207,13 +149,8 @@ const showTranslation = ref(false)
 const isFavorited = ref(false)
 const { isRecording, startRecording, stopRecording } = useRecorder()
 const evalResult = ref<{ overall: number; pronunciation: number; fluency: number; integrity: number; suggestion: string } | null>(null)
-
-// 默写弹窗
-const showDictation = ref(false)
-const dictUserInput = ref('')
-const dictShowOriginal = ref(false)
-const dictSubmitting = ref(false)
-const dictResult = ref<any>(null)
+const learnedIds = ref<number[]>([])
+let autoLearnTimer: ReturnType<typeof setTimeout> | null = null
 let contentId = 0
 
 const usernameInitial = computed(() => (auth.username?.[0] || '?').toUpperCase())
@@ -223,7 +160,15 @@ onLoad((query) => {
   loadContent()
 })
 
-onMounted(() => { initVoices() })
+onShow(() => {
+  initVoices()
+  loadLearnedIds()
+  startAutoLearnTimer()
+})
+
+onHide(() => {
+  clearAutoLearnTimer()
+})
 
 const articleParts = computed(() => {
   if (!content.value) return []
@@ -275,6 +220,51 @@ const articleParts = computed(() => {
   
   return parts
 })
+
+function startAutoLearnTimer() {
+  clearAutoLearnTimer()
+  if (!content.value || !contentId || !auth.currentUserId) return
+  autoLearnTimer = setTimeout(async () => {
+    if (!content.value || !auth.currentUserId) return
+    try {
+      const { data } = await dailyApi.markLearned(auth.currentUserId, contentId)
+      if (data.learned && !learnedIds.value.includes(contentId)) {
+        learnedIds.value = [...learnedIds.value, contentId]
+      }
+    } catch { /* silent */ }
+  }, 5 * 60 * 1000)
+}
+
+function clearAutoLearnTimer() {
+  if (autoLearnTimer !== null) {
+    clearTimeout(autoLearnTimer)
+    autoLearnTimer = null
+  }
+}
+
+async function loadLearnedIds() {
+  if (!auth.currentUserId) return
+  try {
+    const { data } = await dailyApi.getLearnedIds(auth.currentUserId)
+    learnedIds.value = data.content_ids || []
+  } catch { /* ignore */ }
+}
+
+async function toggleLearned() {
+  if (!auth.currentUserId || !contentId) return
+  try {
+    const { data } = await dailyApi.toggleLearned(auth.currentUserId, contentId)
+    if (data.learned) {
+      if (!learnedIds.value.includes(contentId)) {
+        learnedIds.value = [...learnedIds.value, contentId]
+      }
+    } else {
+      learnedIds.value = learnedIds.value.filter(id => id !== contentId)
+    }
+  } catch {
+    uni.showToast({ title: '操作失败', icon: 'none' })
+  }
+}
 
 async function loadContent() {
   loading.value = true
@@ -356,26 +346,7 @@ async function toggleFavorite() {
 function goReview() { uni.switchTab({ url: '/pages/review/index' }) }
 
 function openDictation() {
-  dictUserInput.value = ''
-  dictShowOriginal.value = false
-  dictResult.value = null
-  showDictation.value = true
-}
-
-function getDictScoreClass(score: number) {
-  if (score >= 80) return 'score-green'
-  if (score >= 60) return 'score-orange'
-  return 'score-red'
-}
-
-async function handleDictSubmit() {
-  if (!content.value || !dictUserInput.value.trim()) return
-  dictSubmitting.value = true
-  try {
-    const { data } = await dictationApi.submit(auth.currentUserId, contentId, dictUserInput.value)
-    dictResult.value = data
-  } catch { uni.showToast({ title: '提交失败', icon: 'none' }) }
-  dictSubmitting.value = false
+  uni.navigateTo({ url: `/pages/dictation/index?id=${contentId}` })
 }
 
 function getScoreClass(score: number) {
@@ -442,6 +413,17 @@ function navBack() { navBackSafe() }
 .toolbar-label { font-size: 22rpx; color: var(--on-surface-variant); font-weight: 500; }
 
 .detail-card { margin: 0 0 24rpx; }
+.learned-toggle {
+  display: inline-flex; align-items: center; gap: 8rpx;
+  padding: 8rpx 20rpx; border-radius: 40rpx;
+  background: #fff; border: 3rpx solid var(--outline-variant);
+  font-size: 24rpx; color: var(--on-surface-variant);
+  margin-bottom: 20rpx;
+}
+.learned-toggle:active { opacity: 0.6; }
+.learned-icon { font-size: 28rpx; }
+.learned-text { font-weight: 500; }
+
 .detail-meta { display: flex; gap: 12rpx; margin-bottom: 20rpx; }
 .detail-title {
   font-size: 36rpx; font-weight: 700; margin-bottom: 24rpx;
@@ -479,37 +461,4 @@ function navBack() { navBackSafe() }
   50% { opacity: 0.6; transform: scale(1.2); }
 }
 
-/* 默写弹窗 */
-.dictation-sheet { width: 100%; max-width: 600px; max-height: 90vh; background: white; border-radius: 32rpx 32rpx 0 0; overflow-y: auto; padding-bottom: env(safe-area-inset-bottom, 32rpx); }
-.dictation-sheet-top { display: flex; justify-content: space-between; align-items: center; padding: 32rpx 32rpx 0; }
-.dictation-close { background: var(--surface-container); }
-.dictation-hint-card { margin: 24rpx 32rpx; padding: 28rpx; background: var(--primary-container); border-radius: 16rpx; }
-.dictation-hint-label { font-size: 22rpx; color: var(--on-primary-container); margin-bottom: 12rpx; display: block; }
-.dictation-hint-text { font-size: 28rpx; line-height: 1.6; display: block; color: var(--on-primary-container); }
-.dictation-original-card { margin: 16rpx 32rpx; padding: 28rpx; background: var(--surface-container); border-radius: 16rpx; }
-.dictation-original-text { font-size: 28rpx; line-height: 1.6; display: block; }
-.dictation-input-card { padding: 16rpx 32rpx; }
-.dictation-textarea { width: 100%; height: 280rpx; border: 3rpx solid var(--outline); border-radius: 16rpx; padding: 24rpx; font-size: 28rpx; line-height: 1.6; }
-.dictation-submit { padding: 0 32rpx 24rpx; }
-.dictation-result-card { border-left: 8rpx solid var(--primary); margin: 0 32rpx 32rpx; }
-.dictation-score-area { display: flex; align-items: center; gap: 28rpx; }
-.dictation-score { font-size: 80rpx; font-weight: 800; }
-.dictation-score-meta { font-size: 26rpx; line-height: 1.6; }
-.dictation-feedback { margin-top: 24rpx; padding-top: 20rpx; border-top: 2rpx solid var(--surface-container-high); }
-.dictation-feedback-label { font-size: 24rpx; color: var(--on-surface-variant); margin-bottom: 12rpx; display: block; }
-.dictation-feedback-text { font-size: 26rpx; line-height: 1.6; display: block; }
-
-.dictation-diffs { margin-top: 20rpx; padding-top: 16rpx; border-top: 2rpx solid var(--surface-container-high); }
-.diff-item { display: flex; gap: 12rpx; margin-bottom: 12rpx; padding: 12rpx; background: var(--surface-container); border-radius: 8rpx; }
-.diff-type { font-size: 22rpx; font-weight: 600; padding: 4rpx 12rpx; border-radius: 12rpx; flex-shrink: 0; }
-.diff-type.diff-missing { background: #FFF3E0; color: #E65100; }
-.diff-type.diff-wrong { background: #FFEBEE; color: #C62828; }
-.diff-type.diff-extra { background: #E3F2FD; color: #1565C0; }
-.diff-detail { flex: 1; display: flex; flex-direction: column; gap: 4rpx; }
-.diff-expected { font-size: 24rpx; color: var(--success); }
-.diff-actual { font-size: 24rpx; color: var(--error); text-decoration: line-through; }
-
-.dictation-suggestions { margin-top: 20rpx; padding-top: 16rpx; border-top: 2rpx solid var(--surface-container-high); }
-.suggestion-item { margin-bottom: 8rpx; }
-.suggestion-text { font-size: 24rpx; color: var(--on-surface); line-height: 1.6; }
 </style>

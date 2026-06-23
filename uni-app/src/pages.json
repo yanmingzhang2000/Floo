@@ -105,6 +105,14 @@
       }
     },
     {
+      "path": "pages/dictation/index",
+      "style": {
+        "navigationBarTitleText": "默写练习",
+        "navigationBarBackgroundColor": "#5B9AA8",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
       "path": "pages/dictation-detail/index",
       "style": {
         "navigationBarTitleText": "默写详情",
