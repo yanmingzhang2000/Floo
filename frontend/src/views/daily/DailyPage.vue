@@ -137,7 +137,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { dailyApi, generationLimitApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { speakWord, initVoices, toggleReading, useReadingState } from '@/composables/useSpeech'
@@ -194,6 +194,31 @@ async function loadLearnedIds() {
   }
 }
 
+const LEARNED_AUTO_DELAY = 5 * 60 * 1000
+let autoLearnTimer: ReturnType<typeof setTimeout> | null = null
+
+function startAutoLearnTimer() {
+  clearAutoLearnTimer()
+  const item = currentItem.value
+  if (!item || !auth.currentUserId) return
+  autoLearnTimer = setTimeout(async () => {
+    if (!currentItem.value || !auth.currentUserId) return
+    try {
+      const { data } = await dailyApi.markLearned(auth.currentUserId, currentItem.value.id)
+      if (data.learned) {
+        learnedIds.value = new Set(learnedIds.value).add(currentItem.value.id)
+      }
+    } catch { /* silent */ }
+  }, LEARNED_AUTO_DELAY)
+}
+
+function clearAutoLearnTimer() {
+  if (autoLearnTimer !== null) {
+    clearTimeout(autoLearnTimer)
+    autoLearnTimer = null
+  }
+}
+
 const themeLabels: Record<string, string> = {
   ai_tech: 'AI科技', product_tech: '产品技术', business: '财经商业',
   daily_news: '日常新闻', self_growth: '个人成长', all_random: '随机主题',
@@ -209,10 +234,18 @@ const hasNext = computed(() => currentIdx.value < contents.value.length - 1)
 function goNext() { if (hasNext.value) currentIdx.value++ }
 function goPrev() { if (hasPrev.value) currentIdx.value-- }
 
+// 切换文章时重置自动标记定时器
+watch(currentIdx, () => { startAutoLearnTimer() })
+
 onMounted(() => {
   initVoices()
   loadData()
   loadLearnedIds()
+  startAutoLearnTimer()
+})
+
+onUnmounted(() => {
+  clearAutoLearnTimer()
 })
 
 async function loadData() {

@@ -615,6 +615,17 @@ async def _process_custom_content(text: str) -> dict:
             "translation": "（翻译生成失败，请稍后重试）",
             "lexicon": [],
         }
+
+    # 兜底：LLM 可能漏掉 translation 字段或返回空字符串
+    if not result.get("translation"):
+        log.debug("LLM 返回缺少 translation 字段，使用降级翻译")
+        result["translation"] = "（翻译生成失败，请稍后重试）"
+
+    # 兜底：LLM 可能漏掉 lexicon 字段
+    if not isinstance(result.get("lexicon"), list):
+        log.debug("LLM 返回缺少 lexicon 字段，使用空列表")
+        result["lexicon"] = []
+
     return result
 
 
@@ -658,6 +669,12 @@ async def create_custom_content(
         difficulty = user.preference.difficulty_level
 
     # 写入数据库
+    # 为 lexicon 条目补全 is_phrase 字段（LLM 通常不返回）
+    lexicon = ai_result.get("lexicon", [])
+    for item in lexicon:
+        if "is_phrase" not in item:
+            item["is_phrase"] = " " in (item.get("word") or "")
+
     content = content_repo.create_user_content(
         db=db,
         user_id=payload.user_id,
@@ -666,7 +683,7 @@ async def create_custom_content(
         difficulty_level=difficulty,
         theme_type="custom",
         translation=ai_result.get("translation"),
-        key_words=ai_result.get("lexicon", []),
+        key_words=lexicon,
     )
 
     # 初始化记忆进度

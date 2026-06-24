@@ -80,6 +80,8 @@ export const dailyApi = {
   cleanup: () =>
     api.post('/api/daily/cleanup'),
   // 已学内容
+  markLearned: (userId: number, contentId: number) =>
+    api.post('/api/daily/learned/mark', null, { params: { user_id: userId, content_id: contentId } }),
   toggleLearned: (userId: number, contentId: number) =>
     api.post('/api/daily/learned/toggle', null, { params: { user_id: userId, content_id: contentId } }),
   checkLearned: (userId: number, contentId: number) =>

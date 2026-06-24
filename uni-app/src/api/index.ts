@@ -36,6 +36,8 @@ export const dailyApi = {
     api.get('/api/daily/progress', { params: { user_id: userId } }),
   cleanup: () =>
     api.post('/api/daily/cleanup'),
+  markLearned: (userId: number, contentId: number) =>
+    api.post('/api/daily/learned/mark', null, { params: { user_id: userId, content_id: contentId } }),
   toggleLearned: (userId: number, contentId: number) =>
     api.post('/api/daily/learned/toggle', null, { params: { user_id: userId, content_id: contentId } }),
   checkLearned: (userId: number, contentId: number) =>

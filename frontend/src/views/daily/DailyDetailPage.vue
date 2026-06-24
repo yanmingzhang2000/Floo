@@ -21,6 +21,10 @@
             @click="part.isWord && handleWordClick($event)"
           >{{ part.text }}</span>
         </h3>
+        <div class="learned-toggle" @click="toggleLearned(content)">
+          <span class="learned-icon">{{ learnedIds.has(content.id) ? '✅' : '☑️' }}</span>
+          <span class="learned-text">{{ learnedIds.has(content.id) ? '已学过' : '标记已学' }}</span>
+        </div>
         <div class="article-body" v-html="renderArticle(content)" @click="handleWordClick($event)"></div>
       </div>
 
@@ -114,7 +118,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { dailyApi } from '@/api'
 import { useAuthStore } from '@/stores'
@@ -122,14 +126,18 @@ import { speakWord, initVoices } from '@/composables/useSpeech'
 import { renderArticle } from '@/composables/useArticleRender'
 import { useWordPopup } from '@/composables/useWordPopup'
 import { useSpeechEval } from '@/composables/useSpeechEval'
+import { useToast } from '@/composables/useToast'
 import type { LearningContent } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const toast = useToast()
 const loading = ref(true)
 const content = ref<LearningContent | null>(null)
 const todayContents = ref<LearningContent[]>([])
+const learnedIds = ref(new Set<number>())
+let autoLearnTimer: ReturnType<typeof setTimeout> | null = null
 
 // 使用 composable
 const { wordPopup, handleWordClick, toggleFavorite, showWordFromChip } = useWordPopup(() => auth.currentUserId)
@@ -161,6 +169,52 @@ function goToContent(id: number) {
   router.push(`/learning/content/${id}`)
 }
 
+async function toggleLearned(item: LearningContent) {
+  if (!auth.currentUserId) return
+  try {
+    const { data } = await dailyApi.toggleLearned(auth.currentUserId, item.id)
+    if (data.learned) {
+      learnedIds.value.add(item.id)
+    } else {
+      learnedIds.value.delete(item.id)
+    }
+    learnedIds.value = new Set(learnedIds.value)
+  } catch {
+    toast.error('操作失败')
+  }
+}
+
+async function loadLearnedIds() {
+  if (!auth.currentUserId) return
+  try {
+    const { data } = await dailyApi.getLearnedIds(auth.currentUserId)
+    learnedIds.value = new Set(data.content_ids || [])
+  } catch { /* ignore */ }
+}
+
+const LEARNED_AUTO_DELAY = 5 * 60 * 1000
+
+function startAutoLearnTimer() {
+  clearAutoLearnTimer()
+  if (!content.value || !auth.currentUserId) return
+  autoLearnTimer = setTimeout(async () => {
+    if (!content.value || !auth.currentUserId) return
+    try {
+      const { data } = await dailyApi.markLearned(auth.currentUserId, content.value.id)
+      if (data.learned) {
+        learnedIds.value = new Set(learnedIds.value).add(content.value.id)
+      }
+    } catch { /* silent */ }
+  }, LEARNED_AUTO_DELAY)
+}
+
+function clearAutoLearnTimer() {
+  if (autoLearnTimer !== null) {
+    clearTimeout(autoLearnTimer)
+    autoLearnTimer = null
+  }
+}
+
 onMounted(async () => {
   initVoices()
   try {
@@ -172,6 +226,12 @@ onMounted(async () => {
     todayContents.value = listRes.data.contents || []
   } catch { content.value = null }
   loading.value = false
+  await loadLearnedIds()
+  startAutoLearnTimer()
+})
+
+onUnmounted(() => {
+  clearAutoLearnTimer()
 })
 </script>
 
@@ -199,6 +259,17 @@ onMounted(async () => {
   background: var(--primary-container);
   border-radius: 3px;
 }
+.learned-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 20px; cursor: pointer;
+  background: var(--surface); border: 1.5px solid var(--outline-variant);
+  font-size: 13px; color: var(--on-surface-variant);
+  transition: all 0.2s;
+  margin-bottom: 12px;
+}
+.learned-toggle:active { transform: scale(0.95); }
+.learned-icon { font-size: 16px; }
+.learned-text { font-weight: 500; }
 .article-body { font-size: 15px; line-height: 1.8; }
 .article-body :deep(mark.keyword) { background: var(--primary-container); color: var(--on-primary-container); padding: 1px 3px; border-radius: 3px; cursor: pointer; }
 .article-body :deep(.clickable-word) { cursor: pointer; border-bottom: 1px dashed var(--primary-light); transition: background 0.15s; }
