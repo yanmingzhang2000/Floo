@@ -11,7 +11,6 @@ const TAB_PAGES = [
   '/pages/learning/index',
   '/pages/dictionary/index',
   '/pages/review/index',
-  '/pages/checkin/index',
 ]
 
 function isTabPage(path: string): boolean {

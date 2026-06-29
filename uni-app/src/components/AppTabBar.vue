@@ -18,11 +18,10 @@ import { computed } from 'vue'
 import { navTo } from '@/utils/router'
 
 const tabs = [
-  { path: '/pages/home/index',      icon: '🏠', label: '首页' },
-  { path: '/pages/learning/index',  icon: '📖', label: '学习' },
+  { path: '/pages/home/index',       icon: '🏠', label: '首页' },
+  { path: '/pages/learning/index',   icon: '📖', label: '学习' },
   { path: '/pages/dictionary/index', icon: '📚', label: '单词' },
-  { path: '/pages/review/index',    icon: '✏️', label: '复习' },
-  { path: '/pages/checkin/index',   icon: '📅', label: '打卡' },
+  { path: '/pages/review/index',     icon: '✏️', label: '复习' },
 ]
 
 const currentPath = computed(() => {

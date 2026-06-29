@@ -158,12 +158,6 @@
         "iconPath": "static/icons/review.svg",
         "selectedIconPath": "static/icons/review.svg"
       },
-      {
-        "pagePath": "pages/checkin/index",
-        "text": "打卡",
-        "iconPath": "static/icons/checkin.svg",
-        "selectedIconPath": "static/icons/checkin.svg"
-      }
     ]
   }
 }

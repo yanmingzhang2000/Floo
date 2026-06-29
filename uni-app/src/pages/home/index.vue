@@ -73,11 +73,11 @@
           </view>
           <text class="quick-title">名著</text>
         </view>
-        <view class="quick-card" @tap="goShop">
+        <view class="quick-card" @tap="goCheckin">
           <view class="quick-icon-wrap" style="background: #F3E5F5;">
-            <text class="quick-icon" style="color: #7B1FA2;">🎁</text>
+            <text class="quick-icon" style="color: #7B1FA2;">📅</text>
           </view>
-          <text class="quick-title">商店</text>
+          <text class="quick-title">打卡</text>
         </view>
       </view>
 
@@ -187,6 +187,7 @@ function goDetail(id: number) { navTo(`/pages/detail/index?id=${id}`) }
 function goLearningList() { navTo('/pages/list/index') }
 function goPreference() { navTo('/pages/preference/index') }
 function goShop() { navTo('/pages/shop/index') }
+function goCheckin() { navTo('/pages/checkin/index') }
 function goDictation() { uni.switchTab({ url: '/pages/review/index' }) }
 function goCustom() {
   storage.set('learning_active_tab', 'custom')
