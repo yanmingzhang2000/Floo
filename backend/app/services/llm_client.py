@@ -66,6 +66,13 @@ async def chat_json(
         result = json.loads(content)
         log.debug("LLM 返回 JSON keys=%s", list(result.keys()))
         return result
+    except httpx.HTTPStatusError as e:
+        log.debug(
+            "LLM HTTP 错误: status=%s body=%s",
+            e.response.status_code,
+            e.response.text[:200],
+        )
+        return None
     except Exception as e:
         log.debug("LLM 调用失败: %s", e)
         return None

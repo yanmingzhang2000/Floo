@@ -732,6 +732,56 @@ def list_custom_content(user_id: int = 1, db: Session = Depends(get_db)):
     return {"contents": result, "total": len(result)}
 
 
+@router.post("/custom-content/{content_id}/regenerate")
+async def regenerate_custom_content(
+    content_id: int,
+    user_id: int = 1,
+    db: Session = Depends(get_db),
+):
+    """对翻译或词汇生成失败的自定义内容重新调用 AI 生成。
+
+    为什么需要这个接口：AI 调用偶尔失败时降级文案会写入数据库，
+    修复 API Key 后旧记录不会自动重试，需要通过此接口手动触发。
+    """
+    from app.models import LearningContent as LC
+
+    content = (
+        db.query(LC)
+        .filter(
+            LC.content_id == content_id,
+            LC.user_id == user_id,
+            LC.creator_type == 1,
+        )
+        .first()
+    )
+    if not content:
+        log.debug("regenerate: content_id=%s user_id=%s 不存在或无权操作", content_id, user_id)
+        raise HTTPException(status_code=404, detail="内容不存在或无权操作")
+
+    log.debug("regenerate: 开始重新生成 content_id=%s", content_id)
+    ai_result = await _process_custom_content(content.content_text)
+
+    # 仍然失败则直接返回错误，不覆盖数据库里的旧值
+    if ai_result.get("translation", "").startswith("（翻译生成失败"):
+        log.debug("regenerate: AI 仍然失败 content_id=%s", content_id)
+        raise HTTPException(status_code=503, detail="AI 生成仍然失败，请稍后重试")
+
+    # 更新翻译和词汇
+    lexicon = ai_result.get("lexicon", [])
+    for item in lexicon:
+        if "is_phrase" not in item:
+            item["is_phrase"] = " " in (item.get("word") or "")
+
+    import json
+    content.translation = ai_result.get("translation")
+    content.key_words = json.dumps(lexicon, ensure_ascii=False)
+    content.title = ai_result.get("title", content.title)
+    db.commit()
+
+    log.debug("regenerate: 重新生成成功 content_id=%s", content_id)
+    return {"message": "重新生成成功", "content_id": content_id}
+
+
 @router.delete("/custom-content/{content_id}")
 def delete_custom_content(
     content_id: int,
