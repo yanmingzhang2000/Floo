@@ -3,11 +3,7 @@
     <view class="nav-bar">
       <view class="nav-left"></view>
       <text class="nav-title">打卡</text>
-      <view class="nav-right">
-        <view class="nav-avatar" @tap="navTo('/pages/preference/index')">
-          <text>{{ usernameInitial }}</text>
-        </view>
-      </view>
+      <view class="nav-right"></view>
     </view>
 
     <view v-if="loading" class="loading">
@@ -100,8 +96,6 @@ const todayChecked = computed(() => {
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   return calendar.value?.checked_dates?.includes(today) || false
 })
-
-const usernameInitial = computed(() => (auth.username?.[0] || '?').toUpperCase())
 
 const calendarDays = computed(() => {
   const first = new Date(currentYear.value, currentMonth.value - 1, 1).getDay()

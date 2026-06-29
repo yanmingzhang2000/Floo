@@ -11,7 +11,7 @@
     {
       "path": "pages/learning/index",
       "style": {
-        "navigationBarTitleText": "每日学习",
+        "navigationBarTitleText": "学习",
         "navigationBarBackgroundColor": "#5B9AA8",
         "navigationBarTextStyle": "white"
       }
@@ -135,6 +135,12 @@
     "backgroundColor": "#ffffff",
     "list": [
       {
+        "pagePath": "pages/home/index",
+        "text": "首页",
+        "iconPath": "static/icons/home.svg",
+        "selectedIconPath": "static/icons/home.svg"
+      },
+      {
         "pagePath": "pages/learning/index",
         "text": "学习",
         "iconPath": "static/icons/learning.svg",
@@ -142,7 +148,7 @@
       },
       {
         "pagePath": "pages/dictionary/index",
-        "text": "单词书",
+        "text": "单词",
         "iconPath": "static/icons/dictionary.svg",
         "selectedIconPath": "static/icons/dictionary.svg"
       },

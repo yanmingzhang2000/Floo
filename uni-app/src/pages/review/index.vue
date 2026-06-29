@@ -3,11 +3,7 @@
     <view class="nav-bar">
       <view class="nav-left"></view>
       <text class="nav-title">复习</text>
-      <view class="nav-right">
-        <view class="nav-avatar" @tap="showProfile = true">
-          <text>{{ usernameInitial }}</text>
-        </view>
-      </view>
+      <view class="nav-right"></view>
     </view>
 
     <view class="underline-tabs">
@@ -271,7 +267,6 @@ import type { LearningContent, DictationHistory, ReviewTask, MemoryProgress } fr
 const auth = useAuthStore()
 const loading = ref(true)
 const activeTab = ref<'review' | 'dictation' | 'vocab'>('review')
-const showProfile = ref(false)
 
 // 复述
 const dueTasks = ref<ReviewTask[]>([])
@@ -300,7 +295,6 @@ const vbDone = ref(false)
 const vbCorrectCount = ref(0)
 
 const vbCurrentWord = computed(() => vbWords.value[vbIdx.value] || null)
-const usernameInitial = computed(() => (auth.username?.[0] || '?').toUpperCase())
 
 const stageColors: Record<number, string> = {
   0: '#9E9E9E', 1: '#F44336', 2: '#FF9800',

@@ -7,6 +7,7 @@
 
 // tabBar 页面列表（必须和 pages.json 里的 tabBar 配置保持一致）
 const TAB_PAGES = [
+  '/pages/home/index',
   '/pages/learning/index',
   '/pages/dictionary/index',
   '/pages/review/index',
@@ -60,7 +61,7 @@ export function navBackSafe(delta = 1) {
   if (pages.length > 1) {
     uni.navigateBack({ delta })
   } else {
-    uni.switchTab({ url: '/pages/learning/index' })
+    uni.switchTab({ url: '/pages/home/index' })
   }
 }
 

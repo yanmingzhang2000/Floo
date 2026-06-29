@@ -1,5 +1,5 @@
 <template>
-  <view class="app-tabbar">
+  <view class="app-tabbar glass">
     <view
       v-for="tab in tabs"
       :key="tab.path"
@@ -18,13 +18,13 @@ import { computed } from 'vue'
 import { navTo } from '@/utils/router'
 
 const tabs = [
-  { path: '/pages/learning/index',    icon: '📖', label: '学习' },
-  { path: '/pages/dictionary/index',  icon: '📚', label: '单词书' },
-  { path: '/pages/review/index',      icon: '✏️', label: '复习' },
-  { path: '/pages/checkin/index',     icon: '📅', label: '打卡' },
+  { path: '/pages/home/index',      icon: '🏠', label: '首页' },
+  { path: '/pages/learning/index',  icon: '📖', label: '学习' },
+  { path: '/pages/dictionary/index', icon: '📚', label: '单词' },
+  { path: '/pages/review/index',    icon: '✏️', label: '复习' },
+  { path: '/pages/checkin/index',   icon: '📅', label: '打卡' },
 ]
 
-// 当前路径，用于高亮激活项
 const currentPath = computed(() => {
   const pages = getCurrentPages()
   const cur = pages[pages.length - 1] as any
@@ -41,10 +41,11 @@ function onTap(path: string) {
 .app-tabbar {
   display: flex;
   align-items: center;
-  background: #fff;
-  border-top: 1rpx solid var(--outline-variant);
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1rpx solid rgba(255,255,255,0.5);
   padding-bottom: env(safe-area-inset-bottom, 0);
-  /* 与 page-container 同宽：不需要额外边距，组件放在容器内自动继承 */
 }
 
 .app-tabbar-item {
@@ -53,28 +54,28 @@ function onTap(path: string) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 16rpx 0 12rpx;
-  gap: 6rpx;
+  padding: 14rpx 0 10rpx;
+  gap: 4rpx;
   opacity: 0.45;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s, transform 0.15s;
 }
 .app-tabbar-item.active {
   opacity: 1;
+  transform: scale(1.05);
 }
-.app-tabbar-item:active { opacity: 0.7; }
+.app-tabbar-item:active {
+  opacity: 0.7;
+  transform: scale(0.95);
+}
 
 .app-tabbar-icon {
-  font-size: 44rpx;
+  font-size: 40rpx;
   line-height: 1;
 }
 .app-tabbar-label {
   font-size: 20rpx;
   font-weight: 500;
   color: var(--on-surface-variant);
-  .app-tabbar-item.active & {
-    color: var(--primary);
-    font-weight: 600;
-  }
 }
 .app-tabbar-item.active .app-tabbar-label {
   color: var(--primary);

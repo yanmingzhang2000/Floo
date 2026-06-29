@@ -2,12 +2,8 @@
   <view class="page-container">
     <view class="nav-bar">
       <view class="nav-left"></view>
-      <text class="nav-title">每日学习</text>
-      <view class="nav-right">
-        <view class="nav-avatar" @tap="showProfile = true">
-          <text>{{ usernameInitial }}</text>
-        </view>
-      </view>
+      <text class="nav-title">学习</text>
+      <view class="nav-right"></view>
     </view>
 
     <view v-if="loading" class="loading">
@@ -15,25 +11,6 @@
     </view>
 
     <template v-else>
-      <!-- 数据概览 -->
-      <view class="stats-banner">
-        <view class="stat-item">
-          <text class="stat-icon">📅</text>
-          <text class="stat-value">{{ streakDays }}</text>
-          <text class="stat-label">连续学习</text>
-        </view>
-        <view class="stat-item">
-          <text class="stat-icon">📖</text>
-          <text class="stat-value">{{ totalCount }}</text>
-          <text class="stat-label">今日篇数</text>
-        </view>
-        <view class="stat-item">
-          <text class="stat-icon">⭐</text>
-          <text class="stat-value">{{ pointBalance }}</text>
-          <text class="stat-label">积分</text>
-        </view>
-      </view>
-
       <!-- 分类标签栏 -->
       <view class="underline-tabs">
         <view class="underline-tab" :class="{ active: activeTab === 'ai' }" @tap="switchTab('ai')">
@@ -252,30 +229,6 @@
       </view>
     </template>
 
-    <!-- 个人中心弹窗 -->
-    <view v-if="showProfile" class="modal-overlay" @tap="showProfile = false">
-      <view class="avatar-menu" @tap.stop>
-        <view class="avatar-menu-user">
-          <view class="avatar-menu-avatar"><text>{{ usernameInitial }}</text></view>
-          <text class="avatar-menu-name">{{ auth.username || '未登录' }}</text>
-        </view>
-        <view class="avatar-menu-items">
-          <view class="avatar-menu-item" @tap="goPreference">
-            <text class="avatar-menu-item-icon">⚙️</text>
-            <text>学习偏好</text>
-          </view>
-          <view class="avatar-menu-item" @tap="goShop">
-            <text class="avatar-menu-item-icon">✨</text>
-            <text>Floo！</text>
-          </view>
-          <view class="avatar-menu-item danger" @tap="handleLogout">
-            <text class="avatar-menu-item-icon">🚪</text>
-            <text>退出登录</text>
-          </view>
-        </view>
-      </view>
-    </view>
-
     <!-- 自定义内容弹窗 -->
     <CustomContentModal :visible="showCustomContent" @close="showCustomContent = false" @created="onCustomCreated" />
     <OnboardingGuide />
@@ -285,9 +238,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
-import { dailyApi, generationLimitApi, checkinApi, shopApi, booksApi } from '@/api'
+import { dailyApi, generationLimitApi, booksApi } from '@/api'
 import { useAuthStore } from '@/stores'
-import { navTo, navReLaunch } from '@/utils/router'
+import { navTo } from '@/utils/router'
 import { storage } from '@/utils/storage'
 import type { LearningContent } from '@/types'
 import CustomContentModal from '@/components/CustomContentModal.vue'
@@ -302,16 +255,17 @@ const pastContents = ref<LearningContent[]>([])
 const currentIdx = ref(0)
 const learnedIds = ref<number[]>([])
 const remainingCount = ref(3)
-const showProfile = ref(false)
 const showCustomContent = ref(false)
-const streakDays = ref(0)
-const pointBalance = ref(0)
 
 const activeTab = ref<'ai' | 'custom' | 'books' | 'past'>('ai')
 
-onLoad((options) => {
-  if (options?.tab === 'custom') activeTab.value = 'custom'
-  if (options?.tab === 'books') activeTab.value = 'books'
+onLoad(() => {
+  // 从 storage 读取外部传入的 tab 参数（如从首页跳转）
+  const savedTab = storage.get('learning_active_tab')
+  if (savedTab && ['ai', 'custom', 'books', 'past'].includes(savedTab)) {
+    activeTab.value = savedTab as typeof activeTab.value
+  }
+  storage.remove('learning_active_tab')
 })
 
 const bookSearch = ref('')
@@ -326,7 +280,6 @@ const themeLabels: Record<string, string> = {
   custom: '自定义',
 }
 const totalCount = computed(() => contents.value.length)
-const usernameInitial = computed(() => (auth.username?.[0] || '?').toUpperCase())
 
 function switchTab(tab: typeof activeTab.value) {
   activeTab.value = tab
@@ -345,18 +298,14 @@ async function loadData() {
   loading.value = true
   const userId = auth.currentUserId
   const safe = (p: Promise<any>) => p.catch(() => null)
-  const [contentRes, limitRes, learnedRes, calendarRes, balanceRes] = await Promise.all([
+  const [contentRes, limitRes, learnedRes] = await Promise.all([
     safe(dailyApi.getTodayList(userId)),
     safe(generationLimitApi.getLimit(userId)),
     safe(dailyApi.getLearnedIds(userId)),
-    safe(checkinApi.getCalendar(userId, new Date().getFullYear(), new Date().getMonth() + 1)),
-    safe(shopApi.getBalance(userId)),
   ])
   if (contentRes?.data) contents.value = contentRes.data.contents || []
   if (learnedRes?.data) learnedIds.value = learnedRes.data.content_ids || []
   if (limitRes?.data) remainingCount.value = limitRes.data.remaining_count ?? 3
-  if (calendarRes?.data) streakDays.value = calendarRes.data.current_streak_days || 0
-  if (balanceRes?.data) pointBalance.value = balanceRes.data.available_points || 0
   loading.value = false
 }
 
@@ -454,21 +403,6 @@ async function handleGenerate() {
 
 function goDetail(id: number) { navTo(`/pages/detail/index?id=${id}`) }
 function goBookDetail(id: number) { navTo(`/pages/book-detail/index?id=${id}`) }
-function goPreference() { navTo('/pages/preference/index') }
-function goShop() { navTo('/pages/shop/index') }
-
-function handleLogout() {
-  uni.showModal({
-    title: '退出登录',
-    content: '确定退出当前账号？',
-    success: (res) => {
-      if (res.confirm) {
-        storage.remove('user_id'); storage.remove('username'); storage.remove('session_expiry')
-        navReLaunch('/pages/login/index')
-      }
-    },
-  })
-}
 
 onShow(loadData)
 </script>

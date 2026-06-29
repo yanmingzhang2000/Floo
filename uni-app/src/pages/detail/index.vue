@@ -17,26 +17,6 @@
     </view>
 
     <view v-else-if="content" class="detail-wrap">
-      <!-- 阅读工具栏 -->
-      <view class="read-toolbar">
-        <view class="toolbar-item" @tap="speakContent">
-          <text class="toolbar-icon">🔊</text>
-          <text class="toolbar-label">朗读</text>
-        </view>
-        <view class="toolbar-item" @tap="toggleEval">
-          <text class="toolbar-icon" :class="{ 'recording-icon': isRecording }">🎤</text>
-          <text class="toolbar-label">{{ isRecording ? '录音中...' : '朗读评测' }}</text>
-        </view>
-        <view class="toolbar-item" @tap="showTranslation = !showTranslation">
-          <text class="toolbar-icon">{{ showTranslation ? '📖' : '📕' }}</text>
-          <text class="toolbar-label">{{ showTranslation ? '隐藏译文' : '查看译文' }}</text>
-        </view>
-        <view class="toolbar-item" @tap="openDictation">
-          <text class="toolbar-icon">✏️</text>
-          <text class="toolbar-label">默写</text>
-        </view>
-      </view>
-
       <!-- 文章内容 -->
         <view class="card detail-card">
         <view class="detail-meta">
@@ -102,11 +82,27 @@
         </view>
       </view>
 
-      <!-- 底部行动栏 -->
-      <view class="bottom-actions">
-        <button class="btn btn-primary btn-block btn-lg" @tap="openDictation">
-          <text>去默写练习</text>
-        </button>
+      <!-- 底部留白 -->
+      <view style="height: 160rpx;"></view>
+    </view>
+
+    <!-- 底部浮动工具栏 -->
+    <view v-if="content" class="bottom-float-bar">
+      <view class="float-item" @tap="speakContent">
+        <text class="float-icon">🔊</text>
+        <text class="float-label">朗读</text>
+      </view>
+      <view class="float-item" @tap="toggleEval">
+        <text class="float-icon" :class="{ 'recording-icon': isRecording }">🎤</text>
+        <text class="float-label">{{ isRecording ? '录音中' : '评测' }}</text>
+      </view>
+      <view class="float-item" @tap="showTranslation = !showTranslation">
+        <text class="float-icon">{{ showTranslation ? '📖' : '📕' }}</text>
+        <text class="float-label">{{ showTranslation ? '隐藏译文' : '译文' }}</text>
+      </view>
+      <view class="float-item" @tap="openDictation">
+        <text class="float-icon">✏️</text>
+        <text class="float-label">默写</text>
       </view>
     </view>
 
@@ -389,28 +385,7 @@ function navBack() { navBackSafe() }
 </script>
 
 <style scoped>
-.detail-wrap { padding-bottom: 160rpx; }
-
-.read-toolbar {
-  display: flex;
-  justify-content: space-around;
-  padding: 24rpx;
-  gap: 16rpx;
-}
-.toolbar-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8rpx;
-  padding: 20rpx 32rpx;
-  background: #fff;
-  border-radius: 20rpx;
-  box-shadow: var(--shadow-sm);
-  flex: 1;
-}
-.toolbar-item:active { opacity: 0.7; }
-.toolbar-icon { font-size: 40rpx; }
-.toolbar-label { font-size: 22rpx; color: var(--on-surface-variant); font-weight: 500; }
+.detail-wrap { padding-bottom: 0; }
 
 .detail-card { margin: 0 0 24rpx; }
 .learned-toggle {
@@ -440,7 +415,25 @@ function navBack() { navBackSafe() }
 }
 .translation-text { font-size: 28rpx; line-height: 1.8; display: block; }
 
-.bottom-actions { padding: 0 0 48rpx; }
+/* 底部浮动工具栏 */
+.float-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+  padding: 12rpx 20rpx;
+  border-radius: 16rpx;
+  transition: background var(--transition-fast);
+}
+.float-item:active {
+  background: rgba(91,154,168,0.1);
+}
+.float-icon { font-size: 36rpx; }
+.float-label {
+  font-size: 20rpx;
+  color: var(--on-surface-variant);
+  font-weight: 500;
+}
 
 .speak-btn { background: var(--primary-container); }
 .fav-btn.active { background: #FFF8E1; }
