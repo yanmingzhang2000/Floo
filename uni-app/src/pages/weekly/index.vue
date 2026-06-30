@@ -56,7 +56,6 @@
         </button>
       </view>
     </view>
-    <AppTabBar />
   </view>
 </template>
 

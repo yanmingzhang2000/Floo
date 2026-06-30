@@ -73,7 +73,6 @@
       @close="handleAnimationClose"
       @next="handleAnimationNext"
     />
-    <AppTabBar />
   </view>
 </template>
 

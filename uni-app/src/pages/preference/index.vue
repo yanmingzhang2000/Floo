@@ -79,7 +79,6 @@
       </view>
       <!-- #endif -->
     </view>
-    <AppTabBar />
   </view>
 </template>
 

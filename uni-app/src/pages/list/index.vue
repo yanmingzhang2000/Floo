@@ -40,7 +40,6 @@
         <text class="list-item-arrow">›</text>
       </view>
     </view>
-    <AppTabBar />
   </view>
 </template>
 

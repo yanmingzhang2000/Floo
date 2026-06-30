@@ -120,8 +120,6 @@
         <text class="popup-meaning">{{ wordPopup.meaning }}</text>
       </view>
     </view>
-
-    <AppTabBar />
   </view>
 </template>
 
@@ -134,7 +132,6 @@ import { useRecorder } from '@/composables/useRecorder'
 import { getBaseForm } from '@/composables/useWordForm'
 import { useAuthStore } from '@/stores'
 import { navBackSafe } from '@/utils/router'
-import AppTabBar from '@/components/AppTabBar.vue'
 import type { LearningContent, WordItem } from '@/types'
 
 const auth = useAuthStore()
