@@ -537,7 +537,7 @@ input, textarea {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  padding: 16rpx 24rpx;
+  padding: 16rpx 20rpx;
   padding-bottom: calc(16rpx + env(safe-area-inset-bottom, 0));
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
