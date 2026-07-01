@@ -607,7 +607,7 @@ async def _process_custom_content(text: str) -> dict:
 
     user_prompt = f"请处理以下英文文本：\n\n{text}"
 
-    result = await chat_json(system_prompt, user_prompt, temperature=0.3, timeout=30.0)
+    result = await chat_json(system_prompt, user_prompt, temperature=0.3, timeout=60.0)
     if not result:
         log.debug("LLM 返回空结果，使用降级方案")
         return {

@@ -4,6 +4,7 @@
 把 HTTP 调用、超时、JSON 解析、降级逻辑集中在一处，
 上层 service 只关心 prompt 构造和结果消费。
 """
+import asyncio
 import json
 import logging
 import re
@@ -15,12 +16,33 @@ from app.config import settings
 
 log = logging.getLogger(__name__)
 
+# 最大重试次数；指数退避基数 1s、2s、4s
+_MAX_RETRIES = 3
+_RETRY_BACKOFF = 1.0
+
+
+def _is_transient(exc: Exception) -> bool:
+    """判断异常是否值得重试（网络超时、连接错误、429 限流、5xx）。"""
+    if isinstance(exc, httpx.TimeoutException | httpx.ConnectError):
+        log.debug("瞬时异常 %s，将重试", type(exc).__name__)
+        return True
+    if isinstance(exc, httpx.HTTPStatusError):
+        status = exc.response.status_code
+        # 429 限流和 5xx 服务端错误值得重试
+        if status == 429 or status >= 500:
+            log.debug("HTTP %s 将重试", status)
+            return True
+        log.debug("HTTP %s 不重试（客户端错误）", status)
+        return False
+    log.debug("未知异常 %s 不重试", type(exc).__name__)
+    return False
+
 
 async def chat_json(
     system_prompt: str,
     user_prompt: str,
     temperature: float = 0.3,
-    timeout: float = 90.0,  # 生成3篇文章需要更长时间，Railway冷启动也有延迟
+    timeout: float = 90.0,
 ) -> dict[str, Any] | None:
     """调用 LLM 并解析返回的 JSON。
 
@@ -32,8 +54,6 @@ async def chat_json(
         log.debug("LLM_API_KEY 未配置，返回 None 让调用方走降级")
         return None
 
-    # response_format=json_object 是 OpenAI 专属，Gemini 兼容层不支持会返回 400
-    # 所有 prompt 已在 system_prompt 里明确要求返回 JSON，模型会自然遵守
     payload = {
         "model": settings.LLM_MODEL,
         "messages": [
@@ -46,33 +66,41 @@ async def chat_json(
         "Authorization": f"Bearer {settings.LLM_API_KEY}",
         "Content-Type": "application/json",
     }
-    log.debug("调用 LLM model=%s temperature=%s", settings.LLM_MODEL, temperature)
+    url = f"{settings.LLM_BASE_URL}/chat/completions"
 
-    try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            resp = await client.post(
-                f"{settings.LLM_BASE_URL}/chat/completions",
-                json=payload,
-                headers=headers,
-            )
-            resp.raise_for_status()
-
-        data = resp.json()
-        content = data["choices"][0]["message"]["content"]
-        # 容错：有些模型返回时带 ```json 包裹
-        content = re.sub(
-            r"^```(?:json)?|```$", "", content.strip(), flags=re.MULTILINE
-        ).strip()
-        result = json.loads(content)
-        log.debug("LLM 返回 JSON keys=%s", list(result.keys()))
-        return result
-    except httpx.HTTPStatusError as e:
+    last_exc: Exception | None = None
+    for attempt in range(1, _MAX_RETRIES + 1):
         log.debug(
-            "LLM HTTP 错误: status=%s body=%s",
-            e.response.status_code,
-            e.response.text[:200],
+            "调用 LLM attempt=%s/%s model=%s timeout=%s",
+            attempt, _MAX_RETRIES, settings.LLM_MODEL, timeout,
         )
-        return None
-    except Exception as e:
-        log.debug("LLM 调用失败: %s", e)
-        return None
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                resp = await client.post(url, json=payload, headers=headers)
+                resp.raise_for_status()
+
+            data = resp.json()
+            content = data["choices"][0]["message"]["content"]
+            content = re.sub(
+                r"^```(?:json)?|```$", "", content.strip(), flags=re.MULTILINE
+            ).strip()
+            result = json.loads(content)
+            log.debug("LLM 返回 JSON keys=%s", list(result.keys()))
+            return result
+
+        except (httpx.HTTPStatusError, httpx.TimeoutException,
+                httpx.ConnectError, json.JSONDecodeError, KeyError) as e:
+            last_exc = e
+            if attempt < _MAX_RETRIES and _is_transient(e):
+                wait = _RETRY_BACKOFF * (2 ** (attempt - 1))
+                log.warning(
+                    "LLM 第 %s 次调用失败: %s，%s 秒后重试",
+                    attempt, e, wait,
+                )
+                await asyncio.sleep(wait)
+            else:
+                log.warning("LLM 调用最终失败 (attempt=%s): %s", attempt, e)
+                return None
+
+    log.warning("LLM 调用全部 %s 次重试后失败", _MAX_RETRIES)
+    return None
