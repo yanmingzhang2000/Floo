@@ -22,7 +22,7 @@ _RETRY_BACKOFF = 1.0
 
 
 def _is_transient(exc: Exception) -> bool:
-    """判断异常是否值得重试（网络超时、连接错误、429 限流、5xx）。"""
+    """判断异常是否值得重试（网络超时、连接错误、429 限流、5xx、JSON 解析失败）。"""
     if isinstance(exc, httpx.TimeoutException | httpx.ConnectError):
         log.debug("瞬时异常 %s，将重试", type(exc).__name__)
         return True
@@ -34,6 +34,10 @@ def _is_transient(exc: Exception) -> bool:
             return True
         log.debug("HTTP %s 不重试（客户端错误）", status)
         return False
+    if isinstance(exc, json.JSONDecodeError):
+        # 模型每次生成输出不同，格式错误重试可能得到正确结果
+        log.debug("JSON 解析失败将重试: %s", exc)
+        return True
     log.debug("未知异常 %s 不重试", type(exc).__name__)
     return False
 
@@ -81,25 +85,38 @@ async def chat_json(
 
             data = resp.json()
             content = data["choices"][0]["message"]["content"]
-            content = re.sub(
-                r"^```(?:json)?|```$", "", content.strip(), flags=re.MULTILINE
-            ).strip()
-            result = json.loads(content)
+            log.debug("LLM 原始输出前200字: %s", content[:200])
+
+            # 从 LLM 输出中提取 JSON：找到第一个 { 和最后一个 }，
+            # 忽略前后的 markdown 包裹、说明文字等干扰内容
+            first_brace = content.find("{")
+            last_brace = content.rfind("}")
+            if first_brace != -1 and last_brace > first_brace:
+                json_str = content[first_brace:last_brace + 1]
+            else:
+                # 兜底：尝试去掉 ```json ... ``` 包裹
+                json_str = re.sub(
+                    r"^```(?:json)?\s*|\s*```$",
+                    "", content.strip(), flags=re.MULTILINE,
+                ).strip()
+
+            result = json.loads(json_str)
             log.debug("LLM 返回 JSON keys=%s", list(result.keys()))
             return result
 
         except (httpx.HTTPStatusError, httpx.TimeoutException,
                 httpx.ConnectError, json.JSONDecodeError, KeyError) as e:
             last_exc = e
+            log.warning(
+                "LLM 第 %s 次调用失败: %s (类型=%s)",
+                attempt, e, type(e).__name__,
+            )
             if attempt < _MAX_RETRIES and _is_transient(e):
                 wait = _RETRY_BACKOFF * (2 ** (attempt - 1))
-                log.warning(
-                    "LLM 第 %s 次调用失败: %s，%s 秒后重试",
-                    attempt, e, wait,
-                )
+                log.warning("%s 秒后重试", wait)
                 await asyncio.sleep(wait)
             else:
-                log.warning("LLM 调用最终失败 (attempt=%s): %s", attempt, e)
+                log.warning("LLM 调用最终失败 (attempt=%s)", attempt)
                 return None
 
     log.warning("LLM 调用全部 %s 次重试后失败", _MAX_RETRIES)
