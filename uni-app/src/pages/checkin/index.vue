@@ -1,7 +1,9 @@
 <template>
   <view class="page-container">
     <view class="nav-bar">
-      <view class="nav-left"></view>
+      <view class="nav-left">
+        <view class="nav-back" @tap="navBackSafe"><text>‹</text></view>
+      </view>
       <text class="nav-title">打卡</text>
       <view class="nav-right"></view>
     </view>
@@ -79,7 +81,7 @@ import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { checkinApi } from '@/api'
 import { useAuthStore } from '@/stores'
-import { navTo } from '@/utils/router'
+import { navTo, navBackSafe } from '@/utils/router'
 import type { CheckinCalendar } from '@/types'
 
 const auth = useAuthStore()

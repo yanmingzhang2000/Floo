@@ -63,6 +63,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { checkinApi } from '@/api'
 import { useAuthStore } from '@/stores'
+import { navBackSafe } from '@/utils/router'
 import type { WeeklySummary } from '@/types'
 
 const auth = useAuthStore()
