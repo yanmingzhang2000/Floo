@@ -26,16 +26,14 @@
       <!-- 盲盒区 -->
       <view class="card shop-card">
         <text class="shop-emoji">🎁</text>
-        <text class="shop-label">美好品质盲盒</text>
+        <text class="shop-label">Floo</text>
         <text class="shop-desc">收集美好品质，点亮你的性格树</text>
         <view class="box-actions">
           <button class="btn btn-primary" :disabled="opening || balance < 50" @tap="handleOpen(1)">
-            <text>开1次</text>
-            <text class="btn-sub">50 积分</text>
+            <text>Floo⭐ 50积分</text>
           </button>
           <button class="btn btn-outline" :disabled="opening || balance < 200" @tap="handleOpen(5)">
-            <text>开5次</text>
-            <text class="btn-sub">200 积分</text>
+            <text>Floo⭐ 200积分</text>
           </button>
         </view>
       </view>
@@ -128,6 +126,10 @@ function handleAnimationNext() {
 }
 function handleAnimationClose() {
   showAnimation.value = false; animationCharacters.value = []; animationIndex.value = 0
+}
+
+function navBackSafe() {
+  uni.navigateBack({ delta: 1, fail: () => uni.switchTab({ url: '/pages/home/index' }) })
 }
 
 onMounted(loadData)

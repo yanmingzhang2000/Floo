@@ -28,17 +28,14 @@
         <!-- 抽取按钮 -->
         <div class="draw-buttons">
           <button class="draw-btn" @click="openBox(1)" :disabled="drawing || balance < 50">
-            <div class="draw-price">50积分</div>
-            <div class="draw-label">单抽</div>
+            <div class="draw-price">Floo⭐ 50积分</div>
           </button>
           <button class="draw-btn" @click="openBox(10)" :disabled="drawing || balance < 450">
-            <div class="draw-price">450积分</div>
-            <div class="draw-label">十连抽</div>
+            <div class="draw-price">Floo⭐ 450积分</div>
             <div class="draw-discount">9折</div>
           </button>
           <button class="draw-btn" @click="openBox(100)" :disabled="drawing || balance < 4000">
-            <div class="draw-price">4000积分</div>
-            <div class="draw-label">百连抽</div>
+            <div class="draw-price">Floo⭐ 4000积分</div>
             <div class="draw-discount">8折</div>
           </button>
         </div>
