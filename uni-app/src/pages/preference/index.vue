@@ -86,6 +86,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { userApi } from '@/api'
 import { useAuthStore } from '@/stores'
+import { navBackSafe } from '@/utils/router'
 
 const auth = useAuthStore()
 const loading = ref(true)
@@ -104,6 +105,8 @@ const themeIdx = ref(0)
 const goalIdx = ref(2)
 
 const usernameInitial = computed(() => (auth.username?.[0] || '?').toUpperCase())
+
+
 
 async function handleSave() {
   saving.value = true

@@ -78,6 +78,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { shopApi } from '@/api'
 import { useAuthStore } from '@/stores'
+import { navBackSafe } from '@/utils/router'
 import GachaAnimation from '@/components/GachaAnimation.vue'
 import type { Character, BoxResult } from '@/types'
 
@@ -128,9 +129,7 @@ function handleAnimationClose() {
   showAnimation.value = false; animationCharacters.value = []; animationIndex.value = 0
 }
 
-function navBackSafe() {
-  uni.navigateBack({ delta: 1, fail: () => uni.switchTab({ url: '/pages/home/index' }) })
-}
+
 
 onMounted(loadData)
 </script>

@@ -47,7 +47,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { dailyApi } from '@/api'
 import { useAuthStore } from '@/stores'
-import { navTo } from '@/utils/router'
+import { navTo, navBackSafe } from '@/utils/router'
 import type { LearningContent } from '@/types'
 
 const auth = useAuthStore()
