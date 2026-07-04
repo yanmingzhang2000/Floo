@@ -91,10 +91,45 @@
 
       <!-- ====== 往期内容 Tab ====== -->
       <view v-if="activeTab === 'past'">
+        <!-- 日期筛选区域 -->
+        <view class="filter-section">
+          <view class="filter-quick-btns">
+            <view class="filter-btn" :class="{ active: filterStartDate === filterEndDate && filterStartDate === new Date().toISOString().split('T')[0] }" @tap="filterToday">
+              <text>今天</text>
+            </view>
+            <view class="filter-btn" @tap="filterThisWeek">
+              <text>本周</text>
+            </view>
+            <view class="filter-btn" @tap="filterThisMonth">
+              <text>本月</text>
+            </view>
+            <view class="filter-btn" :class="{ active: !filterStartDate && !filterEndDate }" @tap="clearFilter">
+              <text>全部</text>
+            </view>
+          </view>
+          <view class="filter-date-row">
+            <view class="filter-date-item" @tap="openDatePicker('start')">
+              <text class="filter-date-label">开始</text>
+              <text class="filter-date-value">{{ filterStartDate || '选择日期' }}</text>
+            </view>
+            <text class="filter-date-separator">~</text>
+            <view class="filter-date-item" @tap="openDatePicker('end')">
+              <text class="filter-date-label">结束</text>
+              <text class="filter-date-value">{{ filterEndDate || '选择日期' }}</text>
+            </view>
+            <view v-if="filterStartDate || filterEndDate" class="filter-clear-btn" @tap="clearFilter">
+              <text>✕</text>
+            </view>
+          </view>
+          <view v-if="filterStartDate || filterEndDate" class="filter-result-info">
+            <text class="filter-result-text">共 {{ filterTotalCount }} 条结果</text>
+          </view>
+        </view>
+
         <view v-if="pastContents.length === 0" class="empty-state">
           <text class="icon">📋</text>
-          <text class="empty-text">暂无往期内容</text>
-          <text class="empty-hint">完成学习后内容会出现在这里</text>
+          <text class="empty-text">{{ (filterStartDate || filterEndDate) ? '该时间段暂无内容' : '暂无往期内容' }}</text>
+          <text class="empty-hint">{{ (filterStartDate || filterEndDate) ? '尝试调整筛选条件' : '完成学习后内容会出现在这里' }}</text>
         </view>
         <view v-else class="content-list">
           <view
@@ -109,8 +144,14 @@
             </view>
             <text class="list-card-title">{{ item.title }}</text>
             <text class="list-card-desc">{{ item.article?.slice(0, 60) }}...</text>
+            <text class="list-card-date">{{ item.content_date }}</text>
           </view>
         </view>
+
+        <!-- 日期选择器 -->
+        <picker v-if="showDatePicker" mode="date" :value="datePickerType === 'start' ? filterStartDate : filterEndDate" @change="onDateConfirm" @cancel="showDatePicker = false">
+          <view></view>
+        </picker>
       </view>
 
       <!-- 底部固定按钮 -->
@@ -154,6 +195,13 @@ const showCustomContent = ref(false)
 
 const activeTab = ref<'ai' | 'custom' | 'past'>('ai')
 
+// 往期内容日期筛选相关
+const filterStartDate = ref('')
+const filterEndDate = ref('')
+const filterTotalCount = ref(0)
+const showDatePicker = ref(false)
+const datePickerType = ref<'start' | 'end'>('start')
+
 onLoad(() => {
   // 从 storage 读取外部传入的 tab 参数（如从首页跳转）
   const savedTab = storage.get('learning_active_tab')
@@ -173,7 +221,7 @@ const totalCount = computed(() => contents.value.length)
 function switchTab(tab: typeof activeTab.value) {
   activeTab.value = tab
   if (tab === 'past' && pastContents.value.length === 0) {
-    loadPastContents()
+    loadFilteredPastContents()
   }
   if (tab === 'custom' && customContents.value.length === 0) {
     loadCustomContents()
@@ -228,17 +276,68 @@ async function deleteCustomContent(contentId: number) {
   })
 }
 
-async function loadPastContents() {
+async function loadFilteredPastContents() {
   const userId = auth.currentUserId
   try {
-    const { data } = await dailyApi.getLearnedIds(userId)
-    const ids = data?.content_ids || []
-    if (ids.length > 0) {
-      const safe = (p: Promise<any>) => p.catch(() => null)
-      const results = await Promise.all(ids.slice(0, 20).map((id: number) => safe(dailyApi.getContent(id))))
-      pastContents.value = results.filter((r: any) => r?.data).map((r: any) => r.data)
-    }
+    const startDate = filterStartDate.value || undefined
+    const endDate = filterEndDate.value || undefined
+    const { data } = await dailyApi.getFilteredLearnedContents(userId, startDate, endDate)
+    pastContents.value = data?.contents || []
+    filterTotalCount.value = data?.total || 0
   } catch { pastContents.value = [] }
+}
+
+// 快捷筛选：今天
+function filterToday() {
+  const today = new Date().toISOString().split('T')[0]
+  filterStartDate.value = today
+  filterEndDate.value = today
+  loadFilteredPastContents()
+}
+
+// 快捷筛选：本周
+function filterThisWeek() {
+  const now = new Date()
+  const dayOfWeek = now.getDay() || 7 // 周日为7
+  const monday = new Date(now)
+  monday.setDate(now.getDate() - dayOfWeek + 1)
+  filterStartDate.value = monday.toISOString().split('T')[0]
+  filterEndDate.value = now.toISOString().split('T')[0]
+  loadFilteredPastContents()
+}
+
+// 快捷筛选：本月
+function filterThisMonth() {
+  const now = new Date()
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+  filterStartDate.value = firstDay.toISOString().split('T')[0]
+  filterEndDate.value = now.toISOString().split('T')[0]
+  loadFilteredPastContents()
+}
+
+// 清除筛选
+function clearFilter() {
+  filterStartDate.value = ''
+  filterEndDate.value = ''
+  loadFilteredPastContents()
+}
+
+// 打开日期选择器
+function openDatePicker(type: 'start' | 'end') {
+  datePickerType.value = type
+  showDatePicker.value = true
+}
+
+// 日期选择确认
+function onDateConfirm(e: any) {
+  const date = e.detail.value
+  if (datePickerType.value === 'start') {
+    filterStartDate.value = date
+  } else {
+    filterEndDate.value = date
+  }
+  showDatePicker.value = false
+  loadFilteredPastContents()
 }
 
 async function handleGenerate() {
@@ -362,4 +461,81 @@ onShow(loadData)
 }
 .tag-success { background: var(--success-container); color: var(--success); }
 .tag-warning { background: #FFF3E0; color: #E65100; }
+
+/* 日期筛选区域 */
+.filter-section {
+  padding: 16rpx 0;
+  margin-bottom: 16rpx;
+  border-bottom: 1rpx solid var(--outline-variant);
+}
+.filter-quick-btns {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+.filter-btn {
+  flex: 1;
+  text-align: center;
+  padding: 12rpx 0;
+  font-size: 24rpx;
+  color: var(--on-surface-variant);
+  background: var(--surface-container);
+  border-radius: 8rpx;
+  transition: all 0.2s;
+}
+.filter-btn.active {
+  color: var(--primary);
+  background: var(--primary-container);
+  font-weight: 600;
+}
+.filter-date-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.filter-date-item {
+  flex: 1;
+  padding: 12rpx 16rpx;
+  background: var(--surface-container);
+  border-radius: 8rpx;
+  text-align: center;
+}
+.filter-date-label {
+  font-size: 20rpx;
+  color: var(--on-surface-muted);
+  display: block;
+  margin-bottom: 4rpx;
+}
+.filter-date-value {
+  font-size: 24rpx;
+  color: var(--on-surface);
+}
+.filter-date-separator {
+  color: var(--on-surface-muted);
+  font-size: 28rpx;
+}
+.filter-clear-btn {
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--error-container);
+  border-radius: 50%;
+  color: var(--error);
+  font-size: 24rpx;
+}
+.filter-result-info {
+  margin-top: 12rpx;
+  text-align: center;
+}
+.filter-result-text {
+  font-size: 22rpx;
+  color: var(--on-surface-muted);
+}
+.list-card-date {
+  font-size: 22rpx;
+  color: var(--on-surface-muted);
+  margin-top: 8rpx;
+}
 </style>

@@ -260,6 +260,14 @@ class MemoryProgressListResponse(BaseModel):
     items: list[MemoryProgressOut]
 
 
+class FilteredLearnedContentResponse(BaseModel):
+    """按时间区间筛选的已学内容响应。"""
+    contents: list["LearningContentOut"]
+    total: int
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+
+
 # ============== 周报相关 ==============
 
 class WeeklySummaryOut(BaseModel):

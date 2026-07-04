@@ -274,3 +274,72 @@ def parse_words(content: LearningContent) -> list[dict]:
     except (json.JSONDecodeError, TypeError) as e:
         log.debug("key_words 解析失败 content_id=%s err=%s，返回空列表", content.content_id, e)
         return []
+
+
+def get_learned_contents_by_date_range(
+    db: Session,
+    user_id: int,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> tuple[list[LearningContent], int]:
+    """
+    按内容创建时间区间查询用户已学内容。
+
+    为什么按 created_at 而不是 learned_at：用户需求是筛选"某段时间导入的内容"，
+    created_at 代表内容创建/导入时间，learned_at 代表学习时间，两者语义不同。
+    """
+    from datetime import datetime
+    from app.models import UserLearnedContent
+
+    # 构建基础查询：关联已学内容表和内容表
+    query = (
+        db.query(LearningContent)
+        .join(
+            UserLearnedContent,
+            UserLearnedContent.content_id == LearningContent.content_id,
+        )
+        .filter(
+            UserLearnedContent.user_id == user_id,
+            LearningContent.is_active == True,
+        )
+    )
+
+    # 按创建时间区间过滤
+    if start_date:
+        try:
+            start_dt = datetime.strptime(start_date, "%Y-%m-%d").replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+            query = query.filter(LearningContent.created_at >= start_dt)
+            log.debug("筛选开始日期 start_date=%s", start_date)
+        except ValueError:
+            log.debug("start_date 格式无效 start_date=%s", start_date)
+
+    if end_date:
+        try:
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(
+                hour=23, minute=59, second=59, microsecond=999999
+            )
+            query = query.filter(LearningContent.created_at <= end_dt)
+            log.debug("筛选结束日期 end_date=%s", end_date)
+        except ValueError:
+            log.debug("end_date 格式无效 end_date=%s", end_date)
+
+    # 获取总数（用于分页）
+    total = query.count()
+
+    # 按创建时间倒序排列，应用分页
+    contents = (
+        query.order_by(LearningContent.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    log.debug(
+        "查询已学内容 user_id=%s start_date=%s end_date=%s total=%s returned=%s",
+        user_id, start_date, end_date, total, len(contents),
+    )
+    return contents, total

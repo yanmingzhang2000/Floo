@@ -15,6 +15,7 @@ from app.repositories import content_repo, user_repo
 from app.schemas import (
     CustomContentRequest,
     CustomContentResponse,
+    FilteredLearnedContentResponse,
     GenerateContentRequest,
     GenerateContentResult,
     LearningContentOut,
@@ -524,6 +525,45 @@ def get_learned_content_ids(user_id: int, db: Session = Depends(get_db)):
         .all()
     )
     return {"content_ids": [r[0] for r in rows]}
+
+
+@router.get("/learned/filtered", response_model=FilteredLearnedContentResponse)
+def get_filtered_learned_contents(
+    user_id: int,
+    start_date: str = None,
+    end_date: str = None,
+    limit: int = 50,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+):
+    """
+    按内容创建时间区间筛选用户已学内容。
+
+    支持按 start_date 和 end_date 筛选某段时间内创建（导入）的内容。
+    用于往期内容页面的时间筛选功能。
+    """
+    log.debug(
+        "筛选已学内容 user_id=%s start_date=%s end_date=%s limit=%s offset=%s",
+        user_id, start_date, end_date, limit, offset,
+    )
+
+    contents, total = content_repo.get_learned_contents_by_date_range(
+        db=db,
+        user_id=user_id,
+        start_date=start_date,
+        end_date=end_date,
+        limit=limit,
+        offset=offset,
+    )
+
+    result = [_content_to_out(c, content_repo.parse_words(c)) for c in contents]
+
+    return FilteredLearnedContentResponse(
+        contents=result,
+        total=total,
+        start_date=start_date,
+        end_date=end_date,
+    )
 
 
 @router.get("/review/learned")

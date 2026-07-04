@@ -44,6 +44,10 @@ export const dailyApi = {
     api.get('/api/daily/learned/check', { params: { user_id: userId, content_id: contentId } }),
   getLearnedIds: (userId: number) =>
     api.get('/api/daily/learned/list', { params: { user_id: userId } }),
+  getFilteredLearnedContents: (userId: number, startDate?: string, endDate?: string) =>
+    api.get('/api/daily/learned/filtered', { 
+      params: { user_id: userId, start_date: startDate, end_date: endDate } 
+    }),
   getLearnedReviewTasks: (userId: number) =>
     api.get('/api/daily/review/learned', { params: { user_id: userId } }),
   createCustomContent: (userId: number, text: string) =>
