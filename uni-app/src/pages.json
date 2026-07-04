@@ -89,22 +89,6 @@
       }
     },
     {
-      "path": "pages/book-detail/index",
-      "style": {
-        "navigationBarTitleText": "书本详情",
-        "navigationBarBackgroundColor": "#5B9AA8",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
-      "path": "pages/chapter/index",
-      "style": {
-        "navigationBarTitleText": "章节阅读",
-        "navigationBarBackgroundColor": "#5B9AA8",
-        "navigationBarTextStyle": "white"
-      }
-    },
-    {
       "path": "pages/dictation/index",
       "style": {
         "navigationBarTitleText": "默写练习",

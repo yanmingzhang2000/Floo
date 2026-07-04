@@ -19,9 +19,6 @@
         <view class="underline-tab" :class="{ active: activeTab === 'custom' }" @tap="switchTab('custom')">
           <text>自定义</text>
         </view>
-        <view class="underline-tab" :class="{ active: activeTab === 'books' }" @tap="switchTab('books')">
-          <text>学书本</text>
-        </view>
         <view class="underline-tab" :class="{ active: activeTab === 'past' }" @tap="switchTab('past')">
           <text>往期内容</text>
         </view>
@@ -92,108 +89,6 @@
         </view>
       </view>
 
-      <!-- ====== 学书本 Tab ====== -->
-      <view v-if="activeTab === 'books'">
-        <!-- 搜索框 -->
-        <view class="search-bar">
-          <view class="search-input-wrap">
-            <text class="search-icon">🔍</text>
-            <input
-              v-model="bookSearch"
-              type="text"
-              placeholder="搜索书名 / 作者..."
-              placeholder-class="search-placeholder"
-              class="search-input"
-              @confirm="searchBooks"
-            />
-            <text v-if="bookSearch" class="search-clear" @tap="clearBookSearch">✕</text>
-          </view>
-        </view>
-
-        <!-- 我的书架 -->
-        <view v-if="myBooks.length > 0 && !bookSearch">
-          <text class="section-title">我的书架</text>
-          <view class="book-grid">
-            <view
-              v-for="book in myBooks"
-              :key="book.gutenberg_id"
-              class="book-card"
-              @tap="goBookDetail(book.gutenberg_id)"
-            >
-              <image
-                v-if="book.cover_url"
-                :src="book.cover_url"
-                class="book-cover"
-                mode="aspectFill"
-              />
-              <view v-else class="book-cover book-cover-placeholder">
-                <text>📖</text>
-              </view>
-              <text class="book-title">{{ book.cn_title || book.title }}</text>
-              <text class="book-author">{{ book.author || book.authors?.[0]?.name || '未知作者' }}</text>
-              <text class="book-progress">已学 {{ book.chapters_read || 0 }} 章</text>
-            </view>
-          </view>
-        </view>
-
-        <!-- 搜索结果 -->
-        <view v-if="bookSearch && searchResults.length > 0">
-          <text class="section-title">搜索结果</text>
-          <view class="book-grid">
-            <view
-              v-for="book in searchResults"
-              :key="book.id"
-              class="book-card"
-              @tap="goBookDetail(book.id)"
-            >
-              <image
-                v-if="book.formats?.['image/jpeg']"
-                :src="book.formats['image/jpeg']"
-                class="book-cover"
-                mode="aspectFill"
-              />
-              <view v-else class="book-cover book-cover-placeholder">
-                <text>📖</text>
-              </view>
-              <text class="book-title">{{ book.cn_title || book.title }}</text>
-              <text class="book-author">{{ book.authors?.[0]?.name || '未知作者' }}</text>
-            </view>
-          </view>
-        </view>
-        <view v-else-if="bookSearch && searchResults.length === 0 && !booksLoading" class="empty-state">
-          <text class="icon">🔍</text>
-          <text class="empty-text">未找到相关书籍</text>
-        </view>
-
-        <!-- 热门名著（无搜索时） -->
-        <view v-if="!bookSearch">
-          <text class="section-title">热门名著</text>
-          <view v-if="booksLoading" class="loading" style="padding: 40rpx;">
-            <view class="spinner"></view>
-          </view>
-          <view v-else class="book-grid">
-            <view
-              v-for="book in popularBooks"
-              :key="book.id"
-              class="book-card"
-              @tap="goBookDetail(book.id)"
-            >
-              <image
-                v-if="book.formats?.['image/jpeg']"
-                :src="book.formats['image/jpeg']"
-                class="book-cover"
-                mode="aspectFill"
-              />
-              <view v-else class="book-cover book-cover-placeholder">
-                <text>📖</text>
-              </view>
-              <text class="book-title">{{ book.cn_title || book.title }}</text>
-              <text class="book-author">{{ book.authors?.[0]?.name || '未知作者' }}</text>
-            </view>
-          </view>
-        </view>
-      </view>
-
       <!-- ====== 往期内容 Tab ====== -->
       <view v-if="activeTab === 'past'">
         <view v-if="pastContents.length === 0" class="empty-state">
@@ -219,7 +114,7 @@
       </view>
 
       <!-- 底部固定按钮 -->
-      <view v-if="activeTab !== 'books'" class="bottom-action">
+      <view class="bottom-action">
         <button v-if="activeTab === 'ai' && contents.length > 0" class="btn btn-primary btn-block btn-lg" @tap="goDetail(contents[currentIdx]?.id)">
           <text>{{ learnedIds.includes(contents[currentIdx]?.id) ? '复习当前' : '开始学习' }}</text>
         </button>
@@ -238,7 +133,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
-import { dailyApi, generationLimitApi, booksApi } from '@/api'
+import { dailyApi, generationLimitApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { navTo } from '@/utils/router'
 import { storage } from '@/utils/storage'
@@ -257,22 +152,16 @@ const learnedIds = ref<number[]>([])
 const remainingCount = ref(3)
 const showCustomContent = ref(false)
 
-const activeTab = ref<'ai' | 'custom' | 'books' | 'past'>('ai')
+const activeTab = ref<'ai' | 'custom' | 'past'>('ai')
 
 onLoad(() => {
   // 从 storage 读取外部传入的 tab 参数（如从首页跳转）
   const savedTab = storage.get('learning_active_tab')
-  if (savedTab && ['ai', 'custom', 'books', 'past'].includes(savedTab)) {
+  if (savedTab && ['ai', 'custom', 'past'].includes(savedTab)) {
     activeTab.value = savedTab as typeof activeTab.value
   }
   storage.remove('learning_active_tab')
 })
-
-const bookSearch = ref('')
-const searchResults = ref<any[]>([])
-const popularBooks = ref<any[]>([])
-const myBooks = ref<any[]>([])
-const booksLoading = ref(false)
 
 const themeLabels: Record<string, string> = {
   ai_tech: 'AI科技', product_tech: '产品技术', business: '财经商业',
@@ -283,9 +172,6 @@ const totalCount = computed(() => contents.value.length)
 
 function switchTab(tab: typeof activeTab.value) {
   activeTab.value = tab
-  if (tab === 'books' && popularBooks.value.length === 0) {
-    loadPopularBooks()
-  }
   if (tab === 'past' && pastContents.value.length === 0) {
     loadPastContents()
   }
@@ -355,30 +241,6 @@ async function loadPastContents() {
   } catch { pastContents.value = [] }
 }
 
-async function loadPopularBooks() {
-  booksLoading.value = true
-  try {
-    const { data } = await booksApi.getPopular(1)
-    popularBooks.value = data?.results || []
-  } catch { popularBooks.value = [] }
-  booksLoading.value = false
-}
-
-async function searchBooks() {
-  if (!bookSearch.value.trim()) return
-  booksLoading.value = true
-  try {
-    const { data } = await booksApi.search(bookSearch.value.trim())
-    searchResults.value = data?.results || []
-  } catch { searchResults.value = [] }
-  booksLoading.value = false
-}
-
-function clearBookSearch() {
-  bookSearch.value = ''
-  searchResults.value = []
-}
-
 async function handleGenerate() {
   if (remainingCount.value <= 0) {
     uni.showToast({ title: '今日生成次数已用完', icon: 'none' })
@@ -402,7 +264,6 @@ async function handleGenerate() {
 }
 
 function goDetail(id: number) { navTo(`/pages/detail/index?id=${id}`) }
-function goBookDetail(id: number) { navTo(`/pages/book-detail/index?id=${id}`) }
 
 onShow(loadData)
 </script>
@@ -481,83 +342,6 @@ onShow(loadData)
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
-}
-
-/* 搜索框 */
-.search-bar { padding: 12rpx 0; }
-.search-input-wrap {
-  display: flex;
-  align-items: center;
-  background: #fff;
-  border: 2rpx solid var(--outline-variant);
-  border-radius: 40rpx;
-  padding: 16rpx 24rpx;
-  gap: 12rpx;
-}
-.search-icon { font-size: 28rpx; }
-.search-input { flex: 1; font-size: 28rpx; }
-.search-placeholder { color: var(--on-surface-muted); }
-.search-clear { font-size: 28rpx; color: var(--on-surface-muted); padding: 8rpx; }
-
-/* 区块标题 */
-.section-title {
-  font-size: 30rpx;
-  font-weight: 700;
-  display: block;
-  padding: 20rpx 0 12rpx;
-}
-
-/* 书本网格 */
-.book-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20rpx;
-  padding-bottom: 16rpx;
-}
-.book-card {
-  width: calc(33.33% - 14rpx);
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 16rpx;
-  box-shadow: var(--shadow-sm);
-}
-.book-card:active { opacity: 0.8; }
-.book-cover {
-  width: 100%;
-  height: 200rpx;
-  border-radius: 12rpx;
-  margin-bottom: 12rpx;
-  background: var(--surface-container);
-}
-.book-cover-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 48rpx;
-}
-.book-title {
-  font-size: 24rpx;
-  font-weight: 600;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  line-height: 1.3;
-  margin-bottom: 4rpx;
-}
-.book-author {
-  font-size: 22rpx;
-  color: var(--on-surface-muted);
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.book-progress {
-  font-size: 22rpx;
-  color: var(--primary);
-  margin-top: 4rpx;
-  display: block;
 }
 
 /* 空状态 */

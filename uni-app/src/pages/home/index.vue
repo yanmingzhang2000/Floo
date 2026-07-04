@@ -67,12 +67,6 @@
           </view>
           <text class="quick-title">自定义</text>
         </view>
-        <view class="quick-card" @tap="goBooks">
-          <view class="quick-icon-wrap" style="background: #E8F5E9;">
-            <text class="quick-icon" style="color: #2E7D32;">📚</text>
-          </view>
-          <text class="quick-title">名著</text>
-        </view>
         <view class="quick-card" @tap="goCheckin">
           <view class="quick-icon-wrap" style="background: #F3E5F5;">
             <text class="quick-icon" style="color: #7B1FA2;">📅</text>
@@ -191,10 +185,6 @@ function goCheckin() { navTo('/pages/checkin/index') }
 function goDictation() { uni.switchTab({ url: '/pages/review/index' }) }
 function goCustom() {
   storage.set('learning_active_tab', 'custom')
-  uni.switchTab({ url: '/pages/learning/index' })
-}
-function goBooks() {
-  storage.set('learning_active_tab', 'books')
   uni.switchTab({ url: '/pages/learning/index' })
 }
 

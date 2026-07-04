@@ -370,17 +370,3 @@ class UserCollection(Base):
 
     user = relationship("UserMain", back_populates="collections")
     character = relationship("Character", back_populates="collections")
-
-
-class UserBookProgress(Base):
-    """用户书本阅读进度 - 记录每章是否已读。"""
-    __tablename__ = "user_book_progress"
-    __table_args__ = (
-        UniqueConstraint("user_id", "gutenberg_id", "chapter_idx", name="uq_user_book_chapter"),
-    )
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("user_main.user_id", ondelete="CASCADE"), nullable=False, index=True)
-    gutenberg_id = Column(Integer, nullable=False, index=True)
-    chapter_idx = Column(Integer, nullable=False)
-    read_at = Column(DateTime, default=datetime.utcnow, nullable=False)
