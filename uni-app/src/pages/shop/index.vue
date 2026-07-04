@@ -151,7 +151,7 @@ onMounted(loadData)
 .shop-desc { font-size: 26rpx; color: var(--on-surface-variant); display: block; margin-bottom: 32rpx; }
 
 .box-actions { display: flex; gap: 20rpx; justify-content: center; }
-.box-actions .btn { flex: 1; max-width: 280rpx; flex-direction: column; gap: 4rpx; }
+.box-actions .btn { flex: 1; }
 .btn-sub { font-size: 22rpx; opacity: 0.8; font-weight: 400; }
 
 .collection-header { display: flex; align-items: center; justify-content: center; gap: 16rpx; margin-bottom: 24rpx; }
