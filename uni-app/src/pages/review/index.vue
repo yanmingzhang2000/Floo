@@ -259,7 +259,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
-import { dailyApi, wordReviewApi } from '@/api'
+import { dailyApi, dictationApi, wordReviewApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { navTo } from '@/utils/router'
 import type { LearningContent, DictationHistory, ReviewTask, MemoryProgress } from '@/types'
