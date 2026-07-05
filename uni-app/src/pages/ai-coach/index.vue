@@ -43,19 +43,17 @@
       <view 
         class="record-btn" 
         :class="{ recording: isRecording, disabled: isProcessing }"
-        @touchstart="startRecording"
-        @touchend="stopRecording"
-        @touchcancel="cancelRecording"
+        @tap="toggleRecording"
       >
         <view class="record-btn-inner">
-          <text class="record-icon">{{ isRecording ? '🎤' : '🎙️' }}</text>
-          <text class="record-text">{{ isRecording ? '松开结束' : '按住说话' }}</text>
+          <text class="record-icon">{{ isRecording ? '⏹️' : '🎙️' }}</text>
+          <text class="record-text">{{ isRecording ? '点击结束' : '点击说话' }}</text>
         </view>
       </view>
 
       <!-- 提示文字 -->
       <text class="hint-text">
-        {{ isRecording ? '正在聆听...' : '按住按钮开始对话' }}
+        {{ statusText }}
       </text>
     </view>
   </view>
@@ -109,12 +107,23 @@ function initRecorder() {
   })
 }
 
-// 开始录音
-async function startRecording() {
+// 切换录音状态
+async function toggleRecording() {
   if (isProcessing.value) return
   
+  if (isRecording.value) {
+    // 当前正在录音，停止
+    stopRecording()
+  } else {
+    // 当前未录音，开始
+    await startRecording()
+  }
+}
+
+// 开始录音
+async function startRecording() {
   isRecording.value = true
-  statusText.value = '正在聆听...'
+  statusText.value = '正在聆听... 点击按钮结束'
   
   if (isH5) {
     try {
@@ -182,7 +191,7 @@ function stopRecording() {
   recorderManager.stop()
 }
 
-// 取消录音
+// 取消录音（保留给异常情况）
 function cancelRecording() {
   if (!isRecording.value) return
   
@@ -459,7 +468,11 @@ function readFileAsBase64(filePath: string): Promise<string> {
 
 function scrollToBottom() {
   nextTick(() => {
-    scrollTop.value = scrollTop.value + 1
+    // 确保 scroll-view 已挂载
+    const scrollView = document.querySelector('.chat-scroll')
+    if (scrollView) {
+      scrollTop.value = scrollTop.value + 1
+    }
   })
 }
 
