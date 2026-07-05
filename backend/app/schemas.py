@@ -143,6 +143,7 @@ class DictationFeedback(BaseModel):
     score: int
     summary: str
     diffs: list[dict[str, Any]] = []
+    error_words: list[str] = []
     suggestions: list[str] = []
 
 

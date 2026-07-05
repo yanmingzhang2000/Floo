@@ -62,12 +62,15 @@ export interface DictationDiff {
   type: 'missing' | 'wrong' | 'extra'
   expected: string
   actual: string
+  sentence?: string
+  reason?: string
 }
 
 export interface DictationFeedback {
   score: number
   summary: string
   diffs: DictationDiff[]
+  error_words: string[]
   suggestions: string[]
 }
 
@@ -96,7 +99,8 @@ export interface DictationHistoryDetail extends DictationHistory {
   ai_feedback?: {
     score: number
     summary: string
-    diffs: { type: string; expected?: string; actual?: string }[]
+    diffs: { type: string; expected?: string; actual?: string; sentence?: string; reason?: string }[]
+    error_words: string[]
     suggestions: string[]
   }
   error_words: string[]

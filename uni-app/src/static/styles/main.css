@@ -532,8 +532,8 @@ input, textarea {
 .bottom-float-bar {
   position: fixed;
   bottom: 0;
-  left: 0;
-  right: 0;
+  left: 20rpx;
+  right: 20rpx;
   display: flex;
   align-items: center;
   justify-content: space-around;
@@ -544,6 +544,13 @@ input, textarea {
   -webkit-backdrop-filter: var(--glass-blur);
   border-top: 1rpx solid var(--glass-border);
   z-index: 100;
+}
+
+@media (min-width: 768px) {
+  .bottom-float-bar {
+    left: calc(50% - 375px + 20rpx);
+    right: calc(50% - 375px + 20rpx);
+  }
 }
 
 /* ===== 空状态优化 ===== */

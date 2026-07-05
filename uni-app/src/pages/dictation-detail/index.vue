@@ -39,6 +39,25 @@
           <view class="diff-detail">
             <text v-if="d.expected" class="diff-expected">✓ {{ d.expected }}</text>
             <text v-if="d.actual && d.type !== 'missing'" class="diff-actual">✗ {{ d.actual }}</text>
+            <text v-if="d.sentence" class="diff-sentence">{{ d.sentence }}</text>
+            <text v-if="d.reason" class="diff-reason">{{ d.reason }}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 错词本 -->
+      <view v-if="detail.error_words && detail.error_words.length" class="card">
+        <text class="section-label">错词本（点击收藏到单词本）</text>
+        <view class="error-words-row">
+          <view
+            v-for="(w, i) in detail.error_words"
+            :key="i"
+            class="error-word-chip"
+            :class="{ 'word-favorited': favoritedWords.has(w) }"
+            @tap="toggleErrorWord(w)"
+          >
+            <text class="error-word-text">{{ w }}</text>
+            <text class="error-word-star">{{ favoritedWords.has(w) ? '★' : '☆' }}</text>
           </view>
         </view>
       </view>
@@ -74,7 +93,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { dictationApi } from '@/api'
+import { dictationApi, favoritesApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { navBackSafe } from '@/utils/router'
 import type { DictationHistoryDetail } from '@/types'
@@ -82,6 +101,7 @@ import type { DictationHistoryDetail } from '@/types'
 const auth = useAuthStore()
 const loading = ref(true)
 const detail = ref<DictationHistoryDetail | null>(null)
+const favoritedWords = ref<Set<string>>(new Set())
 
 onLoad((options) => {
   const id = Number(options?.id)
@@ -98,6 +118,24 @@ async function loadDetail(id: number) {
     detail.value = null
   }
   loading.value = false
+}
+
+async function toggleErrorWord(word: string) {
+  if (favoritedWords.value.has(word)) {
+    try {
+      await favoritesApi.remove(auth.currentUserId, word)
+      favoritedWords.value.delete(word)
+      favoritedWords.value = new Set(favoritedWords.value)
+      uni.showToast({ title: '已取消收藏', icon: 'none' })
+    } catch { uni.showToast({ title: '操作失败', icon: 'none' }) }
+  } else {
+    try {
+      await favoritesApi.add(auth.currentUserId, word, undefined, undefined, 'dictation', detail.value?.content_id)
+      favoritedWords.value.add(word)
+      favoritedWords.value = new Set(favoritedWords.value)
+      uni.showToast({ title: '已收藏到单词本', icon: 'none' })
+    } catch { uni.showToast({ title: '收藏失败', icon: 'none' }) }
+  }
 }
 
 function getScoreClass(score: number) {
@@ -137,6 +175,20 @@ function formatDate(dateStr: string) {
 .diff-detail { flex: 1; display: flex; flex-direction: column; gap: 4rpx; }
 .diff-expected { font-size: 26rpx; color: var(--success); }
 .diff-actual { font-size: 26rpx; color: var(--error); text-decoration: line-through; }
+.diff-sentence { font-size: 24rpx; color: var(--on-surface-variant); margin-top: 6rpx; font-style: italic; }
+.diff-reason { font-size: 24rpx; color: var(--primary); margin-top: 6rpx; }
+
+.error-words-row { display: flex; flex-wrap: wrap; gap: 16rpx; }
+.error-word-chip {
+  display: flex; align-items: center; gap: 8rpx;
+  padding: 12rpx 20rpx; border-radius: 24rpx;
+  background: var(--surface-container); border: 2rpx solid var(--outline-variant);
+}
+.error-word-chip.word-favorited {
+  background: var(--primary-container); border-color: var(--primary);
+}
+.error-word-text { font-size: 26rpx; }
+.error-word-star { font-size: 28rpx; color: var(--warning); }
 
 .suggestion-item { margin-bottom: 8rpx; }
 .suggestion-text { font-size: 26rpx; color: var(--on-surface); line-height: 1.6; }

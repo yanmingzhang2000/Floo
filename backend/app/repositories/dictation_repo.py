@@ -35,9 +35,15 @@ def create_dictation(
     from app.services.week_helper import get_year_week
     year_week = get_year_week(datetime.utcnow())
 
-    # 提取高频错词存成 JSON 字符串
-    diffs = feedback.get("diffs", [])
-    error_words = [d.get("expected", "") for d in diffs if d.get("type") in ("missing", "wrong")]
+    # 优先使用 AI 输出的 error_words，fallback 从 diffs 提取
+    error_words = feedback.get("error_words", [])
+    if not error_words:
+        diffs = feedback.get("diffs", [])
+        error_words = list({
+            d.get("expected", "").lower()
+            for d in diffs
+            if d.get("type") in ("missing", "wrong") and d.get("expected")
+        })
 
     record = UserDictationHistory(
         user_id=user_id,
