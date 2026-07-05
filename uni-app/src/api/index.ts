@@ -138,4 +138,23 @@ export const ttsApi = {
     api.post('/api/tts/synthesize', { text, lang_type: langType }),
 }
 
+// ===== AI陪练 =====
+export const aiCoachApi = {
+  // 语音转文字 + 语言检测
+  transcribe: (audio: string, format: string = 'mp3') =>
+    api.post('/api/ai-coach/transcribe', { audio, format }),
+  
+  // 聊天接口（中英翻译 / 英语问答）
+  chat: (text: string, lang: string, history: Array<{role: string, content: string}> = []) =>
+    api.post('/api/ai-coach/chat', { text, lang, history }),
+  
+  // 文字转语音
+  tts: (text: string, lang: string = 'en') =>
+    api.post('/api/ai-coach/tts', { text, lang }),
+  
+  // 获取学习报告
+  getReport: (userId: number, sessionId: string) =>
+    api.get(`/api/ai-coach/report/${sessionId}`, { params: { user_id: userId } }),
+}
+
 export default api

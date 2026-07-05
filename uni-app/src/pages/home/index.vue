@@ -55,6 +55,12 @@
 
       <!-- 快捷入口 -->
       <view class="quick-grid">
+        <view class="quick-card" @tap="goAiCoach">
+          <view class="quick-icon-wrap" style="background: #E8F5E9;">
+            <text class="quick-icon" style="color: #2E7D32;">🤖</text>
+          </view>
+          <text class="quick-title">AI陪练</text>
+        </view>
         <view class="quick-card" @tap="goDictation">
           <view class="quick-icon-wrap" style="background: #FFF3E0;">
             <text class="quick-icon" style="color: #E65100;">✍️</text>
@@ -187,6 +193,7 @@ function goCustom() {
   storage.set('learning_active_tab', 'custom')
   uni.switchTab({ url: '/pages/learning/index' })
 }
+function goAiCoach() { navTo('/pages/ai-coach/index') }
 
 onShow(loadData)
 </script>

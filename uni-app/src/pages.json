@@ -103,6 +103,14 @@
         "navigationBarBackgroundColor": "#5B9AA8",
         "navigationBarTextStyle": "white"
       }
+    },
+    {
+      "path": "pages/ai-coach/index",
+      "style": {
+        "navigationBarTitleText": "AI陪练",
+        "navigationBarBackgroundColor": "#5B9AA8",
+        "navigationBarTextStyle": "white"
+      }
     }
   ],
   "globalStyle": {
