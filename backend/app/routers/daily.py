@@ -155,11 +155,12 @@ async def generate_daily(
 
 
 @router.get("/today", response_model=LearningContentOut)
-def get_today(user_id: int = 1, db: Session = Depends(get_db)):
+async def get_today(user_id: int = 1, db: Session = Depends(get_db)):
     """
     获取今日学习内容（按用户偏好的 theme 返回）。
 
     同 theme 用户看到相同内容；all_random 用户看当天随机 theme 的内容。
+    兜底设计：如果今日该 theme 无内容，自动触发生成，避免用户看到空白。
     """
     from app.schemas import THEME_OPTIONS
     import random
@@ -185,8 +186,25 @@ def get_today(user_id: int = 1, db: Session = Depends(get_db)):
     # 按 theme 查询最新内容
     content = content_repo.get_latest_ai_content_by_theme(db, theme)
     if not content:
-        log.debug("theme=%s 无内容，提示前端先调用 generate", theme)
-        raise HTTPException(404, f"暂无 {theme} 内容，请先点击生成")
+        # 兜底：今日无内容时自动触发生成
+        log.debug("theme=%s 今日无内容，自动触发生成", theme)
+        try:
+            from app.services.news_generator import generate_daily_news_batch
+            batch = await generate_daily_news_batch(theme=theme)
+            if batch and batch[0].get("article"):
+                for data in batch:
+                    content_repo.create_ai_content(db, data)
+                db.commit()
+                log.info("兜底生成完成 theme=%s count=%s", theme, len(batch))
+                # 重新查询刚生成的内容
+                content = content_repo.get_latest_ai_content_by_theme(db, theme)
+        except Exception as e:
+            log.warning("兜底生成失败 theme=%s: %s", theme, e)
+
+    if not content:
+        log.debug("theme=%s 无内容（生成也失败）", theme)
+        raise HTTPException(404, f"暂无 {theme} 内容，请稍后重试")
+
     words = content_repo.parse_words(content)
     return _content_to_out(content, words)
 
@@ -200,7 +218,7 @@ def list_contents(limit: int = 20, db: Session = Depends(get_db)):
 
 
 @router.get("/today-list", response_model=TodayContentListResponse)
-def get_today_list(user_id: int = 1, db: Session = Depends(get_db)):
+async def get_today_list(user_id: int = 1, db: Session = Depends(get_db)):
     """
     获取今日完整学习内容列表（总览 + 最多 3 篇文章）。
     前端根据用户学习时长目标决定展示几条：
@@ -208,6 +226,8 @@ def get_today_list(user_id: int = 1, db: Session = Depends(get_db)):
       30-40 min → 总览 + 1 篇
       40-50 min → 总览 + 2 篇
       50-60 min → 全部
+
+    兜底设计：如果今日该 theme 无内容，自动触发生成。
     """
     from app.schemas import THEME_OPTIONS
     import random
@@ -233,6 +253,22 @@ def get_today_list(user_id: int = 1, db: Session = Depends(get_db)):
         daily_goal = user.preference.daily_goal_count  # 前端存的是分钟数
 
     contents = content_repo.get_today_content_list_by_theme(db, theme)
+
+    # 兜底：今日无内容时自动触发生成
+    if not contents:
+        log.debug("today-list: theme=%s 今日无内容，自动触发生成", theme)
+        try:
+            from app.services.news_generator import generate_daily_news_batch
+            batch = await generate_daily_news_batch(theme=theme)
+            if batch and batch[0].get("article"):
+                for data in batch:
+                    content_repo.create_ai_content(db, data)
+                db.commit()
+                log.info("today-list 兜底生成完成 theme=%s count=%s", theme, len(batch))
+                contents = content_repo.get_today_content_list_by_theme(db, theme)
+        except Exception as e:
+            log.warning("today-list 兜底生成失败 theme=%s: %s", theme, e)
+
     log.debug("today-list theme=%s count=%s daily_goal=%s", theme, len(contents), daily_goal)
 
     # 追加用户今日的自定义内容（按 created_at 日期过滤）

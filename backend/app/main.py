@@ -4,6 +4,7 @@
 后续表结构稳定后再引入迁移工具。
 """
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -125,7 +126,18 @@ def _seed_characters():
 
 _seed_characters()
 
-app = FastAPI(title="English Learning App API", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """应用生命周期：启动时开启定时任务调度器，关闭时清理。"""
+    from app.services.scheduler import start_scheduler, shutdown_scheduler
+    start_scheduler()
+    log.info("应用启动完成，定时任务已注册")
+    yield
+    shutdown_scheduler()
+
+
+app = FastAPI(title="English Learning App API", version="0.1.0", lifespan=lifespan)
 
 
 class _CorsFallbackMiddleware(BaseHTTPMiddleware):

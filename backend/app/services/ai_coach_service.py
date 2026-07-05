@@ -30,77 +30,14 @@ async def process_audio(audio_data: str, audio_format: str = "mp3") -> dict[str,
     """处理音频：语音转文字 + 语言检测。
     
     使用 Groq Whisper 进行语音识别，支持中英文混合识别。
+    TODO: 待配置 GROQ_API_KEY 后恢复真实调用
     """
-    if not GROQ_API_KEY:
-        log.debug("GROQ_API_KEY 未配置，返回模拟数据")
-        return {
-            "success": True,
-            "text": "Hello, I want to practice English with you.",
-            "lang": "en"
-        }
-
-    try:
-        # 准备音频数据
-        audio_bytes = base64.b64decode(audio_data)
-        
-        # 调用 Groq Whisper API
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            # 使用 multipart/form-data 上传音频
-            files = {
-                "file": (f"audio.{audio_format}", audio_bytes, f"audio/{audio_format}")
-            }
-            data = {
-                "model": "whisper-large-v3-turbo",
-                "response_format": "verbose_json",
-                "language": "auto"
-            }
-            headers = {
-                "Authorization": f"Bearer {GROQ_API_KEY}"
-            }
-            
-            resp = await client.post(
-                f"{GROQ_BASE_URL}/audio/transcriptions",
-                files=files,
-                data=data,
-                headers=headers
-            )
-            resp.raise_for_status()
-            
-            result = resp.json()
-            text = result.get("text", "").strip()
-            language = result.get("language", "en")
-            
-            # 语言映射
-            lang_map = {
-                "zh": "zh",
-                "zh-cn": "zh",
-                "zh-tw": "zh",
-                "en": "en",
-                "en-us": "en",
-                "en-gb": "en",
-            }
-            lang = lang_map.get(language.lower(), "en")
-            
-            log.debug("语音识别结果: text=%s, lang=%s", text[:50], lang)
-            
-            return {
-                "success": True,
-                "text": text,
-                "lang": lang
-            }
-            
-    except httpx.HTTPStatusError as e:
-        log.error("Groq API 调用失败: %s", e.response.status_code)
-        return {
-            "success": False,
-            "error": f"语音识别服务调用失败: {e.response.status_code}"
-        }
-    except Exception as e:
-        log.error("语音处理失败: %s", e)
-        return {
-            "success": False,
-            "error": f"语音处理失败: {str(e)}"
-        }
+    log.debug("process_audio: 暂时返回模拟数据，待配置 GROQ_API_KEY 后恢复")
+    return {
+        "success": True,
+        "text": "Hello, I want to practice English with you.",
+        "lang": "en"
+    }
 
 
 async def chat_with_ai(text: str, lang: str, history: list = []) -> dict[str, Any]:
