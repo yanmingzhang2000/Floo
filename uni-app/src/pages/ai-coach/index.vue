@@ -353,7 +353,7 @@ initRecorder()
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: var(--background);
+  background: #f5f6f8;
 }
 
 .nav-bar {
