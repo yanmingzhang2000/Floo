@@ -40,19 +40,6 @@
         <text class="vb-entry-arrow">›</text>
       </view>
 
-      <!-- 筛选标签：全部 / 未掌握 / 已掌握 -->
-      <view class="underline-tabs">
-        <view class="underline-tab" :class="{ active: filterTab === 'all' }" @tap="filterTab = 'all'">
-          <text>全部 ({{ favorites.length }})</text>
-        </view>
-        <view class="underline-tab" :class="{ active: filterTab === 'unmastered' }" @tap="filterTab = 'unmastered'">
-          <text>未掌握 ({{ unmasteredCount }})</text>
-        </view>
-        <view class="underline-tab" :class="{ active: filterTab === 'mastered' }" @tap="filterTab = 'mastered'">
-          <text>已掌握 ({{ masteredCount }})</text>
-        </view>
-      </view>
-
       <!-- 查词结果弹出层 -->
       <view v-if="dictResult" class="card dict-result-card">
         <view class="dict-header">
@@ -82,13 +69,6 @@
               <text class="word-meaning">{{ fav.meaning }}</text>
             </view>
             <view class="word-actions">
-              <view
-                class="btn-icon mastered-btn"
-                :class="{ active: fav.is_mastered }"
-                @tap="handleToggleMastered(fav)"
-              >
-                <text>{{ fav.is_mastered ? '✅' : '⬜' }}</text>
-              </view>
               <view class="btn-icon remove-btn" @tap="handleRemove(fav.word)">
                 <text>✕</text>
               </view>
@@ -126,20 +106,14 @@ interface FavWord {
 const auth = useAuthStore()
 const loading = ref(true)
 const searchWord = ref('')
-const filterTab = ref<'all' | 'unmastered' | 'mastered'>('all')
 const favorites = ref<FavWord[]>([])
 
 const dictResult = ref<{
   word?: string; phonetic?: string; meaning: string; isFavorite?: boolean
 } | null>(null)
 
-const unmasteredCount = computed(() => favorites.value.filter(f => !f.is_mastered).length)
-const masteredCount = computed(() => favorites.value.filter(f => f.is_mastered).length)
-
 const filteredFavorites = computed(() => {
   let list = favorites.value
-  if (filterTab.value === 'unmastered') list = list.filter(f => !f.is_mastered)
-  if (filterTab.value === 'mastered') list = list.filter(f => f.is_mastered)
   if (searchWord.value.trim()) {
     const q = searchWord.value.trim().toLowerCase()
     list = list.filter(f => f.word.includes(q) || (f.meaning || '').toLowerCase().includes(q))
@@ -221,13 +195,6 @@ function clearSearch() {
 
 function playWord(word: string) { speakWord(word) }
 
-async function handleToggleMastered(fav: FavWord) {
-  try {
-    const { data } = await favoritesApi.toggleMastered(auth.currentUserId, fav.word)
-    fav.is_mastered = data.is_mastered
-  } catch {}
-}
-
 function handleRemove(word: string) {
   uni.showModal({
     title: '取消收藏',
@@ -303,7 +270,6 @@ onShow(loadData)
 .word-phonetic { font-size: 24rpx; color: var(--on-surface-variant); display: block; margin: 4rpx 0; }
 .word-meaning { font-size: 26rpx; color: var(--on-surface-variant); display: block; }
 .word-actions { display: flex; gap: 12rpx; align-items: center; }
-.mastered-btn.active { background: var(--success-container); }
 .remove-btn { font-size: 24rpx; color: var(--on-surface-muted); }
 
 /* 背单词入口 */
