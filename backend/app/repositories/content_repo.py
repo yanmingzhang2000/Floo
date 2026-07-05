@@ -285,24 +285,47 @@ def get_learned_contents_by_date_range(
     offset: int = 0,
 ) -> tuple[list[LearningContent], int]:
     """
-    按内容创建时间区间查询用户已学内容。
+    按内容创建时间区间查询用户已学内容和AI生成内容。
+
+    两种来源合并：
+    1. 用户标记"已学"的内容（主要是自定义内容）
+    2. AI生成的内容（按用户偏好主题筛选）
 
     为什么按 created_at 而不是 learned_at：用户需求是筛选"某段时间导入的内容"，
     created_at 代表内容创建/导入时间，learned_at 代表学习时间，两者语义不同。
     """
     from datetime import datetime
-    from app.models import UserLearnedContent
+    from sqlalchemy import or_, and_
+    from app.models import UserLearnedContent, UserLearningPreference
 
-    # 构建基础查询：关联已学内容表和内容表
+    # 获取用户偏好主题
+    preference = (
+        db.query(UserLearningPreference)
+        .filter(UserLearningPreference.user_id == user_id)
+        .first()
+    )
+    user_theme = preference.theme_type if preference else "daily_news"
+    log.debug("用户偏好主题 user_id=%s theme=%s", user_id, user_theme)
+
+    # 构建查询：两种来源取并集
+    # 来源1：用户标记"已学"的内容
+    # 来源2：AI生成的内容（用户偏好主题）
     query = (
         db.query(LearningContent)
-        .join(
-            UserLearnedContent,
-            UserLearnedContent.content_id == LearningContent.content_id,
-        )
         .filter(
-            UserLearnedContent.user_id == user_id,
             LearningContent.is_active == True,
+            or_(
+                # 来源1：已学内容
+                LearningContent.content_id.in_(
+                    db.query(UserLearnedContent.content_id)
+                    .filter(UserLearnedContent.user_id == user_id)
+                ),
+                # 来源2：AI生成的该主题内容
+                and_(
+                    LearningContent.creator_type == 0,
+                    LearningContent.theme_type == user_theme,
+                ),
+            ),
         )
     )
 
