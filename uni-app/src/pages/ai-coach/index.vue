@@ -500,7 +500,15 @@ initRecorder()
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: #f5f6f8;
+  background: linear-gradient(135deg, #e8f4f8, #f0f4f8, #e8f0f4, #f4f0e8);
+  background-size: 400% 400%;
+  animation: gradientFlow 15s ease infinite;
+}
+
+@keyframes gradientFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 .nav-bar {
