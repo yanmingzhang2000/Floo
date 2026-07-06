@@ -97,6 +97,8 @@ export const dailyApi = {
     api.get('/api/daily/custom-content', { params: { user_id: userId } }),
   deleteCustomContent: (contentId: number, userId: number) =>
     api.delete(`/api/daily/custom-content/${contentId}`, { params: { user_id: userId } }),
+  regenerateCustomContent: (contentId: number, userId: number) =>
+    api.post(`/api/daily/custom-content/${contentId}/regenerate`, null, { params: { user_id: userId }, timeout: 120000 }),
 }
 
 // ===== 默写 =====

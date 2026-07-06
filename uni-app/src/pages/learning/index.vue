@@ -77,7 +77,8 @@
             <view class="list-card-header">
               <text class="tag tag-warning">自定义</text>
               <view class="list-card-actions">
-                <text class="list-card-status" :class="learnedIds.includes(item.id) ? 'done' : 'todo'">
+                <text v-if="isGenerationFailed(item)" class="tag tag-error">⚠️ 生成失败</text>
+                <text v-else class="list-card-status" :class="learnedIds.includes(item.id) ? 'done' : 'todo'">
                   {{ learnedIds.includes(item.id) ? '✅已学' : '未学' }}
                 </text>
                 <text class="delete-btn" @tap.stop="deleteCustomContent(item.id)">🗑️</text>
@@ -85,6 +86,16 @@
             </view>
             <text class="list-card-title" @tap="goDetail(item.id)">{{ item.title }}</text>
             <text class="list-card-desc" @tap="goDetail(item.id)">{{ item.article?.slice(0, 60) }}...</text>
+            <view v-if="isGenerationFailed(item)" class="regenerate-row">
+              <text class="regenerate-hint">译文或词组生成失败</text>
+              <button
+                class="btn-regenerate"
+                :disabled="regeneratingIds.includes(item.id)"
+                @tap.stop="regenerateCustom(item.id)"
+              >
+                <text>{{ regeneratingIds.includes(item.id) ? '重新生成中...' : '🔄 重新生成' }}</text>
+              </button>
+            </view>
           </view>
         </view>
       </view>
@@ -192,8 +203,18 @@ const currentIdx = ref(0)
 const learnedIds = ref<number[]>([])
 const remainingCount = ref(3)
 const showCustomContent = ref(false)
+const regeneratingIds = ref<number[]>([])
 
 const activeTab = ref<'ai' | 'custom' | 'past'>('ai')
+
+// 判断自定义内容是否生成失败（译文降级或词组为空）
+// 后端降级文案固定以「（翻译生成失败」开头，见 backend/app/routers/daily.py:691
+function isGenerationFailed(item: LearningContent): boolean {
+  const tr = (item.translation || '').trim()
+  const failedTranslation = !tr || tr.startsWith('（翻译生成失败')
+  const emptyWords = !item.words || item.words.length === 0
+  return failedTranslation || emptyWords
+}
 
 // 往期内容日期筛选相关
 const filterStartDate = ref('')
@@ -255,6 +276,30 @@ function onCustomCreated() {
   // 创建成功后切到自定义 Tab 并刷新列表
   activeTab.value = 'custom'
   loadCustomContents()
+}
+
+async function regenerateCustom(contentId: number) {
+  if (regeneratingIds.value.includes(contentId)) {
+    // 防止重复点击：同一条正在重新生成时忽略
+    return
+  }
+  const userId = auth.currentUserId
+  regeneratingIds.value.push(contentId)
+  uni.showLoading({ title: '重新生成中...', mask: true })
+  try {
+    await dailyApi.regenerateCustomContent(contentId, userId)
+    // 成功后重新拉列表以显示最新译文和词组
+    await loadCustomContents()
+    uni.hideLoading()
+    uni.showToast({ title: '重新生成成功', icon: 'success' })
+  } catch (e: any) {
+    // AI 仍然失败时后端返回 503，其它是网络/服务异常
+    uni.hideLoading()
+    const detail = e?.data?.detail || e?.errMsg || '重新生成失败'
+    uni.showToast({ title: detail, icon: 'none', duration: 2500 })
+  } finally {
+    regeneratingIds.value = regeneratingIds.value.filter(id => id !== contentId)
+  }
 }
 
 async function deleteCustomContent(contentId: number) {
@@ -461,6 +506,33 @@ onShow(loadData)
 }
 .tag-success { background: var(--success-container); color: var(--success); }
 .tag-warning { background: #FFF3E0; color: #E65100; }
+.tag-error { background: #FFEBEE; color: #C62828; }
+
+/* 重新生成入口：仅在自定义内容生成失败时出现 */
+.regenerate-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx dashed var(--outline-variant);
+}
+.regenerate-hint {
+  font-size: 22rpx;
+  color: #C62828;
+}
+.btn-regenerate {
+  font-size: 22rpx;
+  padding: 8rpx 20rpx;
+  background: var(--primary-container);
+  color: var(--primary);
+  border-radius: 24rpx;
+  border: none;
+  line-height: 1.4;
+}
+.btn-regenerate[disabled] {
+  opacity: 0.6;
+}
 
 /* 日期筛选区域 */
 .filter-section {

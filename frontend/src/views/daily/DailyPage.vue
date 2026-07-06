@@ -43,9 +43,23 @@
           <button class="read-btn" @click.stop="toggleReading(currentItem.article)" :class="{ active: readState === 'playing' }">
             {{ readState === 'playing' ? '⏸ 暂停' : readState === 'paused' ? '▶ 继续' : '🔊 朗读' }}
           </button>
+          <button
+            v-if="currentItem.creator_type === 1 && isGenerationFailed(currentItem)"
+            class="regenerate-btn"
+            :disabled="regeneratingIds.has(currentItem.id)"
+            @click.stop="regenerateCurrentCustom"
+            title="AI 生成失败，重新生成译文和词组"
+          >
+            {{ regeneratingIds.has(currentItem.id) ? '生成中...' : '🔄 重新生成' }}
+          </button>
           <button v-if="currentItem.creator_type === 1" class="delete-btn" @click.stop="deleteCurrentCustom" title="删除">🗑️</button>
         </div>
         <h3 class="card-title">{{ currentItem.title }}</h3>
+
+        <div v-if="currentItem.creator_type === 1 && isGenerationFailed(currentItem)" class="gen-failed-banner">
+          <span class="gen-failed-icon">⚠️</span>
+          <span class="gen-failed-text">译文或词组尚未生成，点击右上角"🔄 重新生成"重试</span>
+        </div>
 
         <div class="learned-toggle" @click="toggleLearned(currentItem)">
           <span class="learned-icon">{{ learnedIds.has(currentItem.id) ? '✅' : '☑️' }}</span>
@@ -157,6 +171,17 @@ const generating = ref(false)
 const showCustomContent = ref(false)
 const contents = ref<LearningContent[]>([])
 const expandedTranslations = ref(new Set<number>())
+const regeneratingIds = ref(new Set<number>())
+
+// 判断自定义内容是否 AI 生成失败：译文为空/降级文案，或词汇列表为空
+// 后端降级文案固定以「（翻译生成失败」开头，见 backend/app/routers/daily.py:691
+function isGenerationFailed(item: LearningContent): boolean {
+  if (!item || item.creator_type !== 1) return false
+  const tr = (item.translation || '').trim()
+  const failedTranslation = !tr || tr.startsWith('（翻译生成失败')
+  const emptyWords = !item.words || item.words.length === 0
+  return failedTranslation || emptyWords
+}
 const remainingCount = ref(3)
 const { readState } = useReadingState()
 
@@ -292,6 +317,30 @@ async function deleteCurrentCustom() {
     toast.error(e.response?.data?.detail || '删除失败')
   }
 }
+
+async function regenerateCurrentCustom() {
+  const item = currentItem.value
+  if (!item || !auth.currentUserId || item.creator_type !== 1) return
+  if (regeneratingIds.value.has(item.id)) {
+    // 防止重复点击：同一条正在重新生成时忽略
+    return
+  }
+  const contentId = item.id
+  regeneratingIds.value = new Set(regeneratingIds.value).add(contentId)
+  try {
+    await dailyApi.regenerateCustomContent(contentId, auth.currentUserId)
+    // 重新拉取列表以同步最新译文和词组
+    await loadData()
+    toast.success('重新生成成功')
+  } catch (e: any) {
+    const detail = e?.response?.data?.detail || '重新生成失败'
+    toast.error(detail)
+  } finally {
+    const next = new Set(regeneratingIds.value)
+    next.delete(contentId)
+    regeneratingIds.value = next
+  }
+}
 </script>
 
 <style scoped>
@@ -344,6 +393,37 @@ async function deleteCurrentCustom() {
 .tag-warning { background: #FFF3E0; color: #E65100; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
 .delete-btn { background: none; border: none; font-size: 16px; cursor: pointer; padding: 4px 8px; border-radius: 8px; transition: background 0.2s; }
 .delete-btn:hover { background: var(--surface-container); }
+
+/* 重新生成按钮：仅在自定义内容生成失败时显示 */
+.regenerate-btn {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 16px;
+  background: #FFF3E0;
+  color: #E65100;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.regenerate-btn:hover:not(:disabled) { background: #FFE0B2; }
+.regenerate-btn:disabled { opacity: 0.6; cursor: wait; }
+
+/* 生成失败提示条 */
+.gen-failed-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: #FFEBEE;
+  border-left: 3px solid #C62828;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #C62828;
+}
+.gen-failed-icon { font-size: 16px; }
 
 .read-btn {
   margin-left: auto;
