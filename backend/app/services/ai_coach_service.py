@@ -30,14 +30,62 @@ async def process_audio(audio_data: str, audio_format: str = "mp3") -> dict[str,
     """处理音频：语音转文字 + 语言检测。
     
     使用 Groq Whisper 进行语音识别，支持中英文混合识别。
-    TODO: 待配置 GROQ_API_KEY 后恢复真实调用
     """
-    log.debug("process_audio: 暂时返回模拟数据，待配置 GROQ_API_KEY 后恢复")
-    return {
-        "success": True,
-        "text": "Hello, I want to practice English with you.",
-        "lang": "en"
-    }
+    if not GROQ_API_KEY:
+        log.debug("GROQ_API_KEY 未配置，返回模拟数据")
+        return {
+            "success": True,
+            "text": "Hello, I want to practice English with you.",
+            "lang": "en"
+        }
+    
+    try:
+        log.debug("调用 Groq Whisper 进行语音识别")
+        
+        # 解码 base64 音频数据
+        audio_bytes = base64.b64decode(audio_data)
+        
+        # 准备文件上传
+        files = {
+            "file": (f"audio.{audio_format}", audio_bytes, f"audio/{audio_format}")
+        }
+        
+        data = {
+            "model": "whisper-large-v3",
+            "response_format": "verbose_json"
+        }
+        
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}"
+        }
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                f"{GROQ_BASE_URL}/audio/transcriptions",
+                headers=headers,
+                files=files,
+                data=data
+            )
+            resp.raise_for_status()
+            
+            result = resp.json()
+            text = result.get("text", "").strip()
+            language = result.get("language", "en")
+            
+            log.debug("语音识别结果: text=%s, lang=%s", text[:50], language)
+            
+            return {
+                "success": True,
+                "text": text,
+                "lang": language
+            }
+            
+    except Exception as e:
+        log.error("语音识别失败: %s", e)
+        return {
+            "success": False,
+            "error": f"语音识别失败: {str(e)}"
+        }
 
 
 async def chat_with_ai(text: str, lang: str, history: list = []) -> dict[str, Any]:
