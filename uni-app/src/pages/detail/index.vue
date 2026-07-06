@@ -161,6 +161,7 @@ const evalResult = ref<{ overall: number; pronunciation: number; fluency: number
 const learnedIds = ref<number[]>([])
 let autoLearnTimer: ReturnType<typeof setTimeout> | null = null
 let contentId = 0
+const regenerating = ref(false)
 
 const usernameInitial = computed(() => (auth.username?.[0] || '?').toUpperCase())
 
@@ -395,6 +396,29 @@ async function toggleEval() {
 
 function resetEval() { evalResult.value = null }
 function navBack() { navBackSafe() }
+
+// 判断自定义内容是否生成失败（译文缺失或词汇为空）
+function isGenerationFailed(item: LearningContent): boolean {
+  if (!item || item.creator_type !== 1) return false
+  const tr = (item.translation || '').trim()
+  const failedTranslation = !tr || tr.startsWith('（翻译生成失败')
+  const emptyWords = !item.words || item.words.length === 0
+  return failedTranslation || emptyWords
+}
+
+// 重新触发 AI 生成译文和词汇
+async function regenerateContent() {
+  if (!content.value || !auth.currentUserId || regenerating.value) return
+  regenerating.value = true
+  try {
+    const { data } = await dailyApi.regenerateCustomContent(contentId, auth.currentUserId)
+    content.value = data
+    uni.showToast({ title: '重新生成成功', icon: 'success' })
+  } catch {
+    uni.showToast({ title: '生成失败，请稍后重试', icon: 'none' })
+  }
+  regenerating.value = false
+}
 </script>
 
 <style scoped>
