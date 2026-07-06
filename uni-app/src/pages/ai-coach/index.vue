@@ -500,15 +500,17 @@ initRecorder()
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: linear-gradient(135deg, #e8f4f8, #f0f4f8, #e8f0f4, #f4f0e8);
-  background-size: 400% 400%;
-  animation: gradientFlow 15s ease infinite;
+  background: linear-gradient(135deg, #e0f0f5, #f0f4f8, #dde8f0, #f0ede5, #e0f0f5);
+  background-size: 300% 300%;
+  animation: gradientFlow 6s ease infinite;
 }
 
 @keyframes gradientFlow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% { background-position: 0% 0%; }
+  25% { background-position: 100% 50%; }
+  50% { background-position: 50% 100%; }
+  75% { background-position: 0% 50%; }
+  100% { background-position: 0% 0%; }
 }
 
 .nav-bar {
