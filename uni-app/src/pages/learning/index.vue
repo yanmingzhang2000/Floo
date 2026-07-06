@@ -117,8 +117,13 @@
             <view class="filter-btn" :class="{ active: !filterStartDate && !filterEndDate }" @tap="clearFilter">
               <text>全部</text>
             </view>
+            <!-- 自定义区间展开按钮 -->
+            <view class="filter-btn filter-btn-range" :class="{ active: showDateRange || (filterStartDate || filterEndDate) }" @tap="showDateRange = !showDateRange">
+              <text>📅{{ (filterStartDate || filterEndDate) ? ' ' + (filterStartDate || '…') + '~' + (filterEndDate || '今') : ' 区间' }}</text>
+            </view>
           </view>
-          <view class="filter-date-row">
+          <!-- 自定义日期区间（默认收起） -->
+          <view v-if="showDateRange" class="filter-date-row">
             <view class="filter-date-item" @tap="openDatePicker('start')">
               <text class="filter-date-label">开始</text>
               <text class="filter-date-value">{{ filterStartDate || '选择日期' }}</text>
@@ -131,9 +136,6 @@
             <view v-if="filterStartDate || filterEndDate" class="filter-clear-btn" @tap="clearFilter">
               <text>✕</text>
             </view>
-          </view>
-          <view v-if="filterStartDate || filterEndDate" class="filter-result-info">
-            <text class="filter-result-text">共 {{ filterTotalCount }} 条结果</text>
           </view>
         </view>
 
@@ -148,6 +150,20 @@
           >
             <text>{{ f.label }}</text>
             <text class="type-chip-count">{{ pastTypeCounts[f.value] }}</text>
+          </view>
+        </view>
+
+        <!-- 学习状态筛选 -->
+        <view class="type-filter-bar" style="padding-top:0;margin-top:-8rpx;">
+          <view
+            v-for="f in pastLearnFilters"
+            :key="f.value"
+            class="type-chip"
+            :class="{ active: pastLearnFilter === f.value }"
+            @tap="pastLearnFilter = f.value"
+          >
+            <text>{{ f.label }}</text>
+            <text class="type-chip-count">{{ pastLearnCounts[f.value] }}</text>
           </view>
         </view>
 
@@ -236,7 +252,7 @@ function isGenerationFailed(item: LearningContent): boolean {
 // 往期内容日期筛选相关
 const filterStartDate = ref('')
 const filterEndDate = ref('')
-const filterTotalCount = ref(0)
+const showDateRange = ref(false)
 const showDatePicker = ref(false)
 const datePickerType = ref<'start' | 'end'>('start')
 
@@ -247,16 +263,54 @@ const pastTypeFilters = [
   { value: 'ai' as const,     label: '🤖 AI生成' },
   { value: 'custom' as const, label: '✏️ 自定义' },
 ]
+
+// 往期内容学习状态筛选
+const pastLearnFilter = ref<'all' | 'learned' | 'unlearned'>('all')
+const pastLearnFilters = [
+  { value: 'all' as const,       label: '全部' },
+  { value: 'learned' as const,   label: '✅ 已学' },
+  { value: 'unlearned' as const, label: '📖 未学' },
+]
+
+// 综合筛选：日期 + 来源类型 + 学习状态，全部客户端完成
 const filteredPastContents = computed(() => {
-  if (pastTypeFilter.value === 'ai')     return pastContents.value.filter(i => i.creator_type !== 1)
-  if (pastTypeFilter.value === 'custom') return pastContents.value.filter(i => i.creator_type === 1)
-  return pastContents.value
+  let list = pastContents.value
+  if (filterStartDate.value) list = list.filter(i => (i.content_date || '') >= filterStartDate.value)
+  if (filterEndDate.value)   list = list.filter(i => (i.content_date || '') <= filterEndDate.value)
+  if (pastTypeFilter.value === 'ai')     list = list.filter(i => i.creator_type !== 1)
+  if (pastTypeFilter.value === 'custom') list = list.filter(i => i.creator_type === 1)
+  if (pastLearnFilter.value === 'learned')   list = list.filter(i => learnedIds.value.includes(i.id))
+  if (pastLearnFilter.value === 'unlearned') list = list.filter(i => !learnedIds.value.includes(i.id))
+  return list
 })
-const pastTypeCounts = computed(() => ({
-  all:    pastContents.value.length,
-  ai:     pastContents.value.filter(i => i.creator_type !== 1).length,
-  custom: pastContents.value.filter(i => i.creator_type === 1).length,
-}))
+
+// 来源类型数量（基于日期+学习状态过滤后的结果）
+const pastTypeCounts = computed(() => {
+  let base = pastContents.value
+  if (filterStartDate.value) base = base.filter(i => (i.content_date || '') >= filterStartDate.value)
+  if (filterEndDate.value)   base = base.filter(i => (i.content_date || '') <= filterEndDate.value)
+  if (pastLearnFilter.value === 'learned')   base = base.filter(i => learnedIds.value.includes(i.id))
+  if (pastLearnFilter.value === 'unlearned') base = base.filter(i => !learnedIds.value.includes(i.id))
+  return {
+    all:    base.length,
+    ai:     base.filter(i => i.creator_type !== 1).length,
+    custom: base.filter(i => i.creator_type === 1).length,
+  }
+})
+
+// 学习状态数量（基于日期+来源类型过滤后的结果）
+const pastLearnCounts = computed(() => {
+  let base = pastContents.value
+  if (filterStartDate.value) base = base.filter(i => (i.content_date || '') >= filterStartDate.value)
+  if (filterEndDate.value)   base = base.filter(i => (i.content_date || '') <= filterEndDate.value)
+  if (pastTypeFilter.value === 'ai')     base = base.filter(i => i.creator_type !== 1)
+  if (pastTypeFilter.value === 'custom') base = base.filter(i => i.creator_type === 1)
+  return {
+    all:       base.length,
+    learned:   base.filter(i => learnedIds.value.includes(i.id)).length,
+    unlearned: base.filter(i => !learnedIds.value.includes(i.id)).length,
+  }
+})
 
 onLoad(() => {
   // 从 storage 读取外部传入的 tab 参数（如从首页跳转）
@@ -277,7 +331,7 @@ const totalCount = computed(() => contents.value.length)
 function switchTab(tab: typeof activeTab.value) {
   activeTab.value = tab
   if (tab === 'past' && pastContents.value.length === 0) {
-    loadFilteredPastContents()
+    loadAllPastContents()
   }
   if (tab === 'custom' && customContents.value.length === 0) {
     loadCustomContents()
@@ -356,34 +410,42 @@ async function deleteCustomContent(contentId: number) {
   })
 }
 
-async function loadFilteredPastContents() {
+async function loadAllPastContents() {
   const userId = auth.currentUserId
   try {
-    const startDate = filterStartDate.value || undefined
-    const endDate = filterEndDate.value || undefined
-    const { data } = await dailyApi.getFilteredLearnedContents(userId, startDate, endDate)
-    pastContents.value = data?.contents || []
-    filterTotalCount.value = data?.total || 0
+    // 并行拉取 AI 内容（getList）和用户自定义内容（getCustomContents）
+    const [listRes, customRes] = await Promise.all([
+      dailyApi.getList(300).catch(() => null),
+      dailyApi.getCustomContents(userId).catch(() => null),
+    ])
+    const aiItems: LearningContent[] = (listRes?.data || []).filter((i: LearningContent) => i.creator_type !== 1)
+    const customItems: LearningContent[] = customRes?.data?.contents || []
+    // 合并去重（自定义优先，AI 内容不重复加入）
+    const customIds = new Set(customItems.map(i => i.id))
+    const merged = [...customItems, ...aiItems.filter(i => !customIds.has(i.id))]
+    // 按日期降序排列
+    merged.sort((a, b) => (b.content_date || '').localeCompare(a.content_date || ''))
+    pastContents.value = merged
   } catch { pastContents.value = [] }
 }
 
-// 快捷筛选：今天
+// 快捷筛选：今天（纯客户端，只更新日期 ref，computed 自动过滤）
 function filterToday() {
   const today = new Date().toISOString().split('T')[0]
   filterStartDate.value = today
   filterEndDate.value = today
-  loadFilteredPastContents()
+  showDateRange.value = false
 }
 
 // 快捷筛选：本周
 function filterThisWeek() {
   const now = new Date()
-  const dayOfWeek = now.getDay() || 7 // 周日为7
+  const dayOfWeek = now.getDay() || 7
   const monday = new Date(now)
   monday.setDate(now.getDate() - dayOfWeek + 1)
   filterStartDate.value = monday.toISOString().split('T')[0]
   filterEndDate.value = now.toISOString().split('T')[0]
-  loadFilteredPastContents()
+  showDateRange.value = false
 }
 
 // 快捷筛选：本月
@@ -392,14 +454,14 @@ function filterThisMonth() {
   const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
   filterStartDate.value = firstDay.toISOString().split('T')[0]
   filterEndDate.value = now.toISOString().split('T')[0]
-  loadFilteredPastContents()
+  showDateRange.value = false
 }
 
 // 清除筛选
 function clearFilter() {
   filterStartDate.value = ''
   filterEndDate.value = ''
-  loadFilteredPastContents()
+  showDateRange.value = false
 }
 
 // 打开日期选择器
@@ -408,7 +470,7 @@ function openDatePicker(type: 'start' | 'end') {
   showDatePicker.value = true
 }
 
-// 日期选择确认
+// 日期选择确认（纯客户端，只更新 ref，computed 自动重算）
 function onDateConfirm(e: any) {
   const date = e.detail.value
   if (datePickerType.value === 'start') {
@@ -417,7 +479,6 @@ function onDateConfirm(e: any) {
     filterEndDate.value = date
   }
   showDatePicker.value = false
-  loadFilteredPastContents()
 }
 
 async function handleGenerate() {
@@ -673,6 +734,12 @@ onShow(loadData)
 .type-chip-count {
   font-size: 20rpx;
   opacity: 0.7;
+}
+.filter-btn-range {
+  flex: 1.6;
+  font-size: 22rpx;
+  overflow: hidden;
+  white-space: nowrap;
 }
 .tag-ai { background: #E3F2FD; color: #1565C0; }
 </style>
