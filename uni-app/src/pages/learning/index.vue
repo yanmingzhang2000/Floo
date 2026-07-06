@@ -137,21 +137,38 @@
           </view>
         </view>
 
-        <view v-if="pastContents.length === 0" class="empty-state">
+        <!-- 来源类型筛选 -->
+        <view class="type-filter-bar">
+          <view
+            v-for="f in pastTypeFilters"
+            :key="f.value"
+            class="type-chip"
+            :class="{ active: pastTypeFilter === f.value }"
+            @tap="pastTypeFilter = f.value"
+          >
+            <text>{{ f.label }}</text>
+            <text class="type-chip-count">{{ pastTypeCounts[f.value] }}</text>
+          </view>
+        </view>
+
+        <view v-if="filteredPastContents.length === 0" class="empty-state">
           <text class="icon">📋</text>
-          <text class="empty-text">{{ (filterStartDate || filterEndDate) ? '该时间段暂无内容' : '暂无往期内容' }}</text>
-          <text class="empty-hint">{{ (filterStartDate || filterEndDate) ? '尝试调整筛选条件' : '完成学习后内容会出现在这里' }}</text>
+          <text class="empty-text">{{ pastTypeFilter !== 'all' ? '该分类下暂无内容' : (filterStartDate || filterEndDate) ? '该时间段暂无内容' : '暂无往期内容' }}</text>
+          <text class="empty-hint">{{ pastTypeFilter !== 'all' ? '换个分类试试' : (filterStartDate || filterEndDate) ? '尝试调整筛选条件' : '完成学习后内容会出现在这里' }}</text>
         </view>
         <view v-else class="content-list">
           <view
-            v-for="item in pastContents"
+            v-for="item in filteredPastContents"
             :key="item.id"
             class="list-card"
             @tap="goDetail(item.id)"
           >
             <view class="list-card-header">
               <text class="tag tag-success">{{ themeLabels[item.theme_type] || item.theme_type }}</text>
-              <text class="list-card-status done">✅已学</text>
+              <view style="display:flex;align-items:center;gap:12rpx;">
+                <text class="tag" :class="item.creator_type === 1 ? 'tag-warning' : 'tag-ai'">{{ item.creator_type === 1 ? '✏️ 自定义' : '🤖 AI' }}</text>
+                <text class="list-card-status done">✅已学</text>
+              </view>
             </view>
             <text class="list-card-title">{{ item.title }}</text>
             <text class="list-card-desc">{{ item.article?.slice(0, 60) }}...</text>
@@ -222,6 +239,24 @@ const filterEndDate = ref('')
 const filterTotalCount = ref(0)
 const showDatePicker = ref(false)
 const datePickerType = ref<'start' | 'end'>('start')
+
+// 往期内容来源类型筛选
+const pastTypeFilter = ref<'all' | 'ai' | 'custom'>('all')
+const pastTypeFilters = [
+  { value: 'all' as const,    label: '全部' },
+  { value: 'ai' as const,     label: '🤖 AI生成' },
+  { value: 'custom' as const, label: '✏️ 自定义' },
+]
+const filteredPastContents = computed(() => {
+  if (pastTypeFilter.value === 'ai')     return pastContents.value.filter(i => i.creator_type !== 1)
+  if (pastTypeFilter.value === 'custom') return pastContents.value.filter(i => i.creator_type === 1)
+  return pastContents.value
+})
+const pastTypeCounts = computed(() => ({
+  all:    pastContents.value.length,
+  ai:     pastContents.value.filter(i => i.creator_type !== 1).length,
+  custom: pastContents.value.filter(i => i.creator_type === 1).length,
+}))
 
 onLoad(() => {
   // 从 storage 读取外部传入的 tab 参数（如从首页跳转）
@@ -611,4 +646,33 @@ onShow(loadData)
   color: var(--on-surface-muted);
   margin-top: 8rpx;
 }
+
+/* 来源类型筛选 chips */
+.type-filter-bar {
+  display: flex;
+  gap: 16rpx;
+  padding: 16rpx 0 20rpx;
+}
+.type-chip {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 10rpx 24rpx;
+  border-radius: 40rpx;
+  border: 2rpx solid var(--outline-variant);
+  background: transparent;
+  font-size: 24rpx;
+  color: var(--on-surface-variant);
+}
+.type-chip.active {
+  background: var(--primary-container);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+}
+.type-chip-count {
+  font-size: 20rpx;
+  opacity: 0.7;
+}
+.tag-ai { background: #E3F2FD; color: #1565C0; }
 </style>
