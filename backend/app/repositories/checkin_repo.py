@@ -58,6 +58,26 @@ def create_checkin(
     return record
 
 
+def get_last_checkin_date(db: Session, user_id: int) -> Optional[date]:
+    """
+    返回用户最近一次打卡的日期。
+
+    为什么单独提一个方法：提醒服务只需要"最近打卡日"这一个字段，
+    不需要拉取完整记录列表，减少数据传输量。
+    """
+    record = (
+        db.query(UserCheckinRecord.checkin_date)
+        .filter(UserCheckinRecord.user_id == user_id)
+        .order_by(UserCheckinRecord.checkin_date.desc())
+        .first()
+    )
+    if record:
+        log.debug("user_id=%s 最近打卡日期=%s", user_id, record.checkin_date)
+        return record.checkin_date
+    log.debug("user_id=%s 无任何打卡记录", user_id)
+    return None
+
+
 def has_checkin_yesterday(db: Session, user_id: int, today: date) -> bool:
     """判断昨天是否打卡，用于连续天数计算。"""
     yesterday = today - timedelta(days=1)

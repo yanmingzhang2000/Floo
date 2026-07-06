@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     APP_HOST: str = "0.0.0.0"
     APP_PORT: int = 8000
 
+    # 提醒功能配置：超过多少天未打卡则触发提醒
+    REMINDER_THRESHOLD_DAYS: int = 2
+
 
 settings = Settings()
 

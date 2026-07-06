@@ -159,4 +159,13 @@ export const aiCoachApi = {
     api.get(`/api/ai-coach/report/${sessionId}`, { params: { user_id: userId } }),
 }
 
+// ===== 提醒 =====
+export const reminderApi = {
+  getStatus: (userId: number) =>
+    api.get<{ should_remind: boolean; days_since_last: number; threshold: number }>(
+      '/api/reminder/status',
+      { params: { user_id: userId } },
+    ),
+}
+
 export default api

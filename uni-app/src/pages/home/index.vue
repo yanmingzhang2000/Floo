@@ -15,6 +15,13 @@
       </view>
     </view>
 
+    <!-- 未打卡提醒横幅，每天只展示一次，关闭或打卡后消失 -->
+    <ReminderBanner
+      v-if="showReminder"
+      :days-since-last="daysSinceLast"
+      @dismiss="dismissReminder"
+    />
+
     <view v-if="loading" class="loading">
       <view class="spinner"></view>
     </view>
@@ -122,11 +129,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { dailyApi, checkinApi, shopApi, generationLimitApi } from '@/api'
+import { dailyApi, checkinApi, shopApi, generationLimitApi, reminderApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { navTo } from '@/utils/router'
 import { storage } from '@/utils/storage'
 import type { LearningContent } from '@/types'
+import ReminderBanner from '@/components/ReminderBanner.vue'
 
 const auth = useAuthStore()
 const loading = ref(true)
@@ -135,6 +143,39 @@ const learnedIds = ref<number[]>([])
 const streakDays = ref(0)
 const pointBalance = ref(0)
 const remainingCount = ref(3)
+
+// 提醒横幅状态
+const showReminder = ref(false)
+const daysSinceLast = ref(0)
+
+// 今日已提醒标记的 storage key
+const REMINDER_SHOWN_KEY = 'reminder_shown_date'
+
+async function checkReminder() {
+  const userId = auth.currentUserId
+  if (!userId) return
+
+  // 今天已经提醒过，不再重复弹
+  const today = new Date().toISOString().slice(0, 10)
+  const shownDate = storage.get(REMINDER_SHOWN_KEY)
+  if (shownDate === today) return
+
+  try {
+    const res = await reminderApi.getStatus(userId)
+    if (res?.data?.should_remind) {
+      daysSinceLast.value = res.data.days_since_last
+      showReminder.value = true
+      // 立即标记今日已提醒，避免同一天多次展示
+      storage.set(REMINDER_SHOWN_KEY, today)
+    }
+  } catch {
+    // 网络失败时静默处理，不影响主页加载
+  }
+}
+
+function dismissReminder() {
+  showReminder.value = false
+}
 
 const themeLabels: Record<string, string> = {
   ai_tech: 'AI科技', product_tech: '产品技术', business: '财经商业',
@@ -195,7 +236,10 @@ function goCustom() {
 }
 function goAiCoach() { navTo('/pages/ai-coach/index') }
 
-onShow(loadData)
+onShow(() => {
+  loadData()
+  checkReminder()
+})
 </script>
 
 <style scoped>
