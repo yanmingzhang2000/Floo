@@ -60,7 +60,12 @@ function request<T = any>(config: RequestConfig): Promise<Response<T>> {
       header,
       timeout,
       success: (res) => {
-        resolve(res as Response<T>)
+        // uni.request 对所有 HTTP 响应都触发 success，4xx/5xx 需要手动 reject
+        if (res.statusCode >= 400) {
+          reject(res)
+        } else {
+          resolve(res as Response<T>)
+        }
       },
       fail: (err) => {
         reject(err)
