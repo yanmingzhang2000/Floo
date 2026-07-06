@@ -511,13 +511,14 @@ onShow(loadData)
 /* 重新生成入口：仅在自定义内容生成失败时出现 */
 .regenerate-row {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   margin-top: 16rpx;
   padding-top: 16rpx;
   border-top: 1rpx dashed var(--outline-variant);
 }
 .regenerate-hint {
+  flex: 1;
   font-size: 22rpx;
   color: #C62828;
 }

@@ -46,6 +46,22 @@
         <text class="translation-text">{{ content.translation }}</text>
       </view>
 
+      <!-- 译文生成失败提示 -->
+      <view v-if="content && isGenerationFailed(content)" class="card gen-failed-card">
+        <view class="gen-failed-header">
+          <text class="gen-failed-icon">⚠️</text>
+          <text class="gen-failed-text">译文或词组生成失败</text>
+        </view>
+        <text class="gen-failed-hint">AI 处理时出现异常，点击下方按钮重新生成</text>
+        <button
+          class="btn btn-primary btn-block btn-sm"
+          :disabled="regenerating"
+          @tap="regenerateContent"
+        >
+          <text>{{ regenerating ? '重新生成中...' : '🔄 重新生成译文和词组' }}</text>
+        </button>
+      </view>
+
       <!-- 朗读评测结果 -->
       <view v-if="evalResult" class="card eval-card">
         <view class="eval-scores-row">
