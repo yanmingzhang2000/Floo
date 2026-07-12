@@ -194,11 +194,11 @@
         <button class="btn btn-sm btn-outline" @tap="resetEval">重新评测</button>
       </view>
 
-      <!-- 核心词汇 -->
-      <view v-if="content.words && content.words.length" class="card">
+      <!-- 核心词汇（书籍模式下只显示当前段的词） -->
+      <view v-if="segmentWords.length" class="card">
         <text class="section-label">核心词汇</text>
         <view class="words-wrap">
-          <view v-for="w in content.words" :key="w.word" class="word-chip" @tap="showWordDetail(w)">
+          <view v-for="w in segmentWords" :key="w.word" class="word-chip" @tap="showWordDetail(w)">
             <text class="word-text">{{ w.word }}</text>
             <text v-if="w.phonetic" class="word-phonetic">{{ w.phonetic }}</text>
             <text class="word-meaning">{{ w.meaning }}</text>
@@ -435,6 +435,22 @@ const currentSegmentGroup = computed<SegmentGroup | null>(() => {
   if (groups.length === 0) return null
   const idx = Math.min(Math.max(currentSegmentIndex.value, 0), groups.length - 1)
   return groups[idx]
+})
+
+/**
+ * 核心词汇：书籍模式下只返回当前段里出现过的词，非书籍模式返回全量。
+ * 为什么不做后端分段：段的 key_words 只在"默写此段"触发 LLM 挑词时才生成，
+ * 阅读态只看译文不挑词；前端按 parts 文本过滤成本极低，不值得为此加一次请求。
+ */
+const segmentWords = computed(() => {
+  if (!content.value?.words) return []
+  if (!isBookChapter.value || !currentSegmentGroup.value) return content.value.words
+  const textSet = new Set(
+    currentSegmentGroup.value.parts
+      .filter(p => p.isWord)
+      .map(p => p.text.toLowerCase()),
+  )
+  return content.value.words.filter(w => textSet.has(w.word.toLowerCase()))
 })
 
 const canPrevSegment = computed(() => isBookChapter.value && currentSegmentIndex.value > 0)
