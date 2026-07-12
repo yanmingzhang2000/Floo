@@ -479,40 +479,95 @@ function speakContent() {
   if (content.value?.article) speakWord(content.value.article.slice(0, 500))
 }
 
+/**
+ * 单词查询缓存（session 内，跨 detail 页跳转保留）。
+ * Why：有道 API 单次响应 20-100KB，翻页时同一批常见词反复查太慢；
+ * 缓存原词、词根两种 key 都写入，避免同一词形不同大小写反复网络请求。
+ */
+const wordLookupCache = new Map<string, { word: string; phonetic?: string; meaning: string } | null>()
+
+async function lookupWord(word: string): Promise<{ word: string; phonetic?: string; meaning: string } | null> {
+  const key = word.toLowerCase()
+  if (wordLookupCache.has(key)) {
+    return wordLookupCache.get(key) ?? null
+  }
+  try {
+    const { data } = await dictionaryApi.lookup(word)
+    const ec = data?.ec?.word?.[0]
+    const phonetic = ec?.usphone || ec?.ukphone || ''
+    const trs = ec?.trs || []
+    const meaning = trs.map((t: any) => t?.tr?.[0]?.l?.i?.[0]).filter(Boolean).join('；')
+    if (!meaning) {
+      wordLookupCache.set(key, null)
+      return null
+    }
+    const result = { word, phonetic: phonetic ? `/${phonetic}/` : undefined, meaning }
+    wordLookupCache.set(key, result)
+    return result
+  } catch {
+    // 网络失败不写缓存，允许下次重试
+    return null
+  }
+}
+
 async function handleWordTap(rawWord: string) {
-  const word = getBaseForm(rawWord)
-  speakWord(word)
-  
-  // 先检查是否是 AI 已提供的词汇/词组
-  const knownWord = content.value?.words?.find(w => w.word.toLowerCase() === word.toLowerCase())
+  const raw = rawWord.trim()
+  if (!raw) return
+  const baseForm = getBaseForm(raw)
+  speakWord(raw)
+
+  // 先按原词匹配 AI 关键词，其次按词根匹配
+  const rawLower = raw.toLowerCase()
+  const baseLower = baseForm.toLowerCase()
+  const knownWord = content.value?.words?.find(
+    w => w.word.toLowerCase() === rawLower || w.word.toLowerCase() === baseLower
+  )
   if (knownWord) {
-    // 直接用 AI 给的释义，不查字典
-    wordPopup.value = { 
-      word: knownWord.word, 
-      phonetic: knownWord.phonetic, 
-      meaning: knownWord.meaning 
+    wordPopup.value = {
+      word: knownWord.word,
+      phonetic: knownWord.phonetic,
+      meaning: knownWord.meaning,
     }
     checkFavorite(knownWord.word)
     return
   }
-  
-  // 未知词：查字典
-  wordPopup.value = { word, meaning: '查询中...' }
+
+  // 未知词：先查原词（保留 crowning/sharply 这类的独立释义），
+  // 拿不到再降级到词根（families→family, came→come 这类）。
   isFavorited.value = false
-  try {
-    const [dictRes, favRes] = await Promise.all([
-      dictionaryApi.lookup(word),
-      favoritesApi.check(auth.currentUserId, word),
-    ])
-    const ec = dictRes.data?.ec?.word?.[0]
-    const phonetic = ec?.usphone || ec?.ukphone || ''
-    const trs = ec?.trs || []
-    const meaning = trs.map((t: any) => t?.tr?.[0]?.l?.i?.[0]).filter(Boolean).join('；')
-    wordPopup.value = meaning
-      ? { word, phonetic: phonetic ? `/${phonetic}/` : undefined, meaning }
-      : { word, meaning: '未找到释义' }
-    isFavorited.value = favRes.data?.is_favorited ?? false
-  } catch { wordPopup.value = { word, meaning: '查询失败' } }
+
+  // 缓存命中则直接展示，不闪 "查询中..."
+  const cachedRaw = wordLookupCache.get(rawLower)
+  if (cachedRaw !== undefined) {
+    if (cachedRaw) {
+      wordPopup.value = cachedRaw
+      checkFavorite(cachedRaw.word)
+      return
+    }
+    // 原词缓存为 null（之前查过没结果），继续走词根
+  }
+  const cachedBase = baseLower !== rawLower ? wordLookupCache.get(baseLower) : undefined
+  if (cachedBase) {
+    wordPopup.value = cachedBase
+    checkFavorite(cachedBase.word)
+    return
+  }
+
+  wordPopup.value = { word: raw, meaning: '查询中...' }
+
+  // 优先原词
+  let result = await lookupWord(raw)
+  // 未命中且词根不同，再试词根
+  if (!result && baseLower !== rawLower) {
+    result = await lookupWord(baseForm)
+  }
+
+  if (result) {
+    wordPopup.value = result
+    checkFavorite(result.word)
+  } else {
+    wordPopup.value = { word: raw, meaning: '未找到释义' }
+  }
 }
 
 function showWordDetail(w: WordItem) {
