@@ -9,6 +9,7 @@ MVP 阶段追求简单，APScheduler 在进程内跑，零外部依赖。
 APScheduler 的 cron trigger 默认用 UTC，所以 hour=21, day_before=true。
 """
 import logging
+import time
 from datetime import date
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -23,6 +24,9 @@ log = logging.getLogger(__name__)
 
 # 要定时生成的主题列表（排除 all_random 和 custom，这两个不适合预生成）
 _THEMES = [t for t in THEME_OPTIONS if t not in ("all_random", "custom")]
+
+# 智谱免费档限速约 5 RPM；主题之间留足间隔，避免连续请求触发 429 限流
+_THEME_INTERVAL_SEC = 15
 
 scheduler = BackgroundScheduler()
 
@@ -40,7 +44,15 @@ def _daily_generate_job():
     skip_count = 0
     fail_count = 0
 
-    for theme in _THEMES:
+    for idx, theme in enumerate(_THEMES):
+        # 首个主题不需要等待；之后每个主题之间休眠，把请求均匀错开
+        if idx > 0:
+            log.debug(
+                "限速间隔：休眠 %s 秒后再生成下一主题 idx=%s theme=%s",
+                _THEME_INTERVAL_SEC, idx, theme,
+            )
+            time.sleep(_THEME_INTERVAL_SEC)
+
         db = SessionLocal()
         try:
             # 幂等检查：今天已生成则跳过
