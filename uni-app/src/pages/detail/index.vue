@@ -991,17 +991,24 @@ async function regenerateContent() {
 .article-body { line-height: 1.9; }
 .word-span { font-size: 30rpx; color: #111; line-height: 1.9; }
 /*
- * clickable-word 视觉提示：主色 + 虚线下划线，告诉用户"这个词能点查释义"。
- * 不覆盖到 color=#111，避免用户误以为普通文字。以前这里写成 color:#111 导致
- * 非重点词看起来跟正文一模一样，用户完全不知道能点。
+ * clickable-word 视觉提示：正文颜色 + 灰色虚线下划线，暗示可点查释义，
+ * 但不抢焦点。以前用 --primary 主色导致整段全绿，只有"词汇书里的词"
+ * 才应该是主题色（走 .keyword）。
  */
 .clickable-word {
-  color: var(--primary);
+  color: inherit;
   text-decoration: underline;
   text-decoration-style: dashed;
+  text-decoration-color: var(--outline-variant);
   text-underline-offset: 4rpx;
 }
-.keyword { color: var(--primary); font-weight: 600; }
+.keyword {
+  color: var(--on-primary-container);
+  background: var(--primary-container);
+  padding: 0 4rpx;
+  border-radius: 4rpx;
+  font-weight: 600;
+}
 
 .section-label {
   font-size: 26rpx; color: var(--on-surface-variant);

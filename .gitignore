@@ -3,6 +3,14 @@
 backend/.env
 *.env
 
+# 一次性部署 / 迁移脚本（含明文 SSH / DB 密码 / API key，禁止入库）
+deploy*.py
+verify_deploy.py
+setup_db.py
+setup_duckdns_cron.py
+migrate_data*.py
+debug_mysql.py
+
 # Python
 __pycache__/
 *.pyc

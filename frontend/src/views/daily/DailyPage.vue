@@ -453,22 +453,28 @@ async function regenerateCurrentCustom() {
   color: var(--on-surface);
 }
 
+/*
+ * 交互约定：只有 .keyword 才是主题色（词汇书里的词），
+ * 其它 .clickable-word 保持正文黑 + 中性虚线下划线。
+ */
 .article-body :deep(mark.keyword) {
   background: var(--primary-container);
   color: var(--on-primary-container);
   padding: 1px 3px;
   border-radius: 3px;
   cursor: pointer;
+  font-weight: 600;
 }
 
 .article-body :deep(.clickable-word) {
   cursor: pointer;
-  border-bottom: 1px dashed var(--primary-light);
+  color: inherit;
+  border-bottom: 1px dashed var(--outline-variant);
   transition: background 0.15s;
 }
 
 .article-body :deep(.clickable-word):hover {
-  background: var(--primary-container);
+  background: var(--surface-container);
   border-radius: 2px;
 }
 

@@ -248,15 +248,19 @@ onUnmounted(() => {
 
 .detail-content { padding-bottom: 20px; }
 .card-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; line-height: 1.6; }
+/*
+ * 交互约定：只有 .keyword（词汇书 / 核心词汇）才用主题色；
+ * 普通 clickable-word 保持正文黑，仅用中性虚线暗示可点。
+ */
 .clickable-word {
   cursor: pointer;
-  color: var(--primary);
-  border-bottom: 1.5px dashed var(--primary);
+  color: inherit;
+  border-bottom: 1.5px dashed var(--outline-variant);
   padding: 0 2px;
   transition: all 0.15s;
 }
 .clickable-word:hover {
-  background: var(--primary-container);
+  background: var(--surface-container);
   border-radius: 3px;
 }
 .learned-toggle {
@@ -271,9 +275,9 @@ onUnmounted(() => {
 .learned-icon { font-size: 16px; }
 .learned-text { font-weight: 500; }
 .article-body { font-size: 15px; line-height: 1.8; }
-.article-body :deep(mark.keyword) { background: var(--primary-container); color: var(--on-primary-container); padding: 1px 3px; border-radius: 3px; cursor: pointer; }
-.article-body :deep(.clickable-word) { cursor: pointer; border-bottom: 1px dashed var(--primary-light); transition: background 0.15s; }
-.article-body :deep(.clickable-word):hover { background: var(--primary-container); border-radius: 2px; }
+.article-body :deep(mark.keyword) { background: var(--primary-container); color: var(--on-primary-container); padding: 1px 3px; border-radius: 3px; cursor: pointer; font-weight: 600; }
+.article-body :deep(.clickable-word) { cursor: pointer; color: inherit; border-bottom: 1px dashed var(--outline-variant); transition: background 0.15s; }
+.article-body :deep(.clickable-word):hover { background: var(--surface-container); border-radius: 2px; }
 .words-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
 .word-chip { display: flex; flex-direction: column; padding: 8px 12px; background: var(--surface-container); border-radius: var(--radius-sm); cursor: pointer; }
 .word-chip:hover { background: var(--primary-container); }

@@ -327,7 +327,13 @@ view, text, button, input, textarea, image { box-sizing: border-box; }
 .divider-line { flex: 1; height: 2rpx; background: var(--outline-variant); }
 .divider-text { color: var(--on-surface-variant); font-size: 24rpx; white-space: nowrap; }
 
-/* ===== 文章阅读区 ===== */
+/* ===== 文章阅读区 =====
+ * 交互约定（所有学习材料统一）：
+ *   - .keyword       ：词汇书 / 核心词汇命中，加粗 + 主题色，视觉突出
+ *   - .clickable-word：普通英文单词，颜色继承正文纯黑，仅用虚线下划线暗示可点
+ * 曾经 .clickable-word 也着 --primary 色，导致整段正文一片绿；现只让词汇书里
+ * 的词是主题色，其它单词保持正文黑。
+ */
 .article-body { font-size: 30rpx; line-height: 1.8; color: var(--on-surface); }
 .word-span { display: inline; }
 .keyword {
@@ -338,9 +344,10 @@ view, text, button, input, textarea, image { box-sizing: border-box; }
   font-weight: 600;
 }
 .clickable-word {
-  color: var(--primary);
+  color: inherit;
   text-decoration: underline;
   text-decoration-style: dashed;
+  text-decoration-color: var(--outline-variant);
   text-underline-offset: 4rpx;
 }
 
