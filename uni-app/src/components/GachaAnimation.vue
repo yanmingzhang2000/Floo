@@ -160,8 +160,6 @@ function startAnimation() {
 }
 
 function playSound() {
-  // 小程序端暂不播放音效，H5端可以播放
-  // #ifdef H5
   try {
     const audio = new Audio()
     const soundMap: Record<string, string> = {
@@ -173,7 +171,6 @@ function playSound() {
     audio.volume = 0.5
     audio.play().catch(() => {})
   } catch {}
-  // #endif
 }
 
 function handleTap() {

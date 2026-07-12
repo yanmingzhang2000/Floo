@@ -1,15 +1,14 @@
 /**
- * 跨端存储适配
+ * 存储适配层
  *
- * 为什么要封装：H5 用 localStorage，小程序只能用 uni.getStorageSync。
- * 统一一个 API 出去，业务层就不用判断平台了。
+ * 封装 uni.getStorageSync / setStorageSync，提供统一的 KV 存储接口。
  */
 
 export const storage = {
   get(key: string): string | null {
     try {
       const value = uni.getStorageSync(key)
-      // uni.getStorageSync 在小程序里查不到时返回 ''，统一成 null
+      // uni.getStorageSync 查不到时返回 ''，统一成 null
       return value === '' || value === undefined ? null : String(value)
     } catch (e) {
       console.warn('storage.get failed:', key, e)

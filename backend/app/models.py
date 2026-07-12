@@ -37,11 +37,10 @@ class UserMain(Base):
 
     user_id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(64), unique=True, nullable=False, index=True)
-    password_hash = Column(String(255), nullable=True)  # 微信登录用户无需密码
+    password_hash = Column(String(255), nullable=True)
     nickname = Column(String(64), nullable=False, default="Floo学习者")
     email = Column(String(128), unique=True, nullable=True, index=True)
     avatar_url = Column(String(512), nullable=True)
-    openid = Column(String(128), unique=True, nullable=True, index=True)  # 微信小程序 openid
     register_time = Column(DateTime, default=datetime.utcnow, nullable=False)
     last_login_time = Column(DateTime, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)

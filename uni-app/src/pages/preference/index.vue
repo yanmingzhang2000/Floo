@@ -63,21 +63,6 @@
           <text>{{ saving ? '保存中...' : '保存设置' }}</text>
         </button>
       </view>
-
-      <!-- #ifdef MP-WEIXIN -->
-      <view class="pref-group">
-        <text class="pref-group-title">账号</text>
-        <view class="card pref-card">
-          <view class="pref-row">
-            <text class="pref-label">绑定微信</text>
-            <button class="btn btn-sm btn-success" :disabled="wxLoading" @tap="handleBindWechat">
-              <text>{{ wxLoading ? '绑定中...' : '立即绑定' }}</text>
-            </button>
-          </view>
-        </view>
-        <text class="pref-hint">绑定后可使用微信一键登录</text>
-      </view>
-      <!-- #endif -->
     </view>
   </view>
 </template>
@@ -91,7 +76,6 @@ import { navBackSafe } from '@/utils/router'
 const auth = useAuthStore()
 const loading = ref(true)
 const saving = ref(false)
-const wxLoading = ref(false)
 
 const difficulties = ['easy', 'medium', 'hard']
 const difficultyLabels = ['简单', '中等', '困难']
@@ -132,22 +116,6 @@ onMounted(async () => {
   } catch {}
   loading.value = false
 })
-
-// #ifdef MP-WEIXIN
-async function handleBindWechat() {
-  wxLoading.value = true
-  try {
-    const loginRes = await new Promise<UniApp.LoginRes>((resolve, reject) => {
-      uni.login({ success: resolve, fail: reject })
-    })
-    if (!loginRes.code) { uni.showToast({ title: '获取code失败', icon: 'none' }); return }
-    await userApi.bindWechat(auth.currentUserId, loginRes.code)
-    uni.showToast({ title: '绑定成功', icon: 'success' })
-  } catch (e: any) {
-    uni.showToast({ title: e.data?.detail || '绑定失败', icon: 'none' })
-  } finally { wxLoading.value = false }
-}
-// #endif
 </script>
 
 <style scoped>

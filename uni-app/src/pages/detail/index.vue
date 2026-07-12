@@ -141,9 +141,7 @@
               </view>
             </view>
 
-            <!-- #ifdef H5 -->
             <text class="pager-hint">⌨️ 提示：按 ← / → 键翻页</text>
-            <!-- #endif -->
           </template>
         </template>
       </view>
@@ -563,8 +561,7 @@ watch(
   { immediate: false },
 )
 
-// ---- 键盘快捷键：H5 才装（小程序端无键盘）----
-// #ifdef H5
+// ---- 键盘快捷键 ----
 function onKeydown(e: KeyboardEvent) {
   if (wordPopup.value) {
     console.debug('[book] onKeydown: 弹窗打开中，忽略方向键')
@@ -583,20 +580,15 @@ function onKeydown(e: KeyboardEvent) {
     goNextSegment()
   }
 }
-// #endif
 
 function bindKeyboardShortcuts() {
-  // #ifdef H5
   console.debug('[book] bindKeyboardShortcuts')
   document.addEventListener('keydown', onKeydown)
-  // #endif
 }
 
 function unbindKeyboardShortcuts() {
-  // #ifdef H5
   console.debug('[book] unbindKeyboardShortcuts')
   document.removeEventListener('keydown', onKeydown)
-  // #endif
 }
 
 function startAutoLearnTimer() {

@@ -14,19 +14,6 @@
         <text>{{ error }}</text>
       </view>
 
-      <!-- #ifdef MP-WEIXIN -->
-      <view class="wx-section">
-        <button class="btn-wx" :disabled="loading" @tap="handleWechatLogin">
-          <text>微信一键登录</text>
-        </button>
-        <view class="divider">
-          <view class="divider-line"></view>
-          <text class="divider-text">其他方式</text>
-          <view class="divider-line"></view>
-        </view>
-      </view>
-      <!-- #endif -->
-
       <view class="form-section">
         <view class="input-group">
           <input v-model="form.username" type="text" placeholder="用户名" placeholder-class="input-placeholder" class="form-input" />
@@ -90,23 +77,6 @@ async function handleSubmit() {
   }
   loading.value = false
 }
-
-// #ifdef MP-WEIXIN
-async function handleWechatLogin() {
-  loading.value = true; error.value = ''
-  try {
-    const loginRes = await new Promise<UniApp.LoginRes>((resolve, reject) => {
-      uni.login({ success: resolve, fail: reject })
-    })
-    const { data } = await userApi.wechatLogin(loginRes.code)
-    auth.setSession(data.user_id, data.username)
-    navReLaunch('/pages/home/index')
-  } catch (e: any) {
-    error.value = e.data?.detail || e.errMsg || '微信登录失败'
-  }
-  loading.value = false
-}
-// #endif
 </script>
 
 <style scoped>

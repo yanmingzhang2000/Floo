@@ -1,8 +1,7 @@
 /**
  * 网络请求适配层
  * 
- * 为什么要封装：axios 只能在 H5 跑，小程序必须用 uni.request。
- * 这里统一封装一个类 axios 的接口，内部根据平台自动切换。
+ * 基于 uni.request 的 HTTP 客户端，提供类 axios 接口。
  */
 
 import { storage } from './storage'

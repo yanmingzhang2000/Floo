@@ -26,15 +26,5 @@
       }
     }
   },
-  "mp-weixin": {
-    "appid": "",
-    "setting": {
-      "urlCheck": false,
-      "es6": true,
-      "minified": true
-    },
-    "usingComponents": true,
-    "permission": {},
-    "requiredPrivateInfos": []
-  }
+
 }

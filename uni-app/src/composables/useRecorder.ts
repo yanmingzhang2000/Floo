@@ -1,14 +1,12 @@
 /**
- * 录音功能封装 - uni-app 版本
- * H5 用 MediaRecorder，小程序用 uni.getRecorderManager
+ * 录音功能封装 - H5 MediaRecorder
  */
 import { ref } from 'vue'
 
 export function useRecorder() {
   const isRecording = ref(false)
   const audioBase64 = ref('')
-  
-  // #ifdef H5
+
   let mediaRecorder: MediaRecorder | null = null
   let audioChunks: Blob[] = []
 
@@ -139,52 +137,6 @@ export function useRecorder() {
     }
     return btoa(binary)
   }
-  // #endif
-
-  // #ifdef MP-WEIXIN
-  const recorderManager = uni.getRecorderManager()
-  let tempFilePath = ''
-
-  async function startRecording(): Promise<boolean> {
-    return new Promise((resolve) => {
-      recorderManager.onStart(() => {
-        isRecording.value = true
-        resolve(true)
-      })
-      recorderManager.onError(() => {
-        resolve(false)
-      })
-      recorderManager.start({
-        format: 'mp3',
-        sampleRate: 16000,
-        numberOfChannels: 1,
-      })
-    })
-  }
-
-  async function stopRecording(): Promise<string> {
-    return new Promise((resolve) => {
-      recorderManager.onStop((res) => {
-        tempFilePath = res.tempFilePath
-        isRecording.value = false
-        // 小程序录音文件需要上传到服务器，这里返回临时路径
-        // 后端需要支持接收文件上传
-        uni.getFileSystemManager().readFile({
-          filePath: tempFilePath,
-          encoding: 'base64',
-          success: (fileRes) => {
-            audioBase64.value = fileRes.data as string
-            resolve(fileRes.data as string)
-          },
-          fail: () => {
-            resolve('')
-          },
-        })
-      })
-      recorderManager.stop()
-    })
-  }
-  // #endif
 
   return {
     isRecording,

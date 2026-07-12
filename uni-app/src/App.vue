@@ -4,7 +4,6 @@ import { storage } from '@/utils/storage'
 
 onLaunch(() => {
   // 全局登录态检查：未登录跳登录页
-  // 注意：reLaunch 不能在小程序的 onLaunch 同步调用，包到 setTimeout 里
   const userId = storage.get('user_id')
   const expiry = storage.getNumber('session_expiry')
   if (expiry && Date.now() > expiry) {

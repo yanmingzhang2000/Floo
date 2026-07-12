@@ -25,11 +25,6 @@ class UserLoginRequest(BaseModel):
     password: str
 
 
-class WechatLoginRequest(BaseModel):
-    """微信小程序登录请求。"""
-    code: str  # wx.login() 获取的临时登录凭证
-
-
 class UserOut(BaseModel):
     """用户基本信息输出。"""
     model_config = ConfigDict(from_attributes=True)

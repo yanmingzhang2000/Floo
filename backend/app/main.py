@@ -34,22 +34,6 @@ def _patch_missing_columns():
     from sqlalchemy import text
     db = SessionLocal()
     try:
-        # 检查 openid 列是否存在
-        result = db.execute(text(
-            "SELECT COUNT(*) FROM information_schema.COLUMNS "
-            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user_main' AND COLUMN_NAME = 'openid'"
-        )).scalar()
-        if result == 0:
-            log.info("检测到 user_main 缺少 openid 列，开始补列")
-            db.execute(text(
-                "ALTER TABLE user_main ADD COLUMN openid VARCHAR(128) NULL UNIQUE, "
-                "ADD INDEX ix_user_main_openid (openid)"
-            ))
-            db.commit()
-            log.info("openid 列已补齐")
-        else:
-            log.debug("user_main.openid 列已存在，跳过补列")
-
         # 检查 user_favorite_words.is_mastered 列是否存在
         result2 = db.execute(text(
             "SELECT COUNT(*) FROM information_schema.COLUMNS "

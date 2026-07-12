@@ -6,10 +6,6 @@ export const userApi = {
     api.post('/api/user/login', data),
   register: (data: { username: string; password: string }) =>
     api.post('/api/user/register', data),
-  wechatLogin: (code: string) =>
-    api.post('/api/user/wechat-login', { code }),
-  bindWechat: (userId: number, code: string) =>
-    api.post(`/api/user/bind-wechat?user_id=${userId}`, { code }),
   getPreference: (userId: number) =>
     api.get(`/api/user/${userId}/preference`),
   updatePreference: (userId: number, data: { difficulty_level?: string; theme_type?: string; daily_goal_minutes?: number }) =>
