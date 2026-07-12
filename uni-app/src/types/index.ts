@@ -96,13 +96,7 @@ export interface DictationHistory {
 export interface DictationHistoryDetail extends DictationHistory {
   original_text: string
   user_input: string
-  ai_feedback?: {
-    score: number
-    summary: string
-    diffs: { type: string; expected?: string; actual?: string; sentence?: string; reason?: string }[]
-    error_words: string[]
-    suggestions: string[]
-  }
+  ai_feedback?: DictationFeedback
   error_words: string[]
 }
 

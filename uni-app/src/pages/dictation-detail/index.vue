@@ -70,16 +70,20 @@
         </view>
       </view>
 
-      <!-- 原文 -->
+      <!-- 原文与默写对比 -->
       <view class="card">
-        <text class="section-label">原文</text>
-        <text class="text-block">{{ detail.original_text }}</text>
-      </view>
-
-      <!-- 我的默写 -->
-      <view class="card">
-        <text class="section-label">我的默写</text>
-        <text class="text-block user-text">{{ detail.user_input }}</text>
+        <text class="section-label">原文与默写对比</text>
+        <view class="compare-container">
+          <view class="compare-row">
+            <text class="compare-label">原文</text>
+            <text class="compare-text original-text">{{ detail.original_text }}</text>
+          </view>
+          <view class="compare-divider"></view>
+          <view class="compare-row">
+            <text class="compare-label">我的默写</text>
+            <text class="compare-text user-text">{{ detail.user_input }}</text>
+          </view>
+        </view>
       </view>
     </view>
 
@@ -195,4 +199,36 @@ function formatDate(dateStr: string) {
 
 .text-block { font-size: 28rpx; line-height: 1.8; display: block; white-space: pre-wrap; }
 .user-text { color: var(--on-surface); }
+
+/* 对比视图 */
+.compare-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+.compare-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+.compare-label {
+  font-size: 22rpx;
+  color: var(--on-surface-variant);
+  font-weight: 600;
+}
+.compare-text {
+  font-size: 28rpx;
+  line-height: 1.8;
+  display: block;
+  white-space: pre-wrap;
+  padding: 16rpx;
+  border-radius: 12rpx;
+}
+.original-text {
+  background: var(--surface-container);
+}
+.compare-divider {
+  height: 2rpx;
+  background: var(--outline-variant);
+}
 </style>
