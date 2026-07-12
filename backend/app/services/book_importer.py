@@ -117,7 +117,7 @@ def parse_book_meta(toc_html: str) -> BookMeta:
 
     Why：BookSeries 需要一个能展示给用户的中英文名+简介，从目录页 <h1> 和
     <div id="infoShort"> 抽取。tingroom 的书名格式通常是 "英文名+中文名" 混在一起，
-    比如 "Rich Dad Poor Dad穷爸爸富爸爸"，这里粗略拆分即可。
+    比如 "Rich Dad Poor Dad富爸爸穷爸爸"，这里粗略拆分即可。
     """
     soup = BeautifulSoup(toc_html, "lxml")
 
@@ -161,7 +161,7 @@ def parse_book_meta(toc_html: str) -> BookMeta:
 
 
 def _split_bilingual_title(raw: str) -> tuple[str, Optional[str]]:
-    """把 "Rich Dad Poor Dad穷爸爸富爸爸" 拆成 ("Rich Dad Poor Dad", "穷爸爸富爸爸")。
+    """把 "Rich Dad Poor Dad富爸爸穷爸爸" 拆成 ("Rich Dad Poor Dad", "富爸爸穷爸爸")。
 
     规则：从右向左扫描，找到第一个非中文字符的位置作为切点。
     """
