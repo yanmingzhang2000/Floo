@@ -167,12 +167,24 @@ export const bookApi = {
   // 章节列表（未授权 403）
   getChapters: (seriesId: number, userId: number) =>
     api.get(`/api/book/series/${seriesId}/chapters`, { params: { user_id: userId } }),
-  // 章节详情：mode=whole 返回单个 content_id；segmented 返回列表
-  getChapter: (chapterId: number, userId: number, mode: 'whole' | 'segmented' = 'whole') =>
-    api.get(`/api/book/chapter/${chapterId}`, { params: { user_id: userId, mode } }),
-  // 分段列表（用于章节展开时查看）
+  // 分段列表（含字符偏移，供 detail 页画分割线）
   getSegments: (chapterId: number, userId: number) =>
     api.get(`/api/book/chapter/${chapterId}/segments`, { params: { user_id: userId } }),
+  // 反查：某 content_id 是不是书籍章节，并返回该章的 segment 边界
+  getContentContext: (contentId: number, userId: number) =>
+    api.get(`/api/book/content/${contentId}/context`, { params: { user_id: userId } }),
+  // 按需拉整章译文（首次触发 LLM，耗时 5-10s；之后缓存秒开）
+  getChapterTranslation: (chapterId: number, userId: number) =>
+    api.post(`/api/book/chapter/${chapterId}/translation`, null, {
+      params: { user_id: userId },
+      timeout: 120000,
+    }),
+  // 按需给指定段准备默写素材，返回 content_id 供跳转 dictation 页
+  prepareSegmentDictation: (segmentId: number, userId: number) =>
+    api.post(`/api/book/segment/${segmentId}/prepare-dictation`, null, {
+      params: { user_id: userId },
+      timeout: 120000,
+    }),
 }
 
 // ===== 提醒 =====

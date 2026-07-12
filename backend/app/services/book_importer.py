@@ -40,9 +40,10 @@ from app.models import (
 
 log = logging.getLogger(__name__)
 
-# 单章分段目标词数：语言学习节奏经验值，太长注意力涣散、太短失去上下文
-SEGMENT_TARGET_WORDS = 450
-SEGMENT_MIN_WORDS = 300  # 段末不足此阈值则合并到上一段，避免出现半句零头
+# 单章分段目标词数：100-150 词一段（~1-2 分钟默写节奏）
+# 之前用 450 词切太长，"选段默写"的心理门槛太高
+SEGMENT_TARGET_WORDS = 125
+SEGMENT_MIN_WORDS = 80  # 段末不足此阈值则合并到上一段，避免出现半句零头
 # 抓取节流：连续请求间隔（秒），出于对来源站点的尊重
 FETCH_INTERVAL_SEC = 0.5
 # 请求 UA 加上项目标识，方便对方站点判断流量来源
@@ -321,54 +322,169 @@ def _parse_lexicon(wz_jx: Tag) -> list[LexiconItem]:
 # =========================================================================
 
 def split_into_segments(text: str, target_words: int = SEGMENT_TARGET_WORDS) -> list[str]:
-    """把整章正文按目标词数切成若干段，尽量在段落 / 句子边界切。
+    """兼容旧接口：只返回段落文本列表，不带偏移。
+
+    实际逻辑走 split_into_segments_with_offset，然后剥离 offset 字段。
+    新代码请直接用 split_into_segments_with_offset。
+    """
+    return [seg for seg, _s, _e in split_into_segments_with_offset(text, target_words)]
+
+
+def split_into_segments_with_offset(
+    text: str,
+    target_words: int = SEGMENT_TARGET_WORDS,
+) -> list[tuple[str, int, int]]:
+    """把整章正文按目标词数切成若干段，返回 (段文本, 起始字符, 结束字符)。
+
+    偏移量语义：`text[start:end] == segment_text` 恒成立，用于 detail 页在整章
+    正文上画分割线。
 
     切分策略：
-      1. 先按空行拆成 paragraph 列表
-      2. 累计 paragraph 直到词数超过 target_words，则收尾
-      3. 若单个 paragraph 超过 1.5 * target_words，则内部按句号切
-      4. 最后一段词数不足 SEGMENT_MIN_WORDS 时合并到上一段，避免"零头"
+      1. 按 `\\n\\n` 拆自然段并记录每段在整章的字符偏移
+      2. 累计自然段直到词数达到 target_words，则收尾
+      3. 单个自然段超过 1.5 * target_words 时按句号切（继承段内偏移）
+      4. 最后一段词数不足 SEGMENT_MIN_WORDS 时合并到上一段
     """
     if not text.strip():
-        log.debug("split_into_segments 空文本，返回空")
+        log.debug("split_into_segments_with_offset 空文本，返回空")
         return []
 
-    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
-    segments: list[list[str]] = [[]]
+    # 步骤 1：切自然段并记录每段在原文中的起止位置
+    paragraphs = _iter_paragraphs_with_offset(text)
+    if not paragraphs:
+        return []
+
+    # 步骤 2：累加自然段成 segment，超长自然段内部再切
+    # 每个 segment 用 (start_char, end_char, word_count) 表示
+    segments: list[list[tuple[int, int]]] = [[]]  # 每段是 [(sub_start, sub_end), ...]
     current_words = 0
 
-    for para in paragraphs:
-        para_words = _count_words(para)
+    for para_start, para_end in paragraphs:
+        para_text = text[para_start:para_end]
+        para_words = _count_words(para_text)
 
         if para_words > target_words * 1.5:
-            # 段太长，内部按句号切
-            log.debug("split_into_segments 拆超长段 words=%s", para_words)
-            for chunk in _split_long_paragraph(para, target_words):
-                chunk_words = _count_words(chunk)
-                if _should_start_new_segment(current_words, chunk_words, target_words) and segments[-1]:
+            # 段太长，内部按句号切；每个 sub-chunk 得到自己的偏移
+            log.debug("split_into_segments_with_offset 拆超长自然段 words=%s", para_words)
+            for sub_start, sub_end in _split_long_paragraph_with_offset(
+                text, para_start, para_end, target_words
+            ):
+                sub_words = _count_words(text[sub_start:sub_end])
+                if _should_start_new_segment(current_words, sub_words, target_words) and segments[-1]:
                     segments.append([])
                     current_words = 0
-                segments[-1].append(chunk)
-                current_words += chunk_words
+                segments[-1].append((sub_start, sub_end))
+                current_words += sub_words
             continue
 
-        # 判断是否开新段：既要看能不能装下，也要防止当前段太瘦弱就切
+        # 常规段：能装下就装，装不下开新段
         if _should_start_new_segment(current_words, para_words, target_words) and segments[-1]:
-            log.debug("split_into_segments 换段 current=%s add=%s", current_words, para_words)
+            log.debug(
+                "split_into_segments_with_offset 换段 current=%s add=%s",
+                current_words, para_words,
+            )
             segments.append([])
             current_words = 0
-        segments[-1].append(para)
+        segments[-1].append((para_start, para_end))
         current_words += para_words
 
-    # 尾段合并：如果最后一段不足门槛，并回上一段
-    if len(segments) >= 2 and _count_words("\n\n".join(segments[-1])) < SEGMENT_MIN_WORDS:
-        log.debug("split_into_segments 尾段过短，合并到上一段")
-        tail = segments.pop()
-        segments[-1].extend(tail)
+    # 步骤 3：尾段合并
+    if len(segments) >= 2:
+        tail_words = sum(_count_words(text[s:e]) for s, e in segments[-1])
+        if tail_words < SEGMENT_MIN_WORDS:
+            log.debug("split_into_segments_with_offset 尾段过短(%s)，合并到上一段", tail_words)
+            tail = segments.pop()
+            segments[-1].extend(tail)
 
-    result = ["\n\n".join(seg) for seg in segments if seg]
-    log.debug("split_into_segments 完成 段数=%s", len(result))
+    # 步骤 4：把每段的多个 (sub_start, sub_end) 拍平成一个整体切片
+    # 因为 splits 里的 sub 段落是按原文顺序追加的，所以 min(start) 和 max(end) 即可
+    result: list[tuple[str, int, int]] = []
+    for seg in segments:
+        if not seg:
+            continue
+        seg_start = seg[0][0]
+        seg_end = seg[-1][1]
+        seg_text = text[seg_start:seg_end]
+        result.append((seg_text, seg_start, seg_end))
+
+    log.debug("split_into_segments_with_offset 完成 段数=%s", len(result))
     return result
+
+
+def _iter_paragraphs_with_offset(text: str) -> list[tuple[int, int]]:
+    """把 text 按 `\\n\\n` 切成自然段，返回每段在原文中的 [start, end) 位置。
+
+    Why 用正则不用 .split：需要保留 offset，split 会丢失分隔符位置信息。
+    """
+    result: list[tuple[int, int]] = []
+    i = 0
+    n = len(text)
+    while i < n:
+        # 跳过连续空白直到段落开头
+        while i < n and text[i].isspace():
+            i += 1
+        if i >= n:
+            break
+        start = i
+        # 找到下一个 "\n\n"（含更多换行）或文末
+        end = text.find("\n\n", start)
+        if end == -1:
+            end = n
+        # 反向 trim 结尾空白，保证 text[start:end] 无末尾换行
+        real_end = end
+        while real_end > start and text[real_end - 1].isspace():
+            real_end -= 1
+        if real_end > start:
+            result.append((start, real_end))
+        i = end + 2 if end < n else n
+    return result
+
+
+def _split_long_paragraph_with_offset(
+    text: str,
+    para_start: int,
+    para_end: int,
+    target_words: int,
+) -> list[tuple[int, int]]:
+    """把超长自然段按句号切成若干子块，返回每块在原文中的 [start, end)。
+
+    简单实现：按 `.!?` + 空白 分句，累加到 target_words 就收尾。
+    """
+    para = text[para_start:para_end]
+    # 找出所有句子边界（相对 para 的偏移）
+    sentence_boundaries: list[int] = []
+    for m in re.finditer(r"(?<=[.!?])\s+", para):
+        sentence_boundaries.append(m.end())
+    # 保证最后一句能收进来
+    if not sentence_boundaries or sentence_boundaries[-1] < len(para):
+        sentence_boundaries.append(len(para))
+
+    chunks: list[tuple[int, int]] = []
+    chunk_start = 0
+    current_words = 0
+    for boundary in sentence_boundaries:
+        sent = para[chunk_start:boundary]
+        w = _count_words(sent)
+        current_words += w
+        if current_words >= target_words:
+            # 收尾
+            # trim 尾部空白，保证 text[real_end] 是有意义字符
+            real_end = boundary
+            while real_end > chunk_start and para[real_end - 1].isspace():
+                real_end -= 1
+            chunks.append((para_start + chunk_start, para_start + real_end))
+            chunk_start = boundary
+            current_words = 0
+
+    # 收尾剩余
+    if chunk_start < len(para):
+        real_end = len(para)
+        while real_end > chunk_start and para[real_end - 1].isspace():
+            real_end -= 1
+        if real_end > chunk_start:
+            chunks.append((para_start + chunk_start, para_start + real_end))
+
+    return chunks
 
 
 def _should_start_new_segment(current_words: int, add_words: int, target: int) -> bool:
@@ -389,21 +505,6 @@ def _should_start_new_segment(current_words: int, add_words: int, target: int) -
 def _count_words(text: str) -> int:
     """简单按空格切词。对英文足够精确，不用 NLTK 减少依赖。"""
     return len(text.split())
-
-
-def _split_long_paragraph(para: str, target_words: int) -> list[str]:
-    """把超长段落按句号切成 ~target_words 的小块。"""
-    sentences = re.split(r"(?<=[.!?])\s+", para)
-    chunks: list[list[str]] = [[]]
-    current = 0
-    for sent in sentences:
-        w = _count_words(sent)
-        if current + w > target_words and chunks[-1]:
-            chunks.append([])
-            current = 0
-        chunks[-1].append(sent)
-        current += w
-    return [" ".join(c) for c in chunks if c]
 
 
 # =========================================================================
@@ -587,9 +688,9 @@ def _import_one_chapter(db: Session, series: BookSeries, meta: ChapterMeta) -> i
     db.flush()
     log.debug("_import_one_chapter chapter_id=%s order_no=%s", chapter.chapter_id, meta.order_no)
 
-    # 3. 分段 learning_contents + BookChapterSegment
-    segments = split_into_segments(parsed.body_text)
-    for seg_no, seg_text in enumerate(segments):
+    # 3. 分段 learning_contents + BookChapterSegment（带字符偏移）
+    segments = split_into_segments_with_offset(parsed.body_text)
+    for seg_no, (seg_text, seg_start, seg_end) in enumerate(segments):
         # 分段词汇：只保留在该段落中出现的词，避免整章词汇塞给每一段导致噪音
         seg_lexicon = _filter_lexicon_for_segment(key_words_payload, seg_text)
         seg_content = LearningContent(
@@ -611,12 +712,121 @@ def _import_one_chapter(db: Session, series: BookSeries, meta: ChapterMeta) -> i
             order_no=seg_no,
             content_id=seg_content.content_id,
             word_count=_count_words(seg_text),
+            start_char=seg_start,
+            end_char=seg_end,
         )
         db.add(seg_row)
 
     db.commit()
     log.debug("_import_one_chapter 章节落库完成 order_no=%s segments=%s", meta.order_no, len(segments))
     return len(segments)
+
+
+def resegment_series(
+    db: Session,
+    series_id: int,
+    target_words: int = SEGMENT_TARGET_WORDS,
+) -> dict:
+    """对已导入的书籍重新切分所有章节。
+
+    Why 单独函数：分段策略调整（比如 450 → 125 词）时不想重抓网络，
+    整章 content_text 已经在 learning_contents 里，直接读出来重切即可。
+
+    危险动作：会删除该 series 下所有 book_chapter_segment 记录 +
+    对应的 segment learning_contents 行。
+    整章级 learning_content（book_chapter.content_id 指向的）保留不动。
+
+    返回 {'deleted': int, 'created': int, 'chapters': int}。
+    """
+    from app.models import BookChapter, LearningContent
+
+    series = db.query(BookSeries).filter(BookSeries.series_id == series_id).first()
+    if not series:
+        raise ValueError(f"series_id={series_id} not found")
+
+    chapters = (
+        db.query(BookChapter)
+        .filter(BookChapter.series_id == series_id)
+        .order_by(BookChapter.order_no.asc())
+        .all()
+    )
+    log.debug("resegment_series 待处理 chapters=%s target_words=%s", len(chapters), target_words)
+
+    total_deleted = 0
+    total_created = 0
+
+    for chapter in chapters:
+        # 3.1 读整章原文 + 整章的 key_words（用来给分段筛词汇）
+        whole = (
+            db.query(LearningContent)
+            .filter(LearningContent.content_id == chapter.content_id)
+            .first()
+        )
+        if not whole:
+            log.warning("resegment_series 章节整章 content 缺失 chapter_id=%s", chapter.chapter_id)
+            continue
+
+        key_words_raw = str(whole.key_words) if whole.key_words is not None else ""
+        try:
+            key_words_payload = json.loads(key_words_raw) if key_words_raw else []
+        except (json.JSONDecodeError, TypeError):
+            log.debug("resegment_series 词汇 JSON 解析失败 chapter=%s", chapter.chapter_id)
+            key_words_payload = []
+
+        # 3.2 找出旧分段的 content_id 列表 → 删 segments → 删对应 learning_contents
+        old_segments = (
+            db.query(BookChapterSegment)
+            .filter(BookChapterSegment.chapter_id == chapter.chapter_id)
+            .all()
+        )
+        old_content_ids = [s.content_id for s in old_segments]
+        for seg in old_segments:
+            db.delete(seg)
+        if old_content_ids:
+            db.query(LearningContent).filter(
+                LearningContent.content_id.in_(old_content_ids)
+            ).delete(synchronize_session=False)
+        total_deleted += len(old_segments)
+        log.debug("resegment_series 章节旧段删除 chapter=%s count=%s", chapter.chapter_id, len(old_segments))
+
+        # 3.3 按新参数重切
+        chapter_text = str(whole.content_text or "")
+        segments = split_into_segments_with_offset(chapter_text, target_words)
+        for seg_no, (seg_text, seg_start, seg_end) in enumerate(segments):
+            seg_lexicon = _filter_lexicon_for_segment(key_words_payload, seg_text)
+            seg_content = LearningContent(
+                creator_type=0,
+                user_id=None,
+                difficulty_level="hard",
+                theme_type="book_richdad",
+                title=f"{series.name} - {chapter.title} - 段 {seg_no + 1}",
+                content_text=seg_text,
+                translation=None,
+                key_words=json.dumps(seg_lexicon, ensure_ascii=False),
+                content_type="article",
+            )
+            db.add(seg_content)
+            db.flush()
+
+            seg_row = BookChapterSegment(
+                chapter_id=chapter.chapter_id,
+                order_no=seg_no,
+                content_id=seg_content.content_id,
+                word_count=_count_words(seg_text),
+                start_char=seg_start,
+                end_char=seg_end,
+            )
+            db.add(seg_row)
+        total_created += len(segments)
+        log.debug("resegment_series 章节新段落库 chapter=%s count=%s", chapter.chapter_id, len(segments))
+
+    db.commit()
+    log.debug("resegment_series 完成 deleted=%s created=%s", total_deleted, total_created)
+    return {
+        "deleted": total_deleted,
+        "created": total_created,
+        "chapters": len(chapters),
+    }
 
 
 def _filter_lexicon_for_segment(all_words: list[dict], seg_text: str) -> list[dict]:

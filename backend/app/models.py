@@ -450,6 +450,11 @@ class BookChapterSegment(Base):
     order_no = Column(Integer, nullable=False)
     content_id = Column(Integer, ForeignKey("learning_contents.content_id"), nullable=False)
     word_count = Column(Integer, default=0, nullable=False)
+    # 该段在整章 content_text 中的字符起止位置（含起、不含止），
+    # detail 页据此在整章文本上画分割线。
+    # 允许 null 兼容旧数据（早期导入未记录偏移）。
+    start_char = Column(Integer, nullable=True)
+    end_char = Column(Integer, nullable=True)
 
 
 class UserBookAccess(Base):

@@ -65,6 +65,24 @@ def _patch_missing_columns():
         else:
             log.debug("user_favorite_words.is_mastered 列已存在，跳过补列")
 
+        # 检查 book_chapter_segment 是否有 start_char/end_char 列
+        # 早期导入的 126 段没有偏移量，重切分接口需要写入这两列
+        result_seg = db.execute(text(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'book_chapter_segment' AND COLUMN_NAME = 'start_char'"
+        )).scalar()
+        if result_seg == 0:
+            log.info("检测到 book_chapter_segment 缺少 start_char/end_char 列，开始补列")
+            db.execute(text(
+                "ALTER TABLE book_chapter_segment "
+                "ADD COLUMN start_char INT NULL, "
+                "ADD COLUMN end_char INT NULL"
+            ))
+            db.commit()
+            log.info("book_chapter_segment 偏移量列已补齐")
+        else:
+            log.debug("book_chapter_segment.start_char 列已存在，跳过补列")
+
         # 检查 daily_generation_limit.limit_type 列是否存在
         result3 = db.execute(text(
             "SELECT COUNT(*) FROM information_schema.COLUMNS "

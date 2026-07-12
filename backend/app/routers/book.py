@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.repositories import book_repo, content_repo
-from app.services import book_importer
+from app.services import book_importer, book_translator
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/book", tags=["book"])
@@ -55,6 +55,9 @@ class BookSegmentOut(BaseModel):
     order_no: int
     content_id: int
     word_count: int
+    # 该段在整章 content_text 中的字符起止位置（新字段，旧数据可能为 null）
+    start_char: Optional[int] = None
+    end_char: Optional[int] = None
 
 
 class ChapterDetailOut(BaseModel):
@@ -225,7 +228,7 @@ def get_chapter_detail(
 
 @router.get("/chapter/{chapter_id}/segments")
 def list_chapter_segments(chapter_id: int, user_id: int, db: Session = Depends(get_db)) -> dict:
-    """列出章节的所有分段（供 chapters 页展开时使用）。"""
+    """列出章节的所有分段（供 detail 页在整章上画分割线）。"""
     chapter = book_repo.get_chapter(db, chapter_id)
     if not chapter:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "chapter not found")
@@ -238,6 +241,8 @@ def list_chapter_segments(chapter_id: int, user_id: int, db: Session = Depends(g
             order_no=s.order_no,  # type: ignore[arg-type]
             content_id=s.content_id,  # type: ignore[arg-type]
             word_count=s.word_count,  # type: ignore[arg-type]
+            start_char=s.start_char,  # type: ignore[arg-type]
+            end_char=s.end_char,  # type: ignore[arg-type]
         ).model_dump()
         for s in segments
     ]
@@ -245,6 +250,103 @@ def list_chapter_segments(chapter_id: int, user_id: int, db: Session = Depends(g
         "chapter_id": chapter_id,
         "title": chapter.title,
         "segments": items,
+    }
+
+
+# =========================================================================
+# 用户端：按需译文 + 段默写准备 + content 反查
+# =========================================================================
+
+@router.get("/content/{content_id}/context")
+def get_content_context(content_id: int, user_id: int, db: Session = Depends(get_db)) -> dict:
+    """detail 页反查：给一个 content_id，判断它是不是某书籍整章。
+
+    Why 单独接口而不是把字段塞进 /api/daily/content：
+      - daily/content 服务所有内容，不该背负书籍逻辑
+      - 前端可以并行请求，不影响主 content 加载
+
+    返回：
+      - is_book_chapter=false：普通 daily 内容，前端不做特殊处理
+      - is_book_chapter=true：附带 chapter_id + 该章 segments 列表（含 offset）
+    """
+    chapter = book_repo.find_chapter_by_content_id(db, content_id)
+    if not chapter:
+        log.debug("get_content_context content=%s 非书籍章节", content_id)
+        return {"is_book_chapter": False}
+
+    _ensure_user_access(db, user_id, int(chapter.series_id))  # type: ignore[arg-type]
+
+    segments = book_repo.list_segments(db, int(chapter.chapter_id))  # type: ignore[arg-type]
+    series = book_repo.get_series(db, int(chapter.series_id))  # type: ignore[arg-type]
+
+    return {
+        "is_book_chapter": True,
+        "chapter_id": chapter.chapter_id,
+        "series_id": chapter.series_id,
+        "series_name": series.name if series else None,
+        "chapter_title": chapter.title,
+        "segments": [
+            BookSegmentOut(
+                segment_id=s.segment_id,  # type: ignore[arg-type]
+                order_no=s.order_no,  # type: ignore[arg-type]
+                content_id=s.content_id,  # type: ignore[arg-type]
+                word_count=s.word_count,  # type: ignore[arg-type]
+                start_char=s.start_char,  # type: ignore[arg-type]
+                end_char=s.end_char,  # type: ignore[arg-type]
+            ).model_dump()
+            for s in segments
+        ],
+    }
+
+
+@router.post("/chapter/{chapter_id}/translation")
+async def get_chapter_translation(
+    chapter_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+) -> dict:
+    """按需拉整章译文。首次调用触发 LLM 翻译（5-10s），之后缓存命中秒开。"""
+    chapter = book_repo.get_chapter(db, chapter_id)
+    if not chapter:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "chapter not found")
+    _ensure_user_access(db, user_id, int(chapter.series_id))  # type: ignore[arg-type]
+
+    translation = await book_translator.ensure_chapter_translation(db, chapter_id)
+    if not translation:
+        log.debug("get_chapter_translation LLM 失败 chapter=%s", chapter_id)
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "translation service unavailable, please retry")
+    return {"chapter_id": chapter_id, "translation": translation}
+
+
+@router.post("/segment/{segment_id}/prepare-dictation")
+async def prepare_segment_dictation(
+    segment_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+) -> dict:
+    """按需给指定段准备默写素材：确保 translation + 词汇齐全。
+
+    首次触发 LLM 生成，之后缓存命中。返回该段对应的 content_id，
+    前端直接跳 /pages/dictation/index?id={content_id} 走现有默写流程。
+    """
+    segment = book_repo.get_segment(db, segment_id)
+    if not segment:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "segment not found")
+
+    chapter = book_repo.get_chapter(db, int(segment.chapter_id))  # type: ignore[arg-type]
+    if not chapter:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "chapter not found")
+    _ensure_user_access(db, user_id, int(chapter.series_id))  # type: ignore[arg-type]
+
+    seg_content = await book_translator.ensure_segment_dictation_ready(db, segment_id)
+    if not seg_content:
+        log.debug("prepare_segment_dictation LLM 失败 segment=%s", segment_id)
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "translation service unavailable, please retry")
+
+    return {
+        "segment_id": segment_id,
+        "content_id": seg_content.content_id,
+        "ready": True,
     }
 
 
@@ -278,6 +380,30 @@ def admin_import_book(payload: ImportRequest, db: Session = Depends(get_db)) -> 
         total_segments=summary.total_segments,
         failed_chapters=summary.failed_chapters,
     )
+
+
+class ResegmentRequest(BaseModel):
+    series_id: int
+    target_words: int = 125
+
+
+@router.post("/admin/resegment", dependencies=[Depends(require_admin)])
+def admin_resegment(payload: ResegmentRequest, db: Session = Depends(get_db)) -> dict:
+    """对已导入的书籍按新参数重新切分。
+
+    危险动作：删除该 series 下所有旧 segment + 对应的 learning_content 行。
+    整章 content_text 不重抓、不重生成整章 learning_content。
+    """
+    log.debug("admin_resegment 开始 series=%s target=%s", payload.series_id, payload.target_words)
+    try:
+        summary = book_importer.resegment_series(db, payload.series_id, payload.target_words)
+    except ValueError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+    except Exception as e:
+        log.warning("admin_resegment 失败 err=%s", e)
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, f"resegment failed: {e}")
+
+    return {"series_id": payload.series_id, **summary}
 
 
 @router.post("/admin/grant", dependencies=[Depends(require_admin)])

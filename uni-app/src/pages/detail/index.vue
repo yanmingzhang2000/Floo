@@ -20,7 +20,8 @@
       <!-- 文章内容 -->
         <view class="card detail-card">
         <view class="detail-meta">
-          <text class="tag tag-primary">{{ content.content_date }}</text>
+          <text v-if="!isBookChapter" class="tag tag-primary">{{ content.content_date }}</text>
+          <text v-if="isBookChapter && bookContext?.series_name" class="tag tag-primary">{{ bookContext.series_name }}</text>
           <text class="tag tag-success">{{ content.difficulty_level }}</text>
         </view>
         <text class="detail-title">{{ content.title }}</text>
@@ -30,7 +31,8 @@
           <text class="learned-text">{{ learnedIds.includes(content.id) ? '已学过' : '标记已学' }}</text>
         </view>
 
-        <view class="article-body">
+        <!-- 非书籍章节：一整块正文 -->
+        <view v-if="!isBookChapter" class="article-body">
           <text
             v-for="(part, i) in articleParts"
             :key="i"
@@ -38,16 +40,59 @@
             @tap="part.isWord && handleWordTap(part.text)"
           >{{ part.text }}</text>
         </view>
+
+        <!-- 书籍章节：按 segment 边界分组渲染，每段可单独默写 -->
+        <template v-else>
+          <view
+            v-for="group in segmentGroups"
+            :key="group.segment.segment_id"
+            class="segment-group"
+          >
+            <view class="segment-header">
+              <text class="segment-label">段 {{ group.segment.order_no + 1 }} · {{ group.segment.word_count }} 词</text>
+              <view
+                class="segment-dict-btn"
+                :class="{ disabled: preparingSegmentId === group.segment.segment_id }"
+                @tap="startSegmentDictation(group.segment)"
+              >
+                <text>{{ preparingSegmentId === group.segment.segment_id ? '准备中...' : '✏️ 默写此段' }}</text>
+              </view>
+            </view>
+            <view class="article-body">
+              <text
+                v-for="(part, i) in group.parts"
+                :key="i"
+                :class="['word-span', part.isWord ? (part.isKey ? 'keyword' : 'clickable-word') : '']"
+                @tap="part.isWord && handleWordTap(part.text)"
+              >{{ part.text }}</text>
+            </view>
+          </view>
+        </template>
       </view>
 
       <!-- 译文 -->
-      <view v-if="showTranslation && content.translation" class="card">
+      <!-- 非书籍章节：直接使用 content.translation -->
+      <view v-if="!isBookChapter && showTranslation && content.translation" class="card">
         <text class="section-label">中文译文</text>
         <text class="translation-text">{{ content.translation }}</text>
       </view>
 
-      <!-- 译文生成失败提示 -->
-      <view v-if="content && isGenerationFailed(content)" class="card gen-failed-card">
+      <!-- 书籍章节：整章译文按需拉取 -->
+      <view v-if="isBookChapter && showTranslation" class="card">
+        <text class="section-label">中文译文</text>
+        <view v-if="loadingChapterTranslation" class="translation-loading">
+          <view class="spinner-small"></view>
+          <text class="translation-loading-text">首次翻译整章 4000+ 词，需要 5-10 秒...</text>
+        </view>
+        <view v-else-if="chapterTranslationError" class="translation-error">
+          <text class="translation-error-text">译文加载失败：{{ chapterTranslationError }}</text>
+          <button class="btn btn-sm btn-outline" @tap="loadChapterTranslation">重试</button>
+        </view>
+        <text v-else class="translation-text">{{ chapterTranslation }}</text>
+      </view>
+
+      <!-- 译文生成失败提示（仅非书籍章节的自定义内容） -->
+      <view v-if="!isBookChapter && content && isGenerationFailed(content)" class="card gen-failed-card">
         <view class="gen-failed-header">
           <text class="gen-failed-icon">⚠️</text>
           <text class="gen-failed-text">译文或词组生成失败</text>
@@ -112,11 +157,12 @@
         <text class="float-icon" :class="{ 'recording-icon': isRecording }">🎤</text>
         <text class="float-label">{{ isRecording ? '录音中' : '评测' }}</text>
       </view>
-      <view class="float-item" @tap="showTranslation = !showTranslation">
+      <view class="float-item" @tap="toggleChapterTranslation">
         <text class="float-icon">{{ showTranslation ? '📖' : '📕' }}</text>
         <text class="float-label">{{ showTranslation ? '隐藏译文' : '译文' }}</text>
       </view>
-      <view class="float-item" @tap="openDictation">
+      <!-- 非书籍：底部默写按钮（整篇默写）；书籍：默写按钮下沉到每段内 -->
+      <view v-if="!isBookChapter" class="float-item" @tap="openDictation">
         <text class="float-icon">✏️</text>
         <text class="float-label">默写</text>
       </view>
@@ -142,13 +188,31 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { onLoad, onShow, onHide } from '@dcloudio/uni-app'
-import { dailyApi, dictionaryApi, speechApi, favoritesApi } from '@/api'
+import { dailyApi, dictionaryApi, speechApi, favoritesApi, bookApi } from '@/api'
 import { speakWord, initVoices } from '@/composables/useSpeech'
 import { useRecorder } from '@/composables/useRecorder'
 import { getBaseForm } from '@/composables/useWordForm'
 import { useAuthStore } from '@/stores'
 import { navBackSafe } from '@/utils/router'
 import type { LearningContent, WordItem } from '@/types'
+
+// 书籍章节的段信息（从 /api/book/content/{id}/context 拿到）
+interface BookSegment {
+  segment_id: number
+  order_no: number
+  content_id: number
+  word_count: number
+  start_char: number | null
+  end_char: number | null
+}
+interface BookContext {
+  is_book_chapter: boolean
+  chapter_id?: number
+  series_id?: number
+  series_name?: string
+  chapter_title?: string
+  segments?: BookSegment[]
+}
 
 const auth = useAuthStore()
 const loading = ref(true)
@@ -163,11 +227,22 @@ let autoLearnTimer: ReturnType<typeof setTimeout> | null = null
 let contentId = 0
 const regenerating = ref(false)
 
+// 书籍章节相关状态
+const bookContext = ref<BookContext | null>(null)
+const isBookChapter = computed(() => bookContext.value?.is_book_chapter === true)
+// 整章译文按需拉取
+const chapterTranslation = ref('')
+const loadingChapterTranslation = ref(false)
+const chapterTranslationError = ref('')
+// 段默写准备状态：正在向后端申请的 segment_id（避免重复点击）
+const preparingSegmentId = ref<number | null>(null)
+
 const usernameInitial = computed(() => (auth.username?.[0] || '?').toUpperCase())
 
 onLoad((query) => {
   contentId = Number(query?.id || 0)
   loadContent()
+  loadBookContext()
 })
 
 onShow(() => {
@@ -180,7 +255,16 @@ onHide(() => {
   clearAutoLearnTimer()
 })
 
-const articleParts = computed(() => {
+interface ArticlePart {
+  text: string
+  isWord: boolean
+  isKey: boolean
+  // 该 part 在整篇 article 中的起始字符位置（含），用来在书籍模式下匹配到 segment
+  start: number
+  end: number
+}
+
+const articleParts = computed<ArticlePart[]>(() => {
   if (!content.value) return []
   const article = content.value.article || ''
   const words = content.value.words || []
@@ -195,7 +279,7 @@ const articleParts = computed(() => {
     .map(w => w.word)
     .sort((a, b) => b.length - a.length)
   
-  const parts: { text: string; isWord: boolean; isKey: boolean }[] = []
+  const parts: ArticlePart[] = []
   let i = 0
   
   while (i < article.length) {
@@ -204,7 +288,7 @@ const articleParts = computed(() => {
     for (const phrase of phrases) {
       const chunk = article.slice(i, i + phrase.length)
       if (chunk.toLowerCase() === phrase.toLowerCase()) {
-        parts.push({ text: chunk, isWord: true, isKey: true })
+        parts.push({ text: chunk, isWord: true, isKey: true, start: i, end: i + phrase.length })
         i += phrase.length
         matched = true
         break
@@ -216,7 +300,7 @@ const articleParts = computed(() => {
     const wordMatch = article.slice(i).match(/^[a-zA-Z]+(?:'[a-zA-Z]+)?/)
     if (wordMatch) {
       const word = wordMatch[0]
-      parts.push({ text: word, isWord: true, isKey: keyMap.has(word.toLowerCase()) })
+      parts.push({ text: word, isWord: true, isKey: keyMap.has(word.toLowerCase()), start: i, end: i + word.length })
       i += word.length
       continue
     }
@@ -224,11 +308,52 @@ const articleParts = computed(() => {
     // 3. 非单词字符，收集到下一个单词/词组开始
     let j = i + 1
     while (j < article.length && !/[a-zA-Z]/.test(article[j])) j++
-    parts.push({ text: article.slice(i, j), isWord: false, isKey: false })
+    parts.push({ text: article.slice(i, j), isWord: false, isKey: false, start: i, end: j })
     i = j
   }
   
   return parts
+})
+
+/**
+ * 书籍章节模式下把 articleParts 按 segment 边界分组。
+ *
+ * 分组规则：每个 part 落到 start >= segment.start_char && start < segment.end_char 的段里。
+ * 边界处的 part（跨段的空白/标点）归属为其起始位置所在段。
+ * 段间的字符（例如段落间的换行）会归到上一个段的末尾，视觉上不影响。
+ */
+interface SegmentGroup {
+  segment: BookSegment
+  parts: ArticlePart[]
+}
+
+const segmentGroups = computed<SegmentGroup[]>(() => {
+  if (!isBookChapter.value || !bookContext.value?.segments) return []
+  const segments = bookContext.value.segments
+    .slice()
+    .sort((a, b) => a.order_no - b.order_no)
+  const groups: SegmentGroup[] = segments.map(s => ({ segment: s, parts: [] }))
+
+  for (const part of articleParts.value) {
+    // 找 part.start 落在哪个 segment 区间内
+    let placed = false
+    for (let idx = 0; idx < segments.length; idx++) {
+      const s = segments[idx]
+      const startCh = s.start_char ?? 0
+      const endCh = s.end_char ?? Number.MAX_SAFE_INTEGER
+      if (part.start >= startCh && part.start < endCh) {
+        groups[idx].parts.push(part)
+        placed = true
+        break
+      }
+    }
+    if (!placed) {
+      // 落不进任何段：可能是尾部零头 / 段间空白 → 归到最后一段
+      groups[groups.length - 1]?.parts.push(part)
+    }
+  }
+  // 空段过滤（一般不会出现，防御性）
+  return groups.filter(g => g.parts.length > 0)
 })
 
 function startAutoLearnTimer() {
@@ -283,6 +408,71 @@ async function loadContent() {
     content.value = data
   } catch { content.value = null }
   loading.value = false
+}
+
+/**
+ * 并行加载 bookContext 判断当前 content 是不是书籍章节。
+ * 失败静默：非书籍 content 时后端可能返回 404 / is_book_chapter=false，都当作普通内容。
+ */
+async function loadBookContext() {
+  try {
+    const { data } = await bookApi.getContentContext(contentId, auth.currentUserId)
+    if (data?.is_book_chapter) {
+      bookContext.value = data
+    } else {
+      bookContext.value = null
+    }
+  } catch {
+    bookContext.value = null
+  }
+}
+
+/** 切换整章译文显隐；首次显示时按需拉取。 */
+async function toggleChapterTranslation() {
+  showTranslation.value = !showTranslation.value
+  if (!showTranslation.value) return
+  // 非书籍章节直接切换 content.translation 显隐，无需 API
+  if (!isBookChapter.value) return
+  // 已加载过缓存直接展示
+  if (chapterTranslation.value && !chapterTranslationError.value) return
+  await loadChapterTranslation()
+}
+
+async function loadChapterTranslation() {
+  if (!isBookChapter.value || !bookContext.value?.chapter_id) return
+  loadingChapterTranslation.value = true
+  chapterTranslationError.value = ''
+  try {
+    const { data } = await bookApi.getChapterTranslation(bookContext.value.chapter_id, auth.currentUserId)
+    chapterTranslation.value = data?.translation || ''
+    if (!chapterTranslation.value) {
+      chapterTranslationError.value = '译文为空'
+    }
+  } catch (e: any) {
+    chapterTranslationError.value = e?.data?.detail || '译文服务暂时不可用'
+  }
+  loadingChapterTranslation.value = false
+}
+
+/** 段级默写：调后端准备译文和词汇，成功后跳 dictation 页。 */
+async function startSegmentDictation(segment: BookSegment) {
+  if (preparingSegmentId.value !== null) return
+  preparingSegmentId.value = segment.segment_id
+  uni.showLoading({ title: '准备中...', mask: true })
+  try {
+    const { data } = await bookApi.prepareSegmentDictation(segment.segment_id, auth.currentUserId)
+    uni.hideLoading()
+    if (data?.content_id) {
+      uni.navigateTo({ url: `/pages/dictation/index?id=${data.content_id}` })
+    } else {
+      uni.showToast({ title: '准备失败', icon: 'none' })
+    }
+  } catch (e: any) {
+    uni.hideLoading()
+    const detail = e?.data?.detail || '准备失败，请重试'
+    uni.showToast({ title: detail, icon: 'none', duration: 2500 })
+  }
+  preparingSegmentId.value = null
 }
 
 function speakContent() {
@@ -451,6 +641,75 @@ async function regenerateContent() {
   margin-bottom: 16rpx; display: block; font-weight: 600;
 }
 .translation-text { font-size: 28rpx; line-height: 1.8; display: block; }
+
+/* 书籍章节段落分组 */
+.segment-group {
+  padding-top: 28rpx;
+  margin-top: 28rpx;
+  border-top: 3rpx dashed var(--outline-variant);
+}
+.segment-group:first-child {
+  padding-top: 0;
+  margin-top: 0;
+  border-top: none;
+}
+.segment-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+.segment-label {
+  font-size: 24rpx;
+  color: var(--on-surface-variant);
+  font-weight: 600;
+}
+.segment-dict-btn {
+  font-size: 24rpx;
+  padding: 8rpx 20rpx;
+  border-radius: 24rpx;
+  background: var(--primary-container);
+  color: var(--primary);
+  font-weight: 600;
+  border: 2rpx solid var(--primary);
+}
+.segment-dict-btn:active { opacity: 0.7; }
+.segment-dict-btn.disabled { opacity: 0.5; }
+
+/* 译文按需加载状态 */
+.translation-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16rpx;
+  padding: 40rpx 0;
+}
+.translation-loading-text {
+  font-size: 24rpx;
+  color: var(--on-surface-variant);
+}
+.spinner-small {
+  width: 40rpx;
+  height: 40rpx;
+  border: 4rpx solid var(--outline-variant);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.translation-error {
+  padding: 24rpx 0;
+  text-align: center;
+}
+.translation-error-text {
+  font-size: 26rpx;
+  color: var(--error);
+  display: block;
+  margin-bottom: 16rpx;
+}
 
 /* 底部浮动工具栏 */
 .float-item {

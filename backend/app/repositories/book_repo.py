@@ -152,3 +152,25 @@ def list_segments(db: Session, chapter_id: int) -> list[BookChapterSegment]:
     )
     log.debug("list_segments chapter=%s count=%s", chapter_id, len(segments))
     return segments
+
+
+def get_segment(db: Session, segment_id: int) -> Optional[BookChapterSegment]:
+    """按 ID 查段。"""
+    return (
+        db.query(BookChapterSegment)
+        .filter(BookChapterSegment.segment_id == segment_id)
+        .first()
+    )
+
+
+def find_chapter_by_content_id(db: Session, content_id: int) -> Optional[BookChapter]:
+    """反查：给一个 learning_content 的 content_id，如果它是某章的整章内容，返回该章。
+
+    detail 页需要判断"当前打开的 content 是不是书籍章节"，从而决定是否走
+    段落分割 + 按需译文的书籍专属交互路径。
+    """
+    return (
+        db.query(BookChapter)
+        .filter(BookChapter.content_id == content_id)
+        .first()
+    )

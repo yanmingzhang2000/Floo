@@ -13,24 +13,10 @@
     </view>
 
     <template v-else>
-      <!-- 阅读模式切换：整章 vs 分段 -->
-      <view class="mode-tabs">
-        <view
-          class="mode-tab"
-          :class="{ active: mode === 'whole' }"
-          @tap="switchMode('whole')"
-        >
-          <text class="mode-tab-title">📖 整章模式</text>
-          <text class="mode-tab-hint">完整章节，一次读完</text>
-        </view>
-        <view
-          class="mode-tab"
-          :class="{ active: mode === 'segmented' }"
-          @tap="switchMode('segmented')"
-        >
-          <text class="mode-tab-title">📑 分段模式</text>
-          <text class="mode-tab-hint">每段约 400 词</text>
-        </view>
+      <!-- 使用说明 -->
+      <view class="tip-card">
+        <text class="tip-icon">💡</text>
+        <text class="tip-text">点击章节进入阅读页。阅读时可对每段单独默写，也可查看整章译文。</text>
       </view>
 
       <view v-if="chapters.length === 0" class="empty-state">
@@ -42,39 +28,17 @@
         <view
           v-for="c in chapters"
           :key="c.chapter_id"
-          class="chapter-item"
+          class="chapter-row"
+          @tap="goDetail(c)"
         >
-          <!-- 章节主行 -->
-          <view class="chapter-row" @tap="onChapterTap(c)">
-            <view class="chapter-index">
-              <text>{{ c.order_no === 0 ? '序' : c.order_no }}</text>
-            </view>
-            <view class="chapter-info">
-              <text class="chapter-title">{{ c.title }}</text>
-              <text class="chapter-meta">
-                {{ c.word_count }} 词
-                <text v-if="mode === 'segmented' && c.segment_count > 0"> · {{ c.segment_count }} 段</text>
-              </text>
-            </view>
-            <text class="chapter-arrow">›</text>
+          <view class="chapter-index">
+            <text>{{ c.order_no === 0 ? '序' : c.order_no }}</text>
           </view>
-
-          <!-- 分段模式：展开显示各段 -->
-          <view
-            v-if="mode === 'segmented' && expandedChapterId === c.chapter_id && loadedSegments[c.chapter_id]"
-            class="segment-list"
-          >
-            <view
-              v-for="(seg, idx) in loadedSegments[c.chapter_id]"
-              :key="seg.segment_id"
-              class="segment-item"
-              @tap="goDetail(seg.content_id)"
-            >
-              <text class="segment-index">段 {{ idx + 1 }}</text>
-              <text class="segment-meta">{{ seg.word_count }} 词</text>
-              <text class="segment-arrow">›</text>
-            </view>
+          <view class="chapter-info">
+            <text class="chapter-title">{{ c.title }}</text>
+            <text class="chapter-meta">{{ c.word_count }} 词 · {{ c.segment_count }} 段</text>
           </view>
+          <text class="chapter-arrow">›</text>
         </view>
       </view>
     </template>
@@ -97,23 +61,11 @@ interface Chapter {
   segment_count: number
 }
 
-interface Segment {
-  segment_id: number
-  order_no: number
-  content_id: number
-  word_count: number
-}
-
 const auth = useAuthStore()
 const loading = ref(true)
 const seriesId = ref(0)
 const seriesName = ref('')
 const chapters = ref<Chapter[]>([])
-const mode = ref<'whole' | 'segmented'>('whole')
-// 分段模式下当前展开的章节 chapter_id，一次只展开一个避免视觉混乱
-const expandedChapterId = ref<number | null>(null)
-// 已加载的分段缓存：{chapter_id: Segment[]}
-const loadedSegments = ref<Record<number, Segment[]>>({})
 
 onLoad((query) => {
   seriesId.value = Number(query?.series_id || 0)
@@ -134,7 +86,6 @@ async function loadChapters() {
       seriesName.value = data?.series_name || '章节目录'
     }
   } catch (e: any) {
-    // 无权限 / 网络异常：给个 toast 让用户知道
     const detail = e?.data?.detail || '加载失败'
     uni.showToast({ title: detail, icon: 'none' })
     chapters.value = []
@@ -143,105 +94,46 @@ async function loadChapters() {
   }
 }
 
-function switchMode(m: 'whole' | 'segmented') {
-  if (mode.value === m) return
-  mode.value = m
-  // 切换模式时收起所有展开项
-  expandedChapterId.value = null
-}
-
-async function onChapterTap(c: Chapter) {
-  if (mode.value === 'whole') {
-    // 整章模式：直接进 detail 页
-    goDetail(c.content_id)
-    return
-  }
-  // 分段模式：切换展开/收起
-  if (expandedChapterId.value === c.chapter_id) {
-    expandedChapterId.value = null
-    return
-  }
-  expandedChapterId.value = c.chapter_id
-  // 首次展开该章节时懒加载分段列表
-  if (!loadedSegments.value[c.chapter_id]) {
-    try {
-      const { data } = await bookApi.getSegments(c.chapter_id, auth.currentUserId)
-      loadedSegments.value[c.chapter_id] = data?.segments || []
-    } catch (e) {
-      loadedSegments.value[c.chapter_id] = []
-      uni.showToast({ title: '加载分段失败', icon: 'none' })
-    }
-  }
-}
-
-function goDetail(contentId: number) {
-  // 复用现有的 detail 页，词典/朗读/默写全部自动继承
-  navTo(`/pages/detail/index?id=${contentId}`)
+function goDetail(c: Chapter) {
+  // 整章 content_id 走现有 detail 页；detail 页会自动识别为书籍章节
+  navTo(`/pages/detail/index?id=${c.content_id}`)
 }
 </script>
 
 <style scoped>
-.mode-tabs {
+.tip-card {
   display: flex;
-  gap: 16rpx;
-  padding: 16rpx 0 24rpx;
-}
-
-.mode-tab {
-  flex: 1;
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 20rpx 16rpx;
-  border: 2rpx solid var(--outline-variant);
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6rpx;
-  transition: all 0.2s;
+  gap: 16rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 24rpx;
+  background: #F0F9FF;
+  border-radius: 16rpx;
+  border-left: 6rpx solid var(--primary);
 }
-
-.mode-tab.active {
-  border-color: var(--primary);
-  background: #f0f9ff;
-}
-
-.mode-tab-title {
-  font-size: 28rpx;
-  font-weight: 700;
-  color: var(--on-surface);
-}
-
-.mode-tab.active .mode-tab-title {
-  color: var(--primary);
-}
-
-.mode-tab-hint {
-  font-size: 22rpx;
+.tip-icon { font-size: 32rpx; }
+.tip-text {
+  flex: 1;
+  font-size: 24rpx;
   color: var(--on-surface-variant);
+  line-height: 1.5;
 }
 
 .chapter-list {
   padding-bottom: 32rpx;
 }
 
-.chapter-item {
-  background: #fff;
-  border-radius: 16rpx;
-  margin-bottom: 12rpx;
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-}
-
 .chapter-row {
   display: flex;
   align-items: center;
-  padding: 24rpx;
+  padding: 28rpx 24rpx;
   gap: 20rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  margin-bottom: 12rpx;
+  box-shadow: var(--shadow-sm);
 }
-
-.chapter-row:active {
-  opacity: 0.85;
-}
+.chapter-row:active { opacity: 0.85; }
 
 .chapter-index {
   width: 60rpx;
@@ -281,55 +173,15 @@ function goDetail(contentId: number) {
   color: var(--on-surface-muted);
 }
 
-.segment-list {
-  border-top: 2rpx solid var(--outline-variant);
-  background: #fafcfd;
-}
-
-.segment-item {
-  display: flex;
-  align-items: center;
-  padding: 20rpx 24rpx 20rpx 100rpx;
-  gap: 16rpx;
-  border-bottom: 2rpx solid var(--outline-variant);
-}
-
-.segment-item:last-child {
-  border-bottom: none;
-}
-
-.segment-item:active {
-  opacity: 0.85;
-}
-
-.segment-index {
-  flex: 1;
-  font-size: 26rpx;
-  color: var(--on-surface);
-  font-weight: 500;
-}
-
-.segment-meta {
-  font-size: 22rpx;
-  color: var(--on-surface-variant);
-}
-
-.segment-arrow {
-  font-size: 32rpx;
-  color: var(--on-surface-muted);
-}
-
 .empty-state {
   padding: 120rpx 0;
   text-align: center;
 }
-
 .empty-state .icon {
   font-size: 80rpx;
   display: block;
   margin-bottom: 20rpx;
 }
-
 .empty-text {
   font-size: 30rpx;
   color: var(--on-surface-variant);
