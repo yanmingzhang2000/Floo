@@ -773,19 +773,26 @@ def resegment_series(
             log.debug("resegment_series 词汇 JSON 解析失败 chapter=%s", chapter.chapter_id)
             key_words_payload = []
 
-        # 3.2 找出旧分段的 content_id 列表 → 删 segments → 删对应 learning_contents
+        # 3.2 删旧段 - 顺序敏感：先删 book_chapter_segment，flush 后再删 learning_contents
+        # 因为 book_chapter_segment.content_id 外键指向 learning_contents，
+        # 如果先删 learning_contents 会触发 FK 报错
         old_segments = (
             db.query(BookChapterSegment)
             .filter(BookChapterSegment.chapter_id == chapter.chapter_id)
             .all()
         )
-        old_content_ids = [s.content_id for s in old_segments]
-        for seg in old_segments:
-            db.delete(seg)
+        old_content_ids: list[int] = [s.content_id for s in old_segments]  # type: ignore[misc]
+        if old_segments:
+            db.query(BookChapterSegment).filter(
+                BookChapterSegment.chapter_id == chapter.chapter_id
+            ).delete(synchronize_session=False)
+            db.flush()  # 让 DELETE 真正落到 DB，解除 FK 依赖
         if old_content_ids:
+            # 用 in_ 批量删，同时 synchronize_session=False 避免 ORM 全表扫描
             db.query(LearningContent).filter(
                 LearningContent.content_id.in_(old_content_ids)
             ).delete(synchronize_session=False)
+            db.flush()
         total_deleted += len(old_segments)
         log.debug("resegment_series 章节旧段删除 chapter=%s count=%s", chapter.chapter_id, len(old_segments))
 
