@@ -170,30 +170,6 @@
         </button>
       </view>
 
-      <!-- 朗读评测结果 -->
-      <view v-if="evalResult" class="card eval-card">
-        <view class="eval-scores-row">
-          <view class="eval-score">
-            <text class="eval-score-num" :class="getScoreClass(evalResult.overall)">{{ evalResult.overall }}</text>
-            <text class="eval-score-label">总分</text>
-          </view>
-          <view class="eval-score">
-            <text class="eval-score-num" :class="getScoreClass(evalResult.pronunciation)">{{ evalResult.pronunciation }}</text>
-            <text class="eval-score-label">发音</text>
-          </view>
-          <view class="eval-score">
-            <text class="eval-score-num" :class="getScoreClass(evalResult.fluency)">{{ evalResult.fluency }}</text>
-            <text class="eval-score-label">流利度</text>
-          </view>
-          <view class="eval-score">
-            <text class="eval-score-num" :class="getScoreClass(evalResult.integrity)">{{ evalResult.integrity }}</text>
-            <text class="eval-score-label">完整度</text>
-          </view>
-        </view>
-        <text class="eval-suggestion">{{ evalResult.suggestion }}</text>
-        <button class="btn btn-sm btn-outline" @tap="resetEval">重新评测</button>
-      </view>
-
       <!-- 核心词汇（书籍模式下只显示当前段的词） -->
       <view v-if="segmentWords.length" class="card">
         <text class="section-label">核心词汇</text>
@@ -212,14 +188,6 @@
 
     <!-- 底部浮动工具栏 -->
     <view v-if="content" class="bottom-float-bar">
-      <view class="float-item" @tap="speakContent">
-        <text class="float-icon">🔊</text>
-        <text class="float-label">朗读</text>
-      </view>
-      <view class="float-item" @tap="toggleEval">
-        <text class="float-icon" :class="{ 'recording-icon': isRecording }">🎤</text>
-        <text class="float-label">{{ isRecording ? '录音中' : '评测' }}</text>
-      </view>
       <view class="float-item" @tap="toggleAllTranslations">
         <text class="float-icon">{{ translationButtonIcon }}</text>
         <text class="float-label">{{ translationButtonLabel }}</text>
@@ -251,9 +219,8 @@
 <script setup lang="ts">
 import { ref, computed, reactive, watch } from 'vue'
 import { onLoad, onShow, onHide } from '@dcloudio/uni-app'
-import { dailyApi, dictionaryApi, speechApi, favoritesApi, bookApi } from '@/api'
+import { dailyApi, dictionaryApi, favoritesApi, bookApi } from '@/api'
 import { speakWord, initVoices } from '@/composables/useSpeech'
-import { useRecorder } from '@/composables/useRecorder'
 import { getBaseForm } from '@/composables/useWordForm'
 import { useAuthStore } from '@/stores'
 import { navBackSafe } from '@/utils/router'
@@ -284,8 +251,6 @@ const wordPopup = ref<{ word: string; phonetic?: string; meaning: string } | nul
 // 全局译文显隐（非书籍章节控制单一整篇译文；书籍章节控制所有段译文的默认可见性）
 const showTranslation = ref(true)
 const isFavorited = ref(false)
-const { isRecording, startRecording, stopRecording } = useRecorder()
-const evalResult = ref<{ overall: number; pronunciation: number; fluency: number; integrity: number; suggestion: string } | null>(null)
 const learnedIds = ref<number[]>([])
 let autoLearnTimer: ReturnType<typeof setTimeout> | null = null
 let contentId = 0
@@ -726,10 +691,6 @@ async function startSegmentDictation(segment: BookSegment) {
   preparingSegmentId.value = null
 }
 
-function speakContent() {
-  if (content.value?.article) speakWord(content.value.article.slice(0, 500))
-}
-
 /**
  * 单词查询缓存（session 内，跨 detail 页跳转保留）。
  * Why：有道 API 单次响应 20-100KB，翻页时同一批常见词反复查太慢；
@@ -922,42 +883,6 @@ function openDictation() {
   uni.navigateTo({ url: `/pages/dictation/index?id=${contentId}` })
 }
 
-function getScoreClass(score: number) {
-  if (score >= 90) return 'score-green'
-  if (score >= 70) return 'score-orange'
-  return 'score-red'
-}
-
-async function toggleEval() {
-  if (!content.value?.article) return
-  if (isRecording.value) {
-    const audioBase64 = await stopRecording()
-    if (!audioBase64) {
-      uni.showToast({ title: '录音失败', icon: 'none' })
-      return
-    }
-    uni.showLoading({ title: '评测中...' })
-    try {
-      const { data } = await speechApi.evaluate(audioBase64, content.value.article, 'en')
-      evalResult.value = {
-        overall: data.overall || 0,
-        pronunciation: data.pronunciation || 0,
-        fluency: data.fluency || 0,
-        integrity: data.integrity || 0,
-        suggestion: data.suggestion || '',
-      }
-    } catch {
-      evalResult.value = { overall: 0, pronunciation: 0, fluency: 0, integrity: 0, suggestion: '评测失败，请稍后重试' }
-    }
-    uni.hideLoading()
-  } else {
-    if (!await startRecording()) {
-      uni.showToast({ title: '麦克风权限获取失败', icon: 'none' })
-    }
-  }
-}
-
-function resetEval() { evalResult.value = null }
 function navBack() { navBackSafe() }
 
 // 判断自定义内容是否生成失败（译文缺失或词汇为空）
@@ -1185,16 +1110,6 @@ async function regenerateContent() {
 .speak-btn { background: var(--primary-container); }
 .fav-btn.active { background: #FFF8E1; }
 
-/* 朗读评测 */
-.eval-card { text-align: center; padding: 32rpx; }
-.eval-scores-row { display: flex; justify-content: space-around; margin-bottom: 24rpx; }
-.eval-score { display: flex; flex-direction: column; align-items: center; gap: 8rpx; }
-.eval-score-num { font-size: 48rpx; font-weight: 800; }
-.eval-score-label { font-size: 22rpx; color: var(--on-surface-variant); }
-.eval-suggestion { font-size: 26rpx; color: var(--on-surface-variant); line-height: 1.6; display: block; margin-bottom: 20rpx; }
-.score-green { color: var(--success); }
-.score-orange { color: var(--warning); }
-.score-red { color: var(--error); }
 .recording-icon { color: var(--error); animation: pulse 1s infinite; }
 @keyframes pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
