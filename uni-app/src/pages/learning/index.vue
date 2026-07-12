@@ -11,6 +11,19 @@
     </view>
 
     <template v-else>
+      <!-- 书籍精读入口（只有被授权的用户能看到，无授权账号完全隐藏） -->
+      <view v-if="myBooks.length > 0" class="book-entry" @tap="goBookList">
+        <view class="book-entry-icon"><text>📚</text></view>
+        <view class="book-entry-info">
+          <text class="book-entry-title">书籍精读</text>
+          <text class="book-entry-subtitle">
+            <text v-if="myBooks.length === 1">《{{ myBooks[0].name_cn || myBooks[0].name }}》· {{ myBooks[0].total_chapters }} 章</text>
+            <text v-else>已授权 {{ myBooks.length }} 本书</text>
+          </text>
+        </view>
+        <text class="book-entry-arrow">›</text>
+      </view>
+
       <!-- 分类标签栏 -->
       <view class="underline-tabs">
         <view class="underline-tab" :class="{ active: activeTab === 'ai' }" @tap="switchTab('ai')">
@@ -218,7 +231,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
-import { dailyApi, generationLimitApi } from '@/api'
+import { dailyApi, generationLimitApi, bookApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { navTo } from '@/utils/router'
 import { storage } from '@/utils/storage'
@@ -237,6 +250,11 @@ const learnedIds = ref<number[]>([])
 const remainingCount = ref(3)
 const showCustomContent = ref(false)
 const regeneratingIds = ref<number[]>([])
+
+// 书籍精读授权列表：只有此列表非空才显示入口卡片
+// 未授权用户 API 返回空数组，不报 403，保证隐藏对用户透明
+interface MyBook { series_id: number; name: string; name_cn?: string; total_chapters: number }
+const myBooks = ref<MyBook[]>([])
 
 const activeTab = ref<'ai' | 'custom' | 'past'>('ai')
 
@@ -342,15 +360,29 @@ async function loadData() {
   loading.value = true
   const userId = auth.currentUserId
   const safe = (p: Promise<any>) => p.catch(() => null)
-  const [contentRes, limitRes, learnedRes] = await Promise.all([
+  // 书籍列表也并行拉取，无授权用户拿空数组，不影响 loading 时序
+  const [contentRes, limitRes, learnedRes, bookRes] = await Promise.all([
     safe(dailyApi.getTodayList(userId)),
     safe(generationLimitApi.getLimit(userId)),
     safe(dailyApi.getLearnedIds(userId)),
+    safe(bookApi.listMine(userId)),
   ])
   if (contentRes?.data) contents.value = contentRes.data.contents || []
   if (learnedRes?.data) learnedIds.value = learnedRes.data.content_ids || []
   if (limitRes?.data) remainingCount.value = limitRes.data.remaining_count ?? 3
+  if (bookRes?.data) myBooks.value = bookRes.data.books || []
   loading.value = false
+}
+
+function goBookList() {
+  // 只有一本书时直接跳到章节页，多本才跳列表页
+  if (myBooks.value.length === 1) {
+    const b = myBooks.value[0]
+    const name = encodeURIComponent(b.name_cn || b.name)
+    navTo(`/pages/book/chapters?series_id=${b.series_id}&name=${name}`)
+    return
+  }
+  navTo('/pages/book/list')
 }
 
 async function loadCustomContents() {
@@ -742,4 +774,42 @@ onShow(loadData)
   white-space: nowrap;
 }
 .tag-ai { background: #E3F2FD; color: #1565C0; }
+
+/* 书籍精读入口卡片：只对授权用户显示，样式区别于其它卡片以突出稀缺权益 */
+.book-entry {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 24rpx;
+  margin: 8rpx 0 20rpx;
+  background: linear-gradient(135deg, #F0F9FF 0%, #E1F0F7 100%);
+  border-radius: 20rpx;
+  border: 2rpx solid #B3D9E3;
+}
+.book-entry:active { opacity: 0.85; }
+.book-entry-icon {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 16rpx;
+  background: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.book-entry-icon text { font-size: 40rpx; }
+.book-entry-info { flex: 1; display: flex; flex-direction: column; gap: 6rpx; }
+.book-entry-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--primary);
+}
+.book-entry-subtitle {
+  font-size: 24rpx;
+  color: var(--on-surface-variant);
+}
+.book-entry-arrow {
+  font-size: 40rpx;
+  color: var(--primary);
+}
 </style>

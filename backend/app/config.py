@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     # 提醒功能配置：超过多少天未打卡则触发提醒
     REMINDER_THRESHOLD_DAYS: int = 2
 
+    # 书籍管理员令牌：/api/book/admin/* 接口必须携带 X-Admin-Token 匹配此值
+    # 生产环境务必通过环境变量设置强随机值；本地开发退化到固定弱口令方便调试
+    FLOO_ADMIN_TOKEN: str = os.getenv("FLOO_ADMIN_TOKEN", "floo-dev-admin-token")
+
 
 settings = Settings()
 

@@ -112,9 +112,51 @@ const API_BASE = 'https://floo-production.up.railway.app'
 - ✅ 语音评测
 - ✅ 积分商城
 - ✅ 复习计划
+- ✅ 书籍精读（白名单授权，支持整章 / 分段模式）
 
 ## 注意事项
 
 1. **微信小程序限制**：个人主体小程序无法使用 `<web-view>` 组件，需要使用 uni-app 重写
 2. **语音评测**：需要后端支持有道智云 API
 3. **数据同步**：H5 和小程序版本使用同一个后端 API，数据完全同步
+
+## Admin：书籍导入与授权
+
+书籍精读功能采用白名单授权，仅对指定用户开放。
+
+### 1. 触发导入（后端接口）
+
+```bash
+curl -X POST https://<backend>/api/book/admin/import \
+  -H "X-Admin-Token: <FLOO_ADMIN_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"source_url": "https://novel.tingroom.com/jingdian/96/"}'
+```
+
+同一 `source_url` 幂等，重复调用会跳过已存在的章节。
+
+### 2. 给用户授权
+
+```bash
+curl -X POST https://<backend>/api/book/admin/grant \
+  -H "X-Admin-Token: <FLOO_ADMIN_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": 42, "series_id": 1}'
+```
+
+### 3. 撤销授权
+
+```bash
+curl -X DELETE https://<backend>/api/book/admin/grant/42/1 \
+  -H "X-Admin-Token: <FLOO_ADMIN_TOKEN>"
+```
+
+### 4. 查看所有已导入书籍
+
+```bash
+curl https://<backend>/api/book/admin/series \
+  -H "X-Admin-Token: <FLOO_ADMIN_TOKEN>"
+```
+
+配置 `FLOO_ADMIN_TOKEN` 环境变量（Railway Variables），未设置时后端使用弱口令
+`floo-dev-admin-token`，仅用于本地开发。

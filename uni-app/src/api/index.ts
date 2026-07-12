@@ -159,6 +159,22 @@ export const aiCoachApi = {
     api.get(`/api/ai-coach/report/${sessionId}`, { params: { user_id: userId } }),
 }
 
+// ===== 书籍精读（白名单授权） =====
+export const bookApi = {
+  // 我可访问的书籍列表（未授权返回空数组，不报 403）
+  listMine: (userId: number) =>
+    api.get('/api/book/mine', { params: { user_id: userId } }),
+  // 章节列表（未授权 403）
+  getChapters: (seriesId: number, userId: number) =>
+    api.get(`/api/book/series/${seriesId}/chapters`, { params: { user_id: userId } }),
+  // 章节详情：mode=whole 返回单个 content_id；segmented 返回列表
+  getChapter: (chapterId: number, userId: number, mode: 'whole' | 'segmented' = 'whole') =>
+    api.get(`/api/book/chapter/${chapterId}`, { params: { user_id: userId, mode } }),
+  // 分段列表（用于章节展开时查看）
+  getSegments: (chapterId: number, userId: number) =>
+    api.get(`/api/book/chapter/${chapterId}/segments`, { params: { user_id: userId } }),
+}
+
 // ===== 提醒 =====
 export const reminderApi = {
   getStatus: (userId: number) =>

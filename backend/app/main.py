@@ -18,6 +18,7 @@ from app.routers import checkin, daily, dictation, dictionary, favorites, shop, 
 from app.routers import user
 from app.routers import ai_coach
 from app.routers import reminder
+from app.routers import book
 
 setup_logging()
 log = logging.getLogger(__name__)
@@ -185,6 +186,7 @@ app.include_router(tts.router)
 app.include_router(word_review.router)
 app.include_router(ai_coach.router)
 app.include_router(reminder.router)
+app.include_router(book.router)
 
 
 @app.get("/")

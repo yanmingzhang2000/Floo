@@ -111,6 +111,22 @@
         "navigationBarBackgroundColor": "#5B9AA8",
         "navigationBarTextStyle": "white"
       }
+    },
+    {
+      "path": "pages/book/list",
+      "style": {
+        "navigationBarTitleText": "书籍精读",
+        "navigationBarBackgroundColor": "#5B9AA8",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/book/chapters",
+      "style": {
+        "navigationBarTitleText": "章节目录",
+        "navigationBarBackgroundColor": "#5B9AA8",
+        "navigationBarTextStyle": "white"
+      }
     }
   ],
   "globalStyle": {

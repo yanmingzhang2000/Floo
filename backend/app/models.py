@@ -370,3 +370,106 @@ class UserCollection(Base):
 
     user = relationship("UserMain", back_populates="collections")
     character = relationship("Character", back_populates="collections")
+
+
+# ============== 业务集群六：书籍精读（白名单授权） ==============
+#
+# 为什么单独建 4 张表而不是复用 learning_contents：
+#   - learning_contents 是"孤立"内容锚点，没有目录/顺序/授权语义。
+#   - 书籍需要「章节顺序 + 分段顺序 + 用户可访问性」三层结构。
+# 所以拆成：
+#   1. BookSeries：一本书聚合根
+#   2. BookChapter：章节 → 对应「整章」学习内容记录（learning_contents.content_id）
+#   3. BookChapterSegment：章节分段 → 对应「分段」学习内容记录（learning_contents.content_id）
+#   4. UserBookAccess：白名单授权，只有这里有记录的用户才能看见对应书
+
+class BookSeries(Base):
+    """书籍套装表 - 一本书对应一条记录，作为章节聚合根。
+
+    source_url 用作幂等键：同一目录页 URL 只能导入一次，
+    避免 admin 重复触发抓取产生重复数据。
+    """
+    __tablename__ = "book_series"
+
+    series_id = Column(Integer, primary_key=True, autoincrement=True)
+    # 英文原名，用于展示和检索
+    name = Column(String(128), nullable=False)
+    # 中文译名
+    name_cn = Column(String(128), nullable=True)
+    author = Column(String(128), nullable=True)
+    # 来源站点标识（tingroom / gutenberg / manual），用于扩展多站点
+    source_site = Column(String(64), nullable=True)
+    # 目录页 URL，作为幂等键
+    source_url = Column(String(512), nullable=True, unique=True)
+    cover_url = Column(String(512), nullable=True)
+    description = Column(Text, nullable=True)
+    total_chapters = Column(Integer, default=0, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class BookChapter(Base):
+    """章节表 - 每章一条，指向 learning_contents 里的整章记录。
+
+    order_no 唯一：0=Introduction，1=Chapter 1，2=Chapter 2 …
+    content_id 指向「整章」内容；「分段」内容通过 BookChapterSegment 关联。
+    """
+    __tablename__ = "book_chapter"
+    __table_args__ = (
+        UniqueConstraint("series_id", "order_no", name="uq_series_chapter_order"),
+        Index("idx_chapter_series", "series_id", "order_no"),
+    )
+
+    chapter_id = Column(Integer, primary_key=True, autoincrement=True)
+    series_id = Column(Integer, ForeignKey("book_series.series_id", ondelete="CASCADE"), nullable=False, index=True)
+    order_no = Column(Integer, nullable=False)
+    title = Column(String(255), nullable=False)
+    source_url = Column(String(512), nullable=False)
+    # 整章模式对应的 learning_contents 记录
+    content_id = Column(Integer, ForeignKey("learning_contents.content_id"), nullable=False)
+    word_count = Column(Integer, default=0, nullable=False)
+    imported_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class BookChapterSegment(Base):
+    """章节分段表 - 每段 400-500 词，供分段模式使用。
+
+    整章 vs 分段模式：
+      - 整章：读 BookChapter.content_id 一条记录
+      - 分段：按 order_no 遍历本表，每段一条 learning_contents 记录
+    这样两种模式共用 learning_contents 底层，词典/朗读/默写全部继承。
+    """
+    __tablename__ = "book_chapter_segment"
+    __table_args__ = (
+        UniqueConstraint("chapter_id", "order_no", name="uq_chapter_segment_order"),
+        Index("idx_segment_chapter", "chapter_id", "order_no"),
+    )
+
+    segment_id = Column(Integer, primary_key=True, autoincrement=True)
+    chapter_id = Column(Integer, ForeignKey("book_chapter.chapter_id", ondelete="CASCADE"), nullable=False, index=True)
+    order_no = Column(Integer, nullable=False)
+    content_id = Column(Integer, ForeignKey("learning_contents.content_id"), nullable=False)
+    word_count = Column(Integer, default=0, nullable=False)
+
+
+class UserBookAccess(Base):
+    """用户书籍授权表 - 白名单闸门。
+
+    为什么单独建表而不是加字段：
+      - 一个用户可能被授权多本书（未来扩展）
+      - 授权可撤销（is_active=False），审计需要 granted_by / granted_at
+      - 判断可访问性只需一次 index 查询，比在多张表加 join 简单
+    """
+    __tablename__ = "user_book_access"
+    __table_args__ = (
+        UniqueConstraint("user_id", "series_id", name="uq_user_book_access"),
+        Index("idx_book_access_user", "user_id", "is_active"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("user_main.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    series_id = Column(Integer, ForeignKey("book_series.series_id", ondelete="CASCADE"), nullable=False, index=True)
+    granted_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    # admin 标识（"admin" 或运营者账号），审计用
+    granted_by = Column(String(64), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
