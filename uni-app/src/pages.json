@@ -4,8 +4,8 @@
       "path": "pages/home/index",
       "style": {
         "navigationBarTitleText": "Floo!",
-        "navigationBarBackgroundColor": "#5B9AA8",
-        "navigationBarTextStyle": "white"
+        "navigationBarBackgroundColor": "#F0F7F4",
+        "navigationBarTextStyle": "black"
       }
     },
     {
