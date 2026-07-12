@@ -179,6 +179,12 @@ export const bookApi = {
       params: { user_id: userId },
       timeout: 120000,
     }),
+  // 按需拉单段译文（阅读态用；首次 5-8s，缓存秒开）
+  getSegmentTranslation: (segmentId: number, userId: number) =>
+    api.post(`/api/book/segment/${segmentId}/translation`, null, {
+      params: { user_id: userId },
+      timeout: 90000,
+    }),
   // 按需给指定段准备默写素材，返回 content_id 供跳转 dictation 页
   prepareSegmentDictation: (segmentId: number, userId: number) =>
     api.post(`/api/book/segment/${segmentId}/prepare-dictation`, null, {

@@ -318,6 +318,42 @@ async def get_chapter_translation(
     return {"chapter_id": chapter_id, "translation": translation}
 
 
+@router.post("/segment/{segment_id}/translation")
+async def get_segment_translation(
+    segment_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+) -> dict:
+    """按需拉单段译文（阅读态）。
+
+    首次调用触发 LLM 翻译该段（5-8s），之后缓存命中秒开。
+    与整章译文互相独立缓存 —— 段级译文更细粒度，用户翻页时逐段拉。
+    """
+    segment = book_repo.get_segment(db, segment_id)
+    if not segment:
+        log.debug("get_segment_translation 段不存在 segment_id=%s", segment_id)
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "segment not found")
+
+    chapter = book_repo.get_chapter(db, int(segment.chapter_id))  # type: ignore[arg-type]
+    if not chapter:
+        log.debug("get_segment_translation 章节不存在 segment_id=%s", segment_id)
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "chapter not found")
+    _ensure_user_access(db, user_id, int(chapter.series_id))  # type: ignore[arg-type]
+
+    translation = await book_translator.ensure_segment_translation(db, segment_id)
+    if not translation:
+        log.debug("get_segment_translation LLM 失败 segment_id=%s", segment_id)
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "translation service unavailable, please retry",
+        )
+    return {
+        "segment_id": segment_id,
+        "content_id": int(segment.content_id),  # type: ignore[arg-type]
+        "translation": translation,
+    }
+
+
 @router.post("/segment/{segment_id}/prepare-dictation")
 async def prepare_segment_dictation(
     segment_id: int,

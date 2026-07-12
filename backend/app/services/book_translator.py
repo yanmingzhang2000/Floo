@@ -8,7 +8,14 @@
 
 调用时机：
   - 用户在 detail 页点"📕 译文"按钮 → ensure_chapter_translation
+  - 用户翻到某段 → ensure_segment_translation（轻量，只翻译）
   - 用户在 detail 页点"✏️ 默写此段" → ensure_segment_dictation_ready
+    （先复用译文缓存，再单独跑一次 LLM 挑词）
+
+段级为什么把"译文"和"词汇"拆两次 LLM：
+  阅读态用户每翻一段都要看译文，但不需要词汇；默写态才需要词汇。
+  合并成一次调用会让阅读态白挑词、白等更长的响应；拆开后阅读态
+  只等短提示词的翻译，默写态在译文命中缓存时也只多花一次挑词调用。
 """
 from __future__ import annotations
 
@@ -96,18 +103,74 @@ async def ensure_chapter_translation(db: Session, chapter_id: int) -> Optional[s
 
 
 # =========================================================================
-# 段落默写准备
+# 段落级：翻译（阅读态）
+# =========================================================================
+
+# 段级只翻译不挑词。阅读态 5-8 秒能拿到译文，用户能立刻往下看。
+_SEGMENT_TRANSLATION_PROMPT = """你是一位英语教学专家兼资深翻译。用户会粘贴一段英文文本，
+请把它完整翻译成中文，保留原文的换行结构（如果原文有 `\\n\\n` 分段，译文也要 `\\n\\n` 分段）。
+
+严格按如下 JSON 格式输出，不要任何额外文字：
+{
+  "translation": "完整中文翻译"
+}
+
+翻译要求：
+- 忠实原文语义，语言流畅自然，符合中文阅读习惯
+- 人名、地名、专有名词首次出现时中英对照（如"清崎（Kiyosaki）"），之后用中文
+- 不要给译文加序号、章节标题、编者注等原文没有的内容"""
+
+
+async def ensure_segment_translation(db: Session, segment_id: int) -> Optional[str]:
+    """确保指定段的 translation 已生成（阅读态用，不挑词）。
+
+    首次访问：调 LLM 翻译该段 → 缓存到 learning_contents.translation
+    命中缓存：直接返回
+
+    返回译文文本；LLM 失败返回 None（调用方决定 UI 提示）。
+    """
+    seg_content = _get_segment_content(db, segment_id)
+    if not seg_content:
+        return None
+
+    existing = str(seg_content.translation) if seg_content.translation is not None else ""
+    if existing.strip() and not existing.startswith("（翻译生成失败"):
+        log.debug("ensure_segment_translation 缓存命中 segment_id=%s", segment_id)
+        return existing
+
+    log.debug(
+        "ensure_segment_translation 缓存缺失，调 LLM segment_id=%s len=%s",
+        segment_id, len(str(seg_content.content_text or "")),
+    )
+    result = await chat_json(
+        _SEGMENT_TRANSLATION_PROMPT,
+        f"请翻译以下段落：\n\n{seg_content.content_text}",
+        temperature=0.3,
+        timeout=60.0,
+    )
+
+    if not result or not result.get("translation"):
+        log.warning("ensure_segment_translation LLM 返回空 segment_id=%s", segment_id)
+        return None
+
+    translation = str(result["translation"]).strip()
+    seg_content.translation = translation  # type: ignore[assignment]
+    db.commit()
+    log.debug("ensure_segment_translation 落库完成 segment_id=%s len=%s", segment_id, len(translation))
+    return translation
+
+
+# =========================================================================
+# 段落级：词汇挑选（默写态）
 # =========================================================================
 
 # 为什么段落级要生成词汇：默写页 hint_card 显示译文提示，
 # error_words 需要参考该段的关键词。所以段级除了译文还要 5-10 个词。
-_SEGMENT_DICTATION_PROMPT = """你是一位英语教学专家。用户会粘贴一段英文文本用于默写练习，请完成：
-1. 把全文翻译成中文（保留原文段落结构）
-2. 从文本中提取 3-8 个对英语学习者有价值的生词或短语
+_SEGMENT_LEXICON_PROMPT = """你是一位英语教学专家。用户会粘贴一段英文文本用于默写练习，
+请从中挑选 3-8 个对英语学习者有价值的生词或短语。
 
 严格按如下 JSON 格式输出，不要任何额外文字：
 {
-  "translation": "完整中文翻译",
   "lexicon": [
     {
       "word": "单词或短语",
@@ -131,56 +194,44 @@ async def ensure_segment_dictation_ready(
 ) -> Optional[LearningContent]:
     """确保指定段的 learning_content 有 translation + key_words。
 
-    首次访问：调 LLM 生成 translation + 词汇 → 落库
-    命中缓存：直接返回
+    默写入口调用。分两步：
+      1) 复用 ensure_segment_translation 拿译文（可能命中缓存）
+      2) 若 key_words 已被 LLM 挑过（用 is_phrase 字段判断）就直接返回；
+         否则单独跑一次 LLM 挑词，合并到 tingroom 原始词汇上。
 
-    返回该段对应的 LearningContent 行；LLM 失败返回 None。
+    返回该段对应的 LearningContent 行；任一步 LLM 失败返回 None。
     """
-    segment = (
-        db.query(BookChapterSegment)
-        .filter(BookChapterSegment.segment_id == segment_id)
-        .first()
-    )
-    if not segment:
-        log.debug("ensure_segment_dictation_ready 段不存在 segment_id=%s", segment_id)
-        return None
-
-    seg_content = (
-        db.query(LearningContent)
-        .filter(LearningContent.content_id == segment.content_id)
-        .first()
-    )
+    seg_content = _get_segment_content(db, segment_id)
     if not seg_content:
-        log.debug("ensure_segment_dictation_ready segment content 缺失 segment_id=%s", segment_id)
         return None
 
-    # 缓存判断：translation 已有且不是降级文案 → 直接返回
-    existing_tr = str(seg_content.translation) if seg_content.translation is not None else ""
-    if existing_tr.strip() and not existing_tr.startswith("（翻译生成失败"):
-        log.debug("ensure_segment_dictation_ready 缓存命中 segment_id=%s", segment_id)
+    # 第一步：确保译文
+    translation = await ensure_segment_translation(db, segment_id)
+    if not translation:
+        log.debug("ensure_segment_dictation_ready 译文步失败 segment_id=%s", segment_id)
+        return None
+
+    # 第二步：若词汇已经过 LLM 加工则直接返回
+    if _lexicon_has_llm_enriched(str(seg_content.key_words or "")):
+        log.debug("ensure_segment_dictation_ready 词汇缓存命中 segment_id=%s", segment_id)
         return seg_content
 
-    # 调 LLM
     log.debug(
-        "ensure_segment_dictation_ready 缓存缺失，调 LLM segment_id=%s len=%s",
-        segment_id, len(str(seg_content.content_text or "")),
+        "ensure_segment_dictation_ready 词汇缓存缺失，调 LLM segment_id=%s",
+        segment_id,
     )
     result = await chat_json(
-        _SEGMENT_DICTATION_PROMPT,
-        f"请处理以下段落：\n\n{seg_content.content_text}",
+        _SEGMENT_LEXICON_PROMPT,
+        f"请从以下段落挑词：\n\n{seg_content.content_text}",
         temperature=0.3,
         timeout=60.0,
     )
 
-    if not result or not result.get("translation"):
-        log.warning("ensure_segment_dictation_ready LLM 返回空 segment_id=%s", segment_id)
+    if not result or not isinstance(result.get("lexicon"), list):
+        log.warning("ensure_segment_dictation_ready LLM lexicon 返回异常 segment_id=%s", segment_id)
         return None
 
-    # 补 is_phrase 字段（前端词组高亮用）
-    lexicon = result.get("lexicon") or []
-    if not isinstance(lexicon, list):
-        log.debug("ensure_segment_dictation_ready lexicon 类型异常，改为空 list")
-        lexicon = []
+    lexicon = result["lexicon"]
     for item in lexicon:
         if isinstance(item, dict) and "is_phrase" not in item:
             item["is_phrase"] = " " in (item.get("word") or "")
@@ -196,15 +247,62 @@ async def ensure_segment_dictation_ready(
             original_lexicon = []
 
     merged = _merge_lexicon(original_lexicon, lexicon)
-
-    seg_content.translation = str(result["translation"]).strip()  # type: ignore[assignment]
     seg_content.key_words = json.dumps(merged, ensure_ascii=False)  # type: ignore[assignment]
     db.commit()
     log.debug(
-        "ensure_segment_dictation_ready 落库完成 segment_id=%s words=%s",
+        "ensure_segment_dictation_ready 词汇落库完成 segment_id=%s words=%s",
         segment_id, len(merged),
     )
     return seg_content
+
+
+# =========================================================================
+# 内部工具
+# =========================================================================
+
+def _get_segment_content(db: Session, segment_id: int) -> Optional[LearningContent]:
+    """段级公共取数：段存在 + 段对应的 learning_content 存在。"""
+    segment = (
+        db.query(BookChapterSegment)
+        .filter(BookChapterSegment.segment_id == segment_id)
+        .first()
+    )
+    if not segment:
+        log.debug("_get_segment_content 段不存在 segment_id=%s", segment_id)
+        return None
+
+    seg_content = (
+        db.query(LearningContent)
+        .filter(LearningContent.content_id == segment.content_id)
+        .first()
+    )
+    if not seg_content:
+        log.debug("_get_segment_content segment content 缺失 segment_id=%s", segment_id)
+        return None
+    return seg_content
+
+
+def _lexicon_has_llm_enriched(key_words_raw: str) -> bool:
+    """判断 key_words 是否已经被 LLM 挑过词。
+
+    tingroom 原始词汇没有 is_phrase 字段；LLM 补充的词一定带 is_phrase。
+    只要 lexicon 里任一项有 is_phrase，就视为 LLM 已加工过。
+    """
+    if not key_words_raw.strip():
+        log.debug("_lexicon_has_llm_enriched key_words 为空，视为未加工")
+        return False
+    try:
+        items = json.loads(key_words_raw)
+    except (json.JSONDecodeError, TypeError):
+        log.debug("_lexicon_has_llm_enriched JSON 解析失败，视为未加工")
+        return False
+    if not isinstance(items, list):
+        log.debug("_lexicon_has_llm_enriched 非 list 结构，视为未加工")
+        return False
+    for item in items:
+        if isinstance(item, dict) and "is_phrase" in item:
+            return True
+    return False
 
 
 def _merge_lexicon(original: list[dict], added: list[dict]) -> list[dict]:
