@@ -133,7 +133,7 @@ npm run build:mp-weixin   # 生产构建
 - **录音转 WAV**: H5 端可转换，小程序返回 mp3 base64
 
 ### 小程序限制
-- **网络请求域名白名单**: 需在小程序后台配置 `https://floo-production.up.railway.app`
+- **网络请求域名白名单**: 需在小程序后台配置 `https://floo-ai.duckdns.org`
 - **不支持 `<a>` 标签**: 用 `navigator` 组件或 `uni.navigateTo` 替代
 - **不支持 `document/window`**: 用 uni-app API 替代
 

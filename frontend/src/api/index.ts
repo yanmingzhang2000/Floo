@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE = 'https://floo-production.up.railway.app'
+const API_BASE = 'https://floo-ai.duckdns.org'
 
 const api = axios.create({
   baseURL: API_BASE,

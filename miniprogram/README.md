@@ -23,7 +23,7 @@
 2. 进入「开发」→「开发管理」→「开发设置」→「业务域名」
 3. 添加以下域名：
    - `yanmingzhang2000.github.io`（前端）
-   - `floo-production.up.railway.app`（后端 API）
+   - `floo-ai.duckdns.org`（后端 API）
 
 ### 5. 预览和发布
 1. 在微信开发者工具中点击「预览」生成二维码

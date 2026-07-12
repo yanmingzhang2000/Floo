@@ -13,7 +13,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'https://floo-production.up.railway.app',
+        target: 'https://floo-ai.duckdns.org',
         changeOrigin: true,
       },
       '/dict-proxy': {

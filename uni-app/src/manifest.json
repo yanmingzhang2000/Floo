@@ -15,7 +15,7 @@
       "port": 5173,
       "proxy": {
         "/api": {
-          "target": "https://floo-production.up.railway.app",
+          "target": "https://floo-ai.duckdns.org",
           "changeOrigin": true
         }
       }

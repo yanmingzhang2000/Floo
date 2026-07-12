@@ -7,7 +7,7 @@
 
 import { storage } from './storage'
 
-const API_BASE = 'https://floo-production.up.railway.app'
+const API_BASE = 'https://floo-ai.duckdns.org'
 
 interface RequestConfig {
   url: string
