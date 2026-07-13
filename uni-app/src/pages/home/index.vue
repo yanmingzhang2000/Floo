@@ -101,11 +101,8 @@ async function loadData() {
 }
 
 function handleMainAction() {
-  if (contents.value.length > 0) {
-    goDetail(contents.value[0].id)
-  } else {
-    showQuick.value = !showQuick.value
-  }
+  // 无论是否有今日内容，主按钮统一跳图书馆
+  uni.switchTab({ url: '/pages/learning/index' })
 }
 
 function goDetail(id: number) { navTo(`/pages/detail/index?id=${id}`) }
