@@ -252,22 +252,21 @@ onShow(loadData)
 .search-placeholder { color: #b0b8c0; }
 .search-clear { font-size: 28rpx; color: #b0b8c0; padding: 8rpx; }
 
-/* 背单词入口 */
+/* 背单词入口：突出显示，区别于普通单词卡片 */
 .vb-entry {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 28rpx;
-  margin: 12rpx 0 20rpx;
-  background: #f6fbfc;
-  border: 1rpx solid #e4eff2;
+  padding: 32rpx 28rpx;
+  margin: 16rpx 0 28rpx;
+  background: var(--primary, #5B9AA8);
   border-radius: 20rpx;
 }
-.vb-entry:active { transform: scale(0.98); }
-.vb-entry-left { display: flex; flex-direction: column; gap: 4rpx; }
-.vb-entry-title { font-size: 28rpx; font-weight: 700; color: var(--on-surface); }
-.vb-entry-desc { font-size: 22rpx; color: var(--on-surface-variant); }
-.vb-entry-arrow { font-size: 32rpx; color: #b0b8c0; }
+.vb-entry:active { transform: scale(0.98); opacity: 0.9; }
+.vb-entry-left { display: flex; flex-direction: column; gap: 6rpx; }
+.vb-entry-title { font-size: 30rpx; font-weight: 700; color: #fff; }
+.vb-entry-desc { font-size: 22rpx; color: rgba(255,255,255,0.7); }
+.vb-entry-arrow { font-size: 32rpx; color: rgba(255,255,255,0.6); }
 
 /* 查词结果 */
 .dict-result-card {
