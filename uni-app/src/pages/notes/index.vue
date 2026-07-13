@@ -1,6 +1,6 @@
 <template>
   <view class="page-container notes-page">
-    <!-- 顶部标题：极简大标题，无返回按钮（tabBar 页） -->
+    <!-- 顶部通栏：主题青绿色块 + 白色标题，与图书馆一致 -->
     <view class="notes-header">
       <text class="notes-title">笔记</text>
     </view>
@@ -24,13 +24,11 @@
                 {{ todayWordCount > 0 ? '按遗忘曲线安排，开始复习' : '暂无待背单词，收藏更多词汇后再来' }}
               </text>
             </view>
-            <button
-              class="btn btn-primary vocab-btn"
-              :disabled="todayWordCount === 0"
+            <text
+              class="vocab-action"
+              :class="{ disabled: todayWordCount === 0 }"
               @tap="goVocabReview"
-            >
-              <text>开始背词</text>
-            </button>
+            >开始背词</text>
           </view>
         </view>
       </view>
@@ -38,7 +36,7 @@
       <!-- 细线分割 -->
       <view class="notes-divider"></view>
 
-      <!-- ② 默写存档区 -->
+      <!-- ② 默写存档区（按文章分组折叠） -->
       <view class="notes-section">
         <view class="notes-section-inner">
           <text class="notes-section-title">默写存档</text>
@@ -54,19 +52,26 @@
           </view>
           <view v-else class="history-list">
             <view
-              v-for="rec in historyList"
-              :key="rec.dictation_id"
-              class="history-card"
-              @tap="goDictationDetail(rec.dictation_id)"
+              v-for="group in groupedHistory"
+              :key="group.title"
+              class="history-group"
             >
-              <view class="history-left">
-                <text class="history-title">《{{ rec.content_title || '默写练习' }}》</text>
-                <text class="history-meta">
-                  {{ formatDate(rec.created_at) }} · 准确率 {{ rec.accuracy_rate.toFixed(0) }}%
-                </text>
+              <view class="history-group-header" @tap="toggleGroup(group.title)">
+                <text class="history-group-title">{{ group.title }}</text>
+                <text class="history-group-meta">{{ group.items.length }} 次 · 最高 {{ group.bestAccuracy }}%</text>
+                <text class="history-group-toggle">{{ expandedGroups.has(group.title) ? '▲' : '▼' }}</text>
               </view>
-              <view class="history-right">
-                <text class="history-view">查看 ›</text>
+              <view v-if="expandedGroups.has(group.title)" class="history-group-list">
+                <view
+                  v-for="rec in group.items"
+                  :key="rec.dictation_id"
+                  class="history-card"
+                  @tap="goDictationDetail(rec.dictation_id)"
+                >
+                  <text class="history-meta">{{ formatDate(rec.created_at) }}</text>
+                  <text class="history-accuracy">{{ rec.accuracy_rate.toFixed(0) }}%</text>
+                  <text class="history-view">查看 ›</text>
+                </view>
               </view>
             </view>
           </view>
@@ -77,7 +82,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { dictationApi, wordReviewApi, favoritesApi } from '@/api'
 import { useAuthStore } from '@/stores'
@@ -87,7 +92,7 @@ import type { DictationHistory } from '@/types'
 /**
  * 笔记页：复盘专区，两大分区上下排布
  *   ① 今日背词：显示待复习词量 → 跳复习页
- *   ② 默写存档：全部默写历史流水 → 跳默写详情
+ *   ② 默写存档：按文章分组折叠 → 跳默写详情
  *
  * Why 数量取"待复习"而不是"收藏总数"：
  *   收藏总数会一直涨，用户看不出"今日要背几个"。用 wordReviewApi.getDue 拿
@@ -100,6 +105,38 @@ const loading = ref(true)
 const historyError = ref(false)
 const historyList = ref<DictationHistory[]>([])
 const todayWordCount = ref(0)
+const expandedGroups = ref<Set<string>>(new Set())
+
+// 按文章标题分组，同一篇文章多次默写折叠在一起
+interface HistoryGroup {
+  title: string
+  bestAccuracy: number
+  items: DictationHistory[]
+}
+const groupedHistory = computed<HistoryGroup[]>(() => {
+  const map = new Map<string, DictationHistory[]>()
+  for (const rec of historyList.value) {
+    const title = rec.content_title || '默写练习'
+    if (!map.has(title)) map.set(title, [])
+    map.get(title)!.push(rec)
+  }
+  const groups: HistoryGroup[] = []
+  for (const [title, items] of map) {
+    const bestAccuracy = Math.max(...items.map(i => i.accuracy_rate))
+    groups.push({ title, bestAccuracy: Math.round(bestAccuracy), items })
+  }
+  return groups
+})
+
+function toggleGroup(title: string) {
+  if (expandedGroups.value.has(title)) {
+    expandedGroups.value.delete(title)
+  } else {
+    expandedGroups.value.add(title)
+  }
+  // 触发响应式更新
+  expandedGroups.value = new Set(expandedGroups.value)
+}
 
 async function loadData() {
   loading.value = true
@@ -142,6 +179,10 @@ async function loadHistory() {
     const { data } = await dictationApi.getHistory(userId, 200)
     historyList.value = Array.isArray(data) ? data : []
     console.debug('[Notes] 默写历史=%d 条', historyList.value.length)
+    // 默认展开第一组
+    if (groupedHistory.value.length > 0) {
+      expandedGroups.value = new Set([groupedHistory.value[0].title])
+    }
   } catch (e) {
     console.debug('[Notes] 默写历史加载失败 err=%o', e)
     historyError.value = true
@@ -150,6 +191,10 @@ async function loadHistory() {
 }
 
 function goVocabReview() {
+  if (todayWordCount.value === 0) {
+    console.debug('[Notes] 无待背单词，拦截跳转')
+    return
+  }
   // review 页支持 ?tab=vocab 直接落地到"背单词"分区
   navTo('/pages/review/index?tab=vocab')
 }
@@ -181,17 +226,17 @@ onShow(loadData)
   padding-bottom: 40rpx;
 }
 
-/* 顶部大标题 */
+/* 顶部通栏：主题青绿色 + 白色标题 */
 .notes-header {
-  padding: calc(env(safe-area-inset-top, 44px) + 8rpx) 32rpx 20rpx;
-  background: #fff;
+  padding: calc(env(safe-area-inset-top, 44px) + 16rpx) 32rpx 24rpx;
+  background: var(--primary, #5B9AA8);
   margin: 0 -20rpx 0;
 }
 .notes-title {
-  font-size: 44rpx;
-  font-weight: 800;
-  color: var(--on-surface);
-  letter-spacing: -0.5rpx;
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.5rpx;
 }
 
 /* 分区容器 */
@@ -212,8 +257,8 @@ onShow(loadData)
 
 /* 分割线 */
 .notes-divider {
-  height: 2rpx;
-  background: var(--outline-variant);
+  height: 1rpx;
+  background: #e4eff2;
   margin: 0 8rpx;
 }
 
@@ -227,9 +272,9 @@ onShow(loadData)
   align-items: center;
   gap: 24rpx;
   padding: 32rpx 28rpx;
-  background: linear-gradient(135deg, #F0F9FF 0%, #E4F0F3 100%);
-  border-radius: 28rpx;
-  border: 2rpx solid #B3D9E3;
+  background: #f6fbfc;
+  border-radius: 24rpx;
+  border: 1rpx solid #e4eff2;
 }
 .vocab-info {
   flex: 1;
@@ -249,7 +294,7 @@ onShow(loadData)
   margin-top: 4rpx;
 }
 .vocab-num {
-  font-size: 64rpx;
+  font-size: 56rpx;
   font-weight: 800;
   color: var(--primary);
   line-height: 1;
@@ -264,40 +309,43 @@ onShow(loadData)
   color: var(--on-surface-muted);
   margin-top: 8rpx;
 }
-.vocab-btn {
+/* 背词按钮：细青描边 */
+.vocab-action {
   flex-shrink: 0;
-  min-width: 180rpx;
-  height: 88rpx;
+  padding: 16rpx 32rpx;
+  border: 2rpx solid var(--primary);
+  border-radius: 40rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--primary);
+  background: transparent;
+}
+.vocab-action.disabled {
+  border-color: #d0d8dc;
+  color: #b0b8c0;
+  pointer-events: none;
 }
 
-/* ② 默写存档卡片 */
+/* ② 默写存档 - 分组折叠 */
 .history-list {
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
+  gap: 20rpx;
 }
-.history-card {
+.history-group {
+  background: #f6fbfc;
+  border: 1rpx solid #e4eff2;
+  border-radius: 20rpx;
+  overflow: hidden;
+}
+.history-group-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 24rpx 28rpx;
-  background: #fff;
-  border: 2rpx solid var(--outline-variant);
-  border-radius: 24rpx;
-  transition: transform 0.15s, border-color 0.15s;
+  gap: 12rpx;
 }
-.history-card:active {
-  transform: scale(0.98);
-  border-color: var(--primary-light);
-}
-.history-left {
+.history-group-title {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6rpx;
-  min-width: 0;
-}
-.history-title {
   font-size: 28rpx;
   font-weight: 700;
   color: var(--on-surface);
@@ -305,13 +353,37 @@ onShow(loadData)
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.history-meta {
+.history-group-meta {
   font-size: 22rpx;
   color: var(--on-surface-variant);
-}
-.history-right {
   flex-shrink: 0;
-  padding-left: 20rpx;
+}
+.history-group-toggle {
+  font-size: 20rpx;
+  color: #b0b8c0;
+  flex-shrink: 0;
+}
+.history-group-list {
+  border-top: 1rpx solid #e4eff2;
+}
+.history-card {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 28rpx;
+  gap: 16rpx;
+}
+.history-card + .history-card {
+  border-top: 1rpx solid #eef4f6;
+}
+.history-meta {
+  font-size: 24rpx;
+  color: var(--on-surface-variant);
+  flex: 1;
+}
+.history-accuracy {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--primary);
 }
 .history-view {
   font-size: 24rpx;

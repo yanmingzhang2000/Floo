@@ -1,11 +1,11 @@
 <template>
   <view class="page-container">
-    <view class="nav-bar">
-      <view class="nav-left"></view>
-      <text class="nav-title">复习</text>
-      <view class="nav-right"></view>
+    <!-- 顶栏统一青绿色 -->
+    <view class="nav-bar-themed">
+      <text class="nav-bar-title">复习</text>
     </view>
 
+    <!-- 二级标签：极简细横线 -->
     <view class="underline-tabs">
       <view class="underline-tab" :class="{ active: activeTab === 'review' }" @tap="switchTab('review')">
         <text>复习</text>
@@ -28,40 +28,35 @@
       <view v-show="activeTab === 'review'">
         <view class="stats-banner">
           <view class="stat-item">
-            <text class="stat-icon">📚</text>
             <text class="stat-value">{{ progressList.length }}</text>
             <text class="stat-label">总内容</text>
           </view>
           <view class="stat-item">
-            <text class="stat-icon">✅</text>
-            <text class="stat-value" style="color: var(--success)">{{ masteredCount }}</text>
+            <text class="stat-value">{{ masteredCount }}</text>
             <text class="stat-label">已掌握</text>
           </view>
           <view class="stat-item">
-            <text class="stat-icon">⏰</text>
-            <text class="stat-value" style="color: var(--warning)">{{ dueTasks.length }}</text>
+            <text class="stat-value">{{ dueTasks.length }}</text>
             <text class="stat-label">待复习</text>
           </view>
         </view>
         <view v-if="dueTasks.length" class="section">
           <text class="section-title">今日待复习</text>
           <view class="task-list">
-            <view v-for="task in dueTasks" :key="task.content_id" class="card task-item">
-              <view class="task-avatar" :style="{ background: stageColors[task.review_stage] || '#5B9AA8' }">
-                <text class="task-stage">S{{ task.review_stage }}</text>
+            <view v-for="task in dueTasks" :key="task.content_id" class="task-item">
+              <view class="task-stage-dot" :style="{ background: stageColors[task.review_stage] || 'var(--primary)' }">
+                <text class="task-stage-text">{{ task.review_stage }}</text>
               </view>
               <view class="task-info">
                 <text class="task-title">{{ task.title }}</text>
-                <text class="task-meta">准确率 {{ task.last_accuracy.toFixed(0) }}% · 下次 {{ task.next_review_date }}</text>
+                <text class="task-meta">准确率 {{ task.last_accuracy.toFixed(0) }}%</text>
               </view>
-              <button class="btn btn-sm btn-primary" @tap="goDetail(task.content_id)">
-                <text>去复述</text>
-              </button>
+              <text class="task-action" @tap="goDetail(task.content_id)">去复述</text>
             </view>
           </view>
         </view>
         <view v-else class="empty-state">
-          <text class="icon" style="color: var(--success)">✅</text>
+          <text class="icon">✓</text>
           <text class="empty-text">暂无待复习内容</text>
           <text class="empty-hint">继续学习新内容吧</text>
         </view>
@@ -69,10 +64,9 @@
 
       <!-- ===== 默写 ===== -->
       <view v-show="activeTab === 'dictation'">
-        <!-- 历史记录优先展示，因为默写入口在文章详情页 -->
         <view class="section">
           <text class="section-title">默写记录</text>
-          <view v-if="historyLoadError" class="empty-state" style="cursor: pointer" @tap="loadData">
+          <view v-if="historyLoadError" class="empty-state" @tap="loadData">
             <text class="icon">⚠️</text>
             <text class="empty-text">加载失败</text>
             <text class="empty-hint">点此重试</text>
@@ -83,14 +77,13 @@
             <text class="empty-hint">在文章阅读页点击「默写」开始练习</text>
           </view>
           <view v-else class="history-list">
-            <view v-for="rec in historyList" :key="rec.dictation_id" class="card history-item" @tap="goDictationDetail(rec.dictation_id)">
+            <view v-for="rec in historyList" :key="rec.dictation_id" class="history-item" @tap="goDictationDetail(rec.dictation_id)">
               <view class="history-left">
                 <text class="history-date">{{ formatDate(rec.created_at) }}</text>
                 <text class="history-title ellipsis">{{ rec.content_title || '默写练习' }}</text>
               </view>
               <view class="history-right">
-                <text class="history-accuracy" :class="getScoreClass(rec.accuracy_rate)">{{ rec.accuracy_rate.toFixed(0) }}%</text>
-                <text class="history-points">+{{ rec.earned_points }}</text>
+                <text class="history-accuracy">{{ rec.accuracy_rate.toFixed(0) }}%</text>
               </view>
             </view>
           </view>
@@ -99,7 +92,7 @@
         <view class="section">
           <view class="section-title-row" @tap="showTodayContent = !showTodayContent">
             <text class="section-title">今日学习内容</text>
-            <text class="section-toggle">{{ showTodayContent ? '收起 ▲' : '展开 ▼' }}</text>
+            <text class="section-toggle">{{ showTodayContent ? '收起' : '展开' }}</text>
           </view>
           <view v-if="showTodayContent">
             <view v-if="todayContents.length === 0" class="empty-state">
@@ -107,21 +100,19 @@
               <text class="empty-text">暂无内容</text>
             </view>
             <view v-else class="content-list">
-              <view v-for="item in todayContents" :key="item.id" class="card content-item" @tap="startDictation(item)">
+              <view v-for="item in todayContents" :key="item.id" class="content-item">
                 <view class="content-left">
                   <text class="content-title">{{ item.title }}</text>
-                  <text class="content-meta">{{ item.content_date }} · {{ item.difficulty_level }}</text>
+                  <text class="content-meta">{{ item.content_date }}</text>
                 </view>
-                <button class="btn btn-sm btn-outline" @tap.stop="startDictation(item)">
-                  <text>默写</text>
-                </button>
+                <text class="content-action" @tap.stop="startDictation(item)">默写</text>
               </view>
             </view>
           </view>
         </view>
       </view>
 
-      <!-- ===== 背单词（选义 + 默写随机出题） ===== -->
+      <!-- ===== 背单词 ===== -->
       <view v-show="activeTab === 'vocab'">
         <!-- 开始前 -->
         <view v-if="!vbActive" class="section">
@@ -132,27 +123,15 @@
             <text class="empty-hint">收藏更多单词后再来复习</text>
           </view>
           <view v-else>
-            <view class="card vocab-start-card">
+            <view class="vocab-start-card">
               <view class="vocab-info">
-                <text class="vocab-info-icon">📖</text>
-                <view>
-                  <text class="vocab-info-label">待复习单词</text>
-                  <text class="vocab-info-count">{{ vbDueWords.length }}</text>
-                </view>
+                <text class="vocab-info-label">待复习单词</text>
+                <text class="vocab-info-count">{{ vbDueWords.length }}</text>
               </view>
-              <button class="btn btn-primary btn-sm" @tap="startVocab">
-                <text>复习</text>
-              </button>
+              <text class="vocab-start-action" @tap="startVocab">开始背词</text>
             </view>
             <view class="vb-mode-hints">
-              <view class="vb-mode-hint">
-                <text class="vb-mode-icon">🎯</text>
-                <text class="vb-mode-text">选义：看英文选中文释义</text>
-              </view>
-              <view class="vb-mode-hint">
-                <text class="vb-mode-icon">✏️</text>
-                <text class="vb-mode-text">默写：看中文拼写英文单词</text>
-              </view>
+              <text class="vb-mode-text">选义：看英文选中文 · 默写：看中文拼英文</text>
             </view>
           </view>
         </view>
@@ -164,12 +143,12 @@
           </view>
           <view class="vb-progress-row">
             <text class="vocab-progress-text">{{ vbIdx + 1 }} / {{ vbWords.length }}</text>
-            <text class="vb-mode-tag">{{ vbCurrentMode === 'choice' ? '🎯 选义' : '✏️ 默写' }}</text>
+            <text class="vb-mode-tag">{{ vbCurrentMode === 'choice' ? '选义' : '默写' }}</text>
           </view>
 
           <!-- ====== 选义模式 ====== -->
           <template v-if="vbCurrentMode === 'choice'">
-            <view class="card wc-word-card">
+            <view class="wc-word-card">
               <text class="wc-word-text">{{ vbCurrentWord?.word }}</text>
               <text v-if="vbCurrentWord?.phonetic" class="wc-word-phonetic">{{ vbCurrentWord.phonetic }}</text>
             </view>
@@ -177,7 +156,7 @@
               <view
                 v-for="(opt, i) in vbChoiceOptions"
                 :key="i"
-                class="card wc-option"
+                class="wc-option"
                 :class="{
                   correct: vbShowResult && opt === vbCurrentWord?.meaning,
                   wrong: vbShowResult && vbSelectedIdx === i && opt !== vbCurrentWord?.meaning,
@@ -193,11 +172,11 @@
 
           <!-- ====== 默写模式 ====== -->
           <template v-else>
-            <view class="card vocab-hint-card">
+            <view class="vocab-hint-card">
               <text class="vocab-hint-label">中文释义</text>
               <text class="vocab-hint-meaning">{{ vbCurrentWord?.meaning || '' }}</text>
             </view>
-            <view class="card vocab-input-card">
+            <view class="vocab-input-card">
               <input v-model="vbDictInput" type="text" placeholder="输入英文单词..." class="vocab-input" @confirm="vbShowResult ? nextVbWord() : checkVbDict()" />
             </view>
           </template>
@@ -206,53 +185,39 @@
           <view class="vb-actions">
             <template v-if="vbCurrentMode === 'choice'">
               <view v-if="vbShowResult" class="vb-result-line" :class="vbIsCorrect ? 'vb-correct' : 'vb-wrong'">
-                <text>{{ vbIsCorrect ? '✅ 正确！' : '❌ 错误，正确答案：' + vbCurrentWord?.meaning }}</text>
+                <text>{{ vbIsCorrect ? '正确' : '错误，正确答案：' + vbCurrentWord?.meaning }}</text>
               </view>
-              <button v-if="!vbShowResult" class="btn btn-text" @tap="showVbAnswer">
-                <text>不会，看答案</text>
-              </button>
-              <button v-if="vbShowResult" class="btn btn-primary btn-block btn-lg" @tap="nextVbWord">
-                <text>{{ vbIdx < vbWords.length - 1 ? '下一个' : '查看结果' }}</text>
-              </button>
+              <text v-if="!vbShowResult" class="vb-skip-action" @tap="showVbAnswer">不会，看答案</text>
+              <text v-if="vbShowResult" class="vb-next-action" @tap="nextVbWord">{{ vbIdx < vbWords.length - 1 ? '下一个' : '查看结果' }}</text>
             </template>
             <template v-else>
-              <button v-if="!vbShowResult" class="btn btn-primary btn-block btn-lg" :disabled="!vbDictInput.trim()" @tap="checkVbDict">
-                <text>确认</text>
-              </button>
-              <button v-if="!vbShowResult" class="btn btn-text" @tap="showVbAnswer">
-                <text>不会，看答案</text>
-              </button>
+              <text v-if="!vbShowResult" class="vb-next-action" :class="{ disabled: !vbDictInput.trim() }" @tap="checkVbDict">确认</text>
+              <text v-if="!vbShowResult" class="vb-skip-action" @tap="showVbAnswer">不会，看答案</text>
               <view v-if="vbShowResult" class="vb-result-line" :class="vbIsCorrect ? 'vb-correct' : 'vb-wrong'">
-                <text>{{ vbIsCorrect ? '✅ 正确！' : '❌ 错误，正确答案：' + vbCurrentWord?.word }}</text>
+                <text>{{ vbIsCorrect ? '正确' : '错误，正确答案：' + vbCurrentWord?.word }}</text>
               </view>
-              <button v-if="vbShowResult" class="btn btn-primary btn-block btn-lg" @tap="nextVbWord">
-                <text>{{ vbIdx < vbWords.length - 1 ? '下一个' : '查看结果' }}</text>
-              </button>
+              <text v-if="vbShowResult" class="vb-next-action" @tap="nextVbWord">{{ vbIdx < vbWords.length - 1 ? '下一个' : '查看结果' }}</text>
             </template>
           </view>
 
           <!-- 完成 -->
-          <view v-if="vbDone" class="card vocab-done-card">
-            <text class="vocab-done-title">🎉 背单词完成</text>
+          <view v-if="vbDone" class="vocab-done-card">
+            <text class="vocab-done-title">背单词完成</text>
             <view class="vocab-done-stats">
               <view class="vocab-done-stat">
-                <text class="vocab-done-stat-num" style="color: var(--success)">{{ vbCorrectCount }}</text>
+                <text class="vocab-done-stat-num">{{ vbCorrectCount }}</text>
                 <text class="vocab-done-stat-label">正确</text>
               </view>
               <view class="vocab-done-stat">
-                <text class="vocab-done-stat-num" style="color: var(--error)">{{ vbWords.length - vbCorrectCount }}</text>
+                <text class="vocab-done-stat-num wrong">{{ vbWords.length - vbCorrectCount }}</text>
                 <text class="vocab-done-stat-label">错误</text>
               </view>
             </view>
-            <button class="btn btn-primary btn-block" @tap="resetVb">
-              <text>返回</text>
-            </button>
+            <text class="vb-next-action" @tap="resetVb">返回</text>
           </view>
         </view>
       </view>
     </template>
-
-    <!-- 默写弹窗已迁移到独立页面 -->
   </view>
 </template>
 
@@ -312,11 +277,6 @@ function switchTab(tab: typeof activeTab.value) {
 
 function goDetail(contentId: number) { navTo(`/pages/detail/index?id=${contentId}`) }
 function goDictationDetail(dictationId: number) { navTo(`/pages/dictation-detail/index?id=${dictationId}`) }
-function getScoreClass(score: number) {
-  if (score >= 80) return 'score-green'
-  if (score >= 60) return 'score-orange'
-  return 'score-red'
-}
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr)
@@ -519,90 +479,244 @@ onShow(loadData)
 </script>
 
 <style scoped>
-.tab-badge {
-  display: inline-block; background: var(--error); color: white;
-  font-size: 20rpx; font-weight: 700; min-width: 32rpx; height: 32rpx;
-  line-height: 32rpx; border-radius: 16rpx; padding: 0 8rpx;
-  margin-left: 8rpx; text-align: center;
+/* ---- 顶栏统一青绿 ---- */
+.nav-bar-themed {
+  display: flex;
+  align-items: flex-end;
+  padding: calc(env(safe-area-inset-top, 44px) + 16rpx) 32rpx 24rpx;
+  background: var(--primary, #5B9AA8);
 }
-.section { padding: 24rpx 0; }
-.section-title { font-size: 28rpx; font-weight: 700; margin-bottom: 20rpx; display: block; }
+.nav-bar-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.5rpx;
+}
 
-/* 复述 */
+/* ---- 二级标签：极简细横线 ---- */
+.underline-tabs {
+  display: flex;
+  background: #fff;
+  border-bottom: 1rpx solid #e4eff2;
+  padding: 0 8rpx;
+}
+.underline-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20rpx 0;
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #b0b8c0;
+  position: relative;
+  gap: 8rpx;
+}
+.underline-tab.active {
+  color: var(--primary);
+  font-weight: 700;
+}
+.underline-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 25%;
+  right: 25%;
+  height: 3rpx;
+  border-radius: 2rpx;
+  background: var(--primary);
+}
+
+/* 角标弱化：小圆点 */
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28rpx;
+  height: 28rpx;
+  border-radius: 14rpx;
+  padding: 0 6rpx;
+  background: var(--primary);
+  opacity: 0.7;
+}
+.tab-badge text { font-size: 18rpx; color: #fff; font-weight: 700; }
+
+/* ---- 统计栏 ---- */
+.stats-banner {
+  display: flex;
+  padding: 32rpx 20rpx 24rpx;
+  gap: 0;
+}
+.stat-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+}
+.stat-value {
+  font-size: 44rpx;
+  font-weight: 800;
+  color: var(--primary);
+  line-height: 1;
+}
+.stat-label {
+  font-size: 22rpx;
+  color: var(--on-surface-variant);
+}
+
+/* ---- 通用分区 ---- */
+.section { padding: 16rpx 20rpx 24rpx; }
+.section-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  margin-bottom: 20rpx;
+  display: block;
+  color: var(--on-surface);
+}
+.section-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
+.section-toggle { font-size: 24rpx; color: var(--primary); }
+
+/* ---- 复述任务列表 ---- */
 .task-list { display: flex; flex-direction: column; gap: 16rpx; }
-.task-item { display: flex; align-items: center; gap: 20rpx; padding: 24rpx 28rpx; }
-.task-avatar { width: 72rpx; height: 72rpx; border-radius: 20rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.task-stage { color: white; font-weight: 700; font-size: 24rpx; }
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 24rpx 28rpx;
+  background: #f6fbfc;
+  border: 1rpx solid #e4eff2;
+  border-radius: 20rpx;
+}
+.task-stage-dot {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+.task-stage-text { color: white; font-weight: 700; font-size: 22rpx; }
 .task-info { flex: 1; min-width: 0; }
 .task-title { font-weight: 600; font-size: 28rpx; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .task-meta { font-size: 22rpx; color: var(--on-surface-variant); margin-top: 4rpx; display: block; }
+.task-action { font-size: 26rpx; color: var(--primary); font-weight: 600; flex-shrink: 0; }
 
-/* 默写 */
-.content-list { display: flex; flex-direction: column; gap: 16rpx; }
-.content-item { display: flex; align-items: center; gap: 20rpx; }
-.content-left { flex: 1; }
-.content-title { font-weight: 600; font-size: 28rpx; display: block; }
-.content-meta { font-size: 24rpx; color: var(--on-surface-variant); margin-top: 4rpx; display: block; }
-.section-title-row { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-.section-toggle { font-size: 24rpx; color: var(--primary); }
+/* ---- 默写历史 ---- */
 .history-list { display: flex; flex-direction: column; gap: 12rpx; }
-.history-item { display: flex; align-items: center; padding: 20rpx 28rpx; cursor: pointer; }
+.history-item {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 28rpx;
+  background: #f6fbfc;
+  border: 1rpx solid #e4eff2;
+  border-radius: 16rpx;
+}
 .history-left { flex: 1; display: flex; flex-direction: column; gap: 4rpx; min-width: 0; }
 .history-right { display: flex; align-items: center; gap: 16rpx; flex-shrink: 0; }
 .history-title { font-size: 26rpx; font-weight: 500; }
 .history-date { font-size: 22rpx; color: var(--on-surface-variant); }
-.history-accuracy { font-size: 32rpx; font-weight: 700; min-width: 72rpx; text-align: right; }
-.history-points { font-size: 24rpx; color: var(--success); font-weight: 700; }
+.history-accuracy { font-size: 28rpx; font-weight: 700; color: var(--primary); min-width: 72rpx; text-align: right; }
 
-/* 通用词汇 */
-.vocab-start-card { display: flex; align-items: center; justify-content: space-between; }
-.vocab-info { display: flex; align-items: center; gap: 20rpx; flex: 1; }
-.vocab-info-icon { font-size: 48rpx; }
-.vocab-info-label { font-size: 26rpx; color: var(--on-surface-variant); display: block; }
-.vocab-info-count { font-size: 32rpx; font-weight: 700; display: block; }
-.vocab-progress-bar-bg { height: 8rpx; background: var(--surface-container); border-radius: 4rpx; margin: 32rpx 32rpx 0; overflow: hidden; }
-.vocab-progress-bar-fill { height: 100%; background: var(--primary); border-radius: 4rpx; transition: width 0.3s; }
+/* ---- 今日内容列表 ---- */
+.content-list { display: flex; flex-direction: column; gap: 12rpx; }
+.content-item {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 20rpx 28rpx;
+  background: #f6fbfc;
+  border: 1rpx solid #e4eff2;
+  border-radius: 16rpx;
+}
+.content-left { flex: 1; }
+.content-title { font-weight: 600; font-size: 28rpx; display: block; }
+.content-meta { font-size: 24rpx; color: var(--on-surface-variant); margin-top: 4rpx; display: block; }
+.content-action { font-size: 26rpx; color: var(--primary); font-weight: 600; flex-shrink: 0; }
+
+/* ---- 背单词开始卡 ---- */
+.vocab-start-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx 28rpx;
+  background: #f6fbfc;
+  border: 1rpx solid #e4eff2;
+  border-radius: 20rpx;
+}
+.vocab-info { display: flex; flex-direction: column; gap: 4rpx; }
+.vocab-info-label { font-size: 24rpx; color: var(--on-surface-variant); }
+.vocab-info-count { font-size: 44rpx; font-weight: 800; color: var(--primary); }
+.vocab-start-action {
+  padding: 16rpx 32rpx;
+  border: 2rpx solid var(--primary);
+  border-radius: 40rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--primary);
+}
+.vb-mode-hints { margin-top: 20rpx; padding: 0 4rpx; }
+.vb-mode-text { font-size: 24rpx; color: var(--on-surface-variant); }
+
+/* ---- 进行中 ---- */
+.vocab-progress-bar-bg { height: 6rpx; background: #e4eff2; border-radius: 3rpx; margin: 32rpx 20rpx 0; overflow: hidden; }
+.vocab-progress-bar-fill { height: 100%; background: var(--primary); border-radius: 3rpx; transition: width 0.3s; }
+.vb-progress-row { display: flex; justify-content: space-between; align-items: center; padding: 12rpx 20rpx 0; }
 .vocab-progress-text { font-size: 24rpx; color: var(--on-surface-variant); }
-.vocab-hint-card { text-align: center; padding: 40rpx; }
+.vb-mode-tag { font-size: 24rpx; color: var(--primary); font-weight: 600; }
+.vb-actions { padding: 20rpx 20rpx 32rpx; display: flex; flex-direction: column; gap: 16rpx; align-items: center; }
+
+/* 操作文字按钮 */
+.vb-next-action {
+  display: block;
+  width: 100%;
+  padding: 28rpx 0;
+  text-align: center;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--primary);
+  border: 2rpx solid var(--primary);
+  border-radius: 48rpx;
+}
+.vb-next-action.disabled { color: #b0b8c0; border-color: #d0d8dc; pointer-events: none; }
+.vb-skip-action { font-size: 26rpx; color: #b0b8c0; }
+
+.vb-result-line { text-align: center; font-size: 28rpx; font-weight: 600; padding: 12rpx 0; }
+.vb-correct { color: var(--primary); }
+.vb-wrong { color: #666; }
+
+/* ---- 选义卡片 ---- */
+.wc-word-card { text-align: center; padding: 48rpx 32rpx; margin: 16rpx 20rpx; background: #f6fbfc; border: 1rpx solid #e4eff2; border-radius: 20rpx; }
+.wc-word-text { font-size: 52rpx; font-weight: 800; display: block; color: var(--on-surface); }
+.wc-word-phonetic { font-size: 26rpx; color: var(--on-surface-variant); display: block; margin-top: 12rpx; }
+.wc-options { padding: 0 20rpx; display: flex; flex-direction: column; gap: 16rpx; }
+.wc-option {
+  display: flex; align-items: center; gap: 20rpx; padding: 28rpx 24rpx;
+  border: 1rpx solid #e4eff2; border-radius: 16rpx;
+  background: #f6fbfc; transition: all 0.15s;
+}
+.wc-option.selected { border-color: var(--primary); background: rgba(91,154,168,0.06); }
+.wc-option.correct { border-color: var(--primary); background: rgba(91,154,168,0.1); }
+.wc-option.wrong { border-color: #ccc; background: #f8f8f8; }
+.wc-option-label { font-size: 28rpx; font-weight: 700; color: var(--on-surface-variant); width: 48rpx; text-align: center; }
+.wc-option-text { font-size: 28rpx; flex: 1; color: var(--on-surface); }
+
+/* ---- 默写输入 ---- */
+.vocab-hint-card { text-align: center; padding: 40rpx; margin: 0 20rpx 20rpx; background: #f6fbfc; border: 1rpx solid #e4eff2; border-radius: 20rpx; }
 .vocab-hint-label { font-size: 22rpx; color: var(--on-surface-variant); margin-bottom: 16rpx; display: block; }
-.vocab-hint-meaning { font-size: 40rpx; font-weight: 600; display: block; }
-.vocab-input-card { margin: 0 32rpx 24rpx; padding: 0; }
-.vocab-input { width: 100%; border: none; border-bottom: 3rpx solid var(--outline); padding: 28rpx 16rpx; min-height: 88rpx; font-size: 36rpx; text-align: center; outline: none; color: var(--on-surface); background: transparent; line-height: 1.4; box-sizing: border-box; }
+.vocab-hint-meaning { font-size: 40rpx; font-weight: 600; display: block; color: var(--on-surface); }
+.vocab-input-card { margin: 0 20rpx 24rpx; background: #f6fbfc; border: 1rpx solid #e4eff2; border-radius: 20rpx; }
+.vocab-input { width: 100%; border: none; border-bottom: 2rpx solid var(--outline); padding: 28rpx 16rpx; min-height: 88rpx; font-size: 36rpx; text-align: center; outline: none; color: var(--on-surface); background: transparent; line-height: 1.4; box-sizing: border-box; }
 .vocab-input:focus { border-bottom-color: var(--primary); }
-.vocab-result-card { text-align: center; padding: 32rpx; margin: 0 32rpx 24rpx; }
-.vocab-result-status { font-size: 32rpx; font-weight: 700; display: block; margin-bottom: 12rpx; }
-.vocab-result-status.correct { color: var(--success); }
-.vocab-result-status.wrong { color: var(--error); }
-.vocab-result-answer { font-size: 28rpx; display: block; color: var(--on-surface-variant); }
-.vocab-done-card { text-align: center; padding: 40rpx; margin: 0 32rpx 32rpx; }
-.vocab-done-title { font-size: 36rpx; font-weight: 700; margin-bottom: 32rpx; display: block; }
+
+/* ---- 完成卡 ---- */
+.vocab-done-card { text-align: center; padding: 40rpx 32rpx; margin: 0 20rpx 32rpx; background: #f6fbfc; border: 1rpx solid #e4eff2; border-radius: 20rpx; }
+.vocab-done-title { font-size: 32rpx; font-weight: 700; margin-bottom: 32rpx; display: block; color: var(--on-surface); }
 .vocab-done-stats { display: flex; justify-content: center; gap: 64rpx; margin-bottom: 32rpx; }
 .vocab-done-stat { display: flex; flex-direction: column; align-items: center; gap: 8rpx; }
-.vocab-done-stat-num { font-size: 48rpx; font-weight: 800; }
+.vocab-done-stat-num { font-size: 48rpx; font-weight: 800; color: var(--primary); }
+.vocab-done-stat-num.wrong { color: #999; }
 .vocab-done-stat-label { font-size: 22rpx; color: var(--on-surface-variant); }
-
-/* 背单词专属 */
-.vb-mode-hints { margin-top: 24rpx; display: flex; flex-direction: column; gap: 16rpx; }
-.vb-mode-hint { display: flex; align-items: center; gap: 16rpx; padding: 20rpx 24rpx; background: var(--surface-container); border-radius: 12rpx; }
-.vb-mode-icon { font-size: 32rpx; }
-.vb-mode-text { font-size: 26rpx; color: var(--on-surface-variant); }
-.vb-progress-row { display: flex; justify-content: space-between; align-items: center; padding: 12rpx 32rpx 0; }
-.vb-mode-tag { font-size: 24rpx; color: var(--primary); font-weight: 600; }
-.vb-actions { padding: 16rpx 32rpx 32rpx; display: flex; flex-direction: column; gap: 12rpx; align-items: center; }
-.vb-result-line { text-align: center; font-size: 28rpx; font-weight: 600; padding: 16rpx 0; }
-.vb-correct { color: var(--success); }
-.vb-wrong { color: var(--error); }
-
-/* 选义卡片 */
-.wc-word-card { text-align: center; padding: 48rpx 32rpx; margin: 16rpx 32rpx; }
-.wc-word-text { font-size: 52rpx; font-weight: 800; display: block; }
-.wc-word-phonetic { font-size: 26rpx; color: var(--on-surface-variant); display: block; margin-top: 12rpx; }
-.wc-options { padding: 0 32rpx; display: flex; flex-direction: column; gap: 16rpx; }
-.wc-option { display: flex; align-items: center; gap: 20rpx; padding: 28rpx 24rpx; border: 3rpx solid var(--outline-variant); border-radius: 16rpx; transition: all 0.15s; }
-.wc-option.selected { border-color: var(--primary); background: var(--primary-container); }
-.wc-option.correct { border-color: var(--success); background: var(--success-container); }
-.wc-option.wrong { border-color: var(--error); background: var(--error-container); }
-.wc-option-label { font-size: 28rpx; font-weight: 700; color: var(--on-surface-variant); width: 48rpx; text-align: center; }
-.wc-option-text { font-size: 28rpx; flex: 1; }
-
 </style>
