@@ -66,14 +66,10 @@
               </view>
             </view>
 
-            <!-- 擅长/不擅长 -->
-            <view v-if="strengthArticle" class="summary-insight">
-              <text class="summary-insight-label">擅长</text>
-              <text class="summary-insight-text">{{ strengthArticle.title }} ({{ strengthArticle.accuracy }}%)</text>
-            </view>
-            <view v-if="weaknessArticle" class="summary-insight">
-              <text class="summary-insight-label">需加强</text>
-              <text class="summary-insight-text">{{ weaknessArticle.title }} ({{ weaknessArticle.accuracy }}%)</text>
+            <!-- AI 能力分析（来自最近默写的 AI 反馈） -->
+            <view v-if="aiInsights.length > 0" class="summary-insights">
+              <text class="summary-insights-title">AI 分析</text>
+              <text v-for="(tip, i) in aiInsights" :key="i" class="summary-insight-item">{{ tip }}</text>
             </view>
 
             <!-- 查看详情入口 -->
@@ -96,13 +92,13 @@ import type { DictationHistory } from '@/types'
 /**
  * 笔记页：复盘专区
  *   ① 今日背词：显示待复习词量，提供"开始背词"和"单词书"两个入口
- *   ② 默写存档：摘要卡片展示整体表现（总次数、平均准确率、擅长/需加强），
+ *   ② 默写存档：摘要卡片展示整体表现（总次数、平均准确率），
+ *      AI 分析来自最近默写记录的 ai_feedback.suggestions，
  *      底部"查看全部"跳转复习页默写 tab。
  *
- * Why 数量取"待复习"而不是"收藏总数"：
- *   收藏总数会一直涨，用户看不出"今日要背几个"。用 wordReviewApi.getDue 拿
- *   艾宾浩斯当天到期的量，才是真正的"今日生词"。空数组降级为收藏总数，避免
- *   接口出错时用户看到"0"以为没词可背。
+ * Why 用最近默写的 suggestions 而不是前端硬算：
+ *   后端在每次默写批改时已经由 AI 生成了针对性的学习建议（如"词汇拼写薄弱"、
+ *   "时态使用不稳定"），这些是真正的 AI 分析。前端只需展示即可，无需重复造轮子。
  */
 
 const auth = useAuthStore()
@@ -110,6 +106,8 @@ const loading = ref(true)
 const historyError = ref(false)
 const historyList = ref<DictationHistory[]>([])
 const todayWordCount = ref(0)
+// 来自最近默写详情的 AI 建议
+const aiInsights = ref<string[]>([])
 
 // ---- 默写摘要计算 ----
 
@@ -117,33 +115,6 @@ const avgAccuracy = computed(() => {
   if (historyList.value.length === 0) return 0
   const sum = historyList.value.reduce((acc, r) => acc + r.accuracy_rate, 0)
   return Math.round(sum / historyList.value.length)
-})
-
-// 按文章分组，取每篇文章最高准确率，找出最强和最弱
-interface ArticleStat { title: string; accuracy: number }
-
-const articleStats = computed<ArticleStat[]>(() => {
-  const map = new Map<string, number[]>()
-  for (const rec of historyList.value) {
-    const title = rec.content_title || '默写练习'
-    if (!map.has(title)) map.set(title, [])
-    map.get(title)!.push(rec.accuracy_rate)
-  }
-  return Array.from(map.entries()).map(([title, rates]) => ({
-    title,
-    accuracy: Math.round(Math.max(...rates)),
-  }))
-})
-
-const strengthArticle = computed<ArticleStat | null>(() => {
-  // 至少练过 2 篇才展示"擅长"，避免只有 1 篇时两个都显示同一篇
-  if (articleStats.value.length < 2) return null
-  return articleStats.value.reduce((best, cur) => cur.accuracy > best.accuracy ? cur : best)
-})
-
-const weaknessArticle = computed<ArticleStat | null>(() => {
-  if (articleStats.value.length < 2) return null
-  return articleStats.value.reduce((worst, cur) => cur.accuracy < worst.accuracy ? cur : worst)
 })
 
 async function loadData() {
@@ -187,6 +158,25 @@ async function loadHistory() {
     const { data } = await dictationApi.getHistory(userId, 200)
     historyList.value = Array.isArray(data) ? data : []
     console.debug('[Notes] 默写历史=%d 条', historyList.value.length)
+
+    // 加载最近一条默写详情，提取 AI 建议作为能力分析
+    if (historyList.value.length > 0) {
+      const latestId = historyList.value[0].dictation_id
+      try {
+        const { data: detail } = await dictationApi.getHistoryDetail(latestId, userId)
+        if (detail?.ai_feedback?.suggestions?.length) {
+          // 最多展示 2 条，避免占太多空间
+          aiInsights.value = detail.ai_feedback.suggestions.slice(0, 2)
+          console.debug('[Notes] AI 分析建议=%o', aiInsights.value)
+        } else {
+          console.debug('[Notes] 最近默写无 AI 建议')
+          aiInsights.value = []
+        }
+      } catch {
+        console.debug('[Notes] 加载默写详情失败，跳过 AI 分析')
+        aiInsights.value = []
+      }
+    }
   } catch (e) {
     console.debug('[Notes] 默写历史加载失败 err=%o', e)
     historyError.value = true
@@ -386,27 +376,24 @@ onShow(loadData)
   color: var(--on-surface-variant);
 }
 
-.summary-insight {
+/* AI 分析区 */
+.summary-insights {
   display: flex;
-  align-items: flex-start;
-  gap: 16rpx;
-  padding-top: 4rpx;
+  flex-direction: column;
+  gap: 10rpx;
 }
-.summary-insight-label {
+.summary-insights-title {
   font-size: 22rpx;
-  font-weight: 600;
   color: var(--on-surface-variant);
-  flex-shrink: 0;
-  padding-top: 2rpx;
+  font-weight: 600;
+  margin-bottom: 4rpx;
 }
-.summary-insight-text {
+.summary-insight-item {
   font-size: 26rpx;
   color: var(--on-surface);
-  line-height: 1.4;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.5;
+  padding-left: 16rpx;
+  border-left: 3rpx solid var(--primary);
 }
 
 .summary-detail-link {
