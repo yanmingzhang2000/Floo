@@ -365,8 +365,8 @@ onShow(loadData)
 }
 .rd-card {
   padding: 28rpx;
-  background: #f6fbfc;
-  border: 1rpx solid #e4eff2;
+  background: #ffffff;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
   border-radius: 24rpx;
   display: flex;
   flex-direction: column;

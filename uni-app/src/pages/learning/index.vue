@@ -437,10 +437,10 @@ onShow(loadData)
   gap: 28rpx;
 }
 
-/* ---- 卡片：极淡浅青底 + 超细边框 ---- */
+/* ---- 卡片：白底 + 阴影 ---- */
 .lib-card {
-  background: #f6fbfc;
-  border: 1rpx solid #e4eff2;
+  background: #ffffff;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
   border-radius: 24rpx;
   padding: 32rpx;
   transition: transform 0.15s;
@@ -566,8 +566,8 @@ onShow(loadData)
   display: flex;
   gap: 24rpx;
   padding: 28rpx;
-  background: #f6fbfc;
-  border: 1rpx solid #e4eff2;
+  background: #ffffff;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
   border-radius: 24rpx;
   transition: transform 0.15s;
 }

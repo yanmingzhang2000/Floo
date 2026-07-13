@@ -302,8 +302,8 @@ onShow(loadData)
 .floo-points-card {
   margin: 24rpx 4rpx 0;
   padding: 36rpx 32rpx;
-  background: #f6fbfc;
-  border: 1rpx solid #e4eff2;
+  background: #ffffff;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
   border-radius: 24rpx;
   display: flex;
   flex-direction: column;
@@ -351,8 +351,8 @@ onShow(loadData)
 .floo-section {
   margin: 24rpx 4rpx 0;
   padding: 28rpx;
-  background: #f6fbfc;
-  border: 1rpx solid #e4eff2;
+  background: #ffffff;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
   border-radius: 24rpx;
 }
 .floo-section-header {

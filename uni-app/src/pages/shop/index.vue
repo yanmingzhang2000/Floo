@@ -151,8 +151,8 @@ onMounted(loadData)
 .balance-card {
   margin: 24rpx 0;
   padding: 32rpx 28rpx;
-  background: #f6fbfc;
-  border: 1rpx solid #e4eff2;
+  background: #ffffff;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
   border-radius: 24rpx;
 }
 .balance-label { font-size: 22rpx; color: var(--on-surface-variant); display: block; }
@@ -164,8 +164,8 @@ onMounted(loadData)
 .section-card {
   margin-bottom: 24rpx;
   padding: 32rpx 28rpx;
-  background: #f6fbfc;
-  border: 1rpx solid #e4eff2;
+  background: #ffffff;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
   border-radius: 24rpx;
 }
 .section-card-title { font-size: 30rpx; font-weight: 700; color: var(--on-surface); display: block; }

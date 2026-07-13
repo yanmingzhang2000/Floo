@@ -172,16 +172,16 @@ function formatDate(dateStr: string) {
 
 /* ---- 通用卡片 ---- */
 .detail-card {
-  background: #f6fbfc;
-  border: 1rpx solid #e4eff2;
+  background: #ffffff;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
   border-radius: 20rpx;
   padding: 28rpx;
 }
 
 /* ---- 分数卡 ---- */
 .score-card {
-  background: #f6fbfc;
-  border: 1rpx solid #e4eff2;
+  background: #ffffff;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
   border-radius: 20rpx;
   padding: 32rpx 28rpx;
 }

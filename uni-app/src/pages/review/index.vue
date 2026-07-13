@@ -595,8 +595,8 @@ onShow(loadData)
   align-items: center;
   gap: 20rpx;
   padding: 24rpx 28rpx;
-  background: #f6fbfc;
-  border: 1rpx solid #e4eff2;
+  background: #ffffff;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
   border-radius: 20rpx;
 }
 .task-stage-dot {
@@ -621,8 +621,8 @@ onShow(loadData)
   display: flex;
   align-items: center;
   padding: 20rpx 28rpx;
-  background: #f6fbfc;
-  border: 1rpx solid #e4eff2;
+  background: #ffffff;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
   border-radius: 16rpx;
 }
 .history-left { flex: 1; display: flex; flex-direction: column; gap: 4rpx; min-width: 0; }
@@ -638,8 +638,8 @@ onShow(loadData)
   align-items: center;
   gap: 20rpx;
   padding: 20rpx 28rpx;
-  background: #f6fbfc;
-  border: 1rpx solid #e4eff2;
+  background: #ffffff;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
   border-radius: 16rpx;
 }
 .content-left { flex: 1; }
@@ -653,8 +653,8 @@ onShow(loadData)
   align-items: center;
   justify-content: space-between;
   padding: 32rpx 28rpx;
-  background: #f6fbfc;
-  border: 1rpx solid #e4eff2;
+  background: #ffffff;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
   border-radius: 20rpx;
 }
 .vocab-info { display: flex; flex-direction: column; gap: 4rpx; }
@@ -699,14 +699,14 @@ onShow(loadData)
 .vb-wrong { color: #666; }
 
 /* ---- 选义卡片 ---- */
-.wc-word-card { text-align: center; padding: 48rpx 32rpx; margin: 16rpx 20rpx; background: #f6fbfc; border: 1rpx solid #e4eff2; border-radius: 20rpx; }
+.wc-word-card { text-align: center; padding: 48rpx 32rpx; margin: 16rpx 20rpx; background: #ffffff; box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10); border-radius: 20rpx; }
 .wc-word-text { font-size: 52rpx; font-weight: 800; display: block; color: var(--on-surface); }
 .wc-word-phonetic { font-size: 26rpx; color: var(--on-surface-variant); display: block; margin-top: 12rpx; }
 .wc-options { padding: 0 20rpx; display: flex; flex-direction: column; gap: 16rpx; }
 .wc-option {
   display: flex; align-items: center; gap: 20rpx; padding: 28rpx 24rpx;
   border: 1rpx solid #e4eff2; border-radius: 16rpx;
-  background: #f6fbfc; transition: all 0.15s;
+  background: #ffffff; box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10); transition: all 0.15s;
 }
 .wc-option.selected { border-color: var(--primary); background: rgba(91,154,168,0.06); }
 .wc-option.correct { border-color: var(--primary); background: rgba(91,154,168,0.1); }
@@ -715,15 +715,15 @@ onShow(loadData)
 .wc-option-text { font-size: 28rpx; flex: 1; color: var(--on-surface); }
 
 /* ---- 默写输入 ---- */
-.vocab-hint-card { text-align: center; padding: 40rpx; margin: 0 20rpx 20rpx; background: #f6fbfc; border: 1rpx solid #e4eff2; border-radius: 20rpx; }
+.vocab-hint-card { text-align: center; padding: 40rpx; margin: 0 20rpx 20rpx; background: #ffffff; box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10); border-radius: 20rpx; }
 .vocab-hint-label { font-size: 22rpx; color: var(--on-surface-variant); margin-bottom: 16rpx; display: block; }
 .vocab-hint-meaning { font-size: 40rpx; font-weight: 600; display: block; color: var(--on-surface); }
-.vocab-input-card { margin: 0 20rpx 24rpx; background: #f6fbfc; border: 1rpx solid #e4eff2; border-radius: 20rpx; }
+.vocab-input-card { margin: 0 20rpx 24rpx; background: #ffffff; box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10); border-radius: 20rpx; }
 .vocab-input { width: 100%; border: none; border-bottom: 2rpx solid var(--outline); padding: 28rpx 16rpx; min-height: 88rpx; font-size: 36rpx; text-align: center; outline: none; color: var(--on-surface); background: transparent; line-height: 1.4; box-sizing: border-box; }
 .vocab-input:focus { border-bottom-color: var(--primary); }
 
 /* ---- 完成卡 ---- */
-.vocab-done-card { text-align: center; padding: 40rpx 32rpx; margin: 0 20rpx 32rpx; background: #f6fbfc; border: 1rpx solid #e4eff2; border-radius: 20rpx; }
+.vocab-done-card { text-align: center; padding: 40rpx 32rpx; margin: 0 20rpx 32rpx; background: #ffffff; box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10); border-radius: 20rpx; }
 .vocab-done-title { font-size: 32rpx; font-weight: 700; margin-bottom: 32rpx; display: block; color: var(--on-surface); }
 .vocab-done-stats { display: flex; justify-content: center; gap: 64rpx; margin-bottom: 32rpx; }
 .vocab-done-stat { display: flex; flex-direction: column; align-items: center; gap: 8rpx; }

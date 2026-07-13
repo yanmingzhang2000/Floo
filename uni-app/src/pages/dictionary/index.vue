@@ -237,10 +237,10 @@ onShow(loadData)
 .search-input-wrap {
   display: flex;
   align-items: center;
-  background: #f6fbfc;
+  background: #ffffff;
   border-radius: 20rpx;
   padding: 0 24rpx;
-  border: 1rpx solid #e4eff2;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
 }
 .search-input {
   flex: 1;
@@ -272,8 +272,8 @@ onShow(loadData)
 .dict-result-card {
   margin: 0 0 20rpx;
   padding: 28rpx;
-  background: #f6fbfc;
-  border: 1rpx solid #e4eff2;
+  background: #ffffff;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
   border-radius: 20rpx;
 }
 .dict-result-header {
@@ -299,8 +299,8 @@ onShow(loadData)
   display: flex;
   align-items: center;
   padding: 24rpx 28rpx;
-  background: #f6fbfc;
-  border: 1rpx solid #e4eff2;
+  background: #ffffff;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
   border-radius: 16rpx;
 }
 .word-info { flex: 1; }
