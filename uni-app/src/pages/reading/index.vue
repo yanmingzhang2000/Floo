@@ -1,11 +1,11 @@
 <template>
   <view class="page-container reading-page">
-    <!-- 顶部大标题 -->
+    <!-- 顶部通栏：主题青绿色 + 白色标题 -->
     <view class="rd-header">
       <text class="rd-title">在读</text>
     </view>
 
-    <!-- 二级切换：正在学习 / 已读完存档 -->
+    <!-- 二级切换：文字变色 + 底部细短线 -->
     <view class="rd-tabs">
       <view
         class="rd-tab"
@@ -47,26 +47,11 @@
           class="rd-card"
           @tap="openItem(item)"
         >
-          <!-- 类型标签 + 归档按钮 -->
-          <view class="rd-card-header">
-            <text class="rd-card-tag" :class="tagClass(item.type)">
-              {{ tagLabel(item.type) }}
-            </text>
-            <!-- 只有文章类支持一键归档；书籍靠章节自动累积进度 -->
-            <view
-              v-if="item.type !== 'book'"
-              class="rd-card-action"
-              @tap.stop="toggleArchive(item)"
-            >
-              <text>{{ activeTab === 'ongoing' ? '📥 归档' : '↩ 移出' }}</text>
-            </view>
-          </view>
-
-          <!-- 主体 -->
+          <!-- 标题 -->
           <text class="rd-card-title">{{ item.title }}</text>
           <text v-if="item.subtitle" class="rd-card-subtitle">{{ item.subtitle }}</text>
 
-          <!-- 进度条 -->
+          <!-- 进度条（突出显示） -->
           <view class="rd-progress">
             <view class="rd-progress-track">
               <view class="rd-progress-fill" :style="{ width: item.progress + '%' }"></view>
@@ -74,13 +59,11 @@
             <text class="rd-progress-num">{{ item.progress }}%</text>
           </view>
 
-          <!-- 底部：上次阅读时间 -->
+          <!-- 底部：弱化时间 + 操作提示 -->
           <view class="rd-card-footer">
-            <text class="rd-time">
-              {{ item.lastReadLabel }}
-            </text>
+            <text class="rd-time">{{ item.lastReadLabel }}</text>
             <text class="rd-open-hint">
-              {{ activeTab === 'ongoing' ? '点击继续 ›' : '点击回顾 ›' }}
+              {{ activeTab === 'ongoing' ? '继续 ›' : '回顾 ›' }}
             </text>
           </view>
         </view>
@@ -286,40 +269,11 @@ function openItem(item: ReadingItem) {
   navTo(`/pages/detail/index?id=${item.id}`)
 }
 
-async function toggleArchive(item: ReadingItem) {
-  if (item.type === 'book') {
-    // 书籍不允许整本一键归档，避免误伤章节进度
-    console.debug('[Reading] 书籍不支持整本归档 series_id=%s', item.id)
-    return
-  }
-  try {
-    await dailyApi.toggleLearned(auth.currentUserId, item.id)
-    console.debug('[Reading] 切换归档成功 type=%s id=%s', item.type, item.id)
-    uni.showToast({
-      title: item.archived ? '已移出归档' : '已加入归档',
-      icon: 'success',
-    })
-    // 重新拉取以刷新分类
-    await loadData()
-  } catch (e) {
-    console.debug('[Reading] 切换归档失败 err=%o', e)
-    uni.showToast({ title: '操作失败', icon: 'none' })
-  }
-}
-
 function goLibrary() {
   uni.switchTab({ url: '/pages/learning/index' })
 }
 
 // -------- 视觉辅助 --------
-function tagLabel(type: 'ai' | 'custom' | 'book'): string {
-  if (type === 'ai') return '🤖 AI 资讯'
-  if (type === 'custom') return '✏️ 自定义'
-  return '📚 书籍'
-}
-function tagClass(type: 'ai' | 'custom' | 'book'): string {
-  return `rd-card-tag-${type}`
-}
 
 // 时间戳 → "MM.DD" 或 "今天"
 function formatDate(ts: number): string {
@@ -347,104 +301,81 @@ onShow(loadData)
   padding-bottom: 40rpx;
 }
 
+/* 顶部通栏：主题青绿色 + 白色标题 */
 .rd-header {
-  padding: calc(env(safe-area-inset-top, 44px) + 8rpx) 32rpx 20rpx;
-  background: #fff;
+  padding: calc(env(safe-area-inset-top, 44px) + 16rpx) 32rpx 24rpx;
+  background: var(--primary, #5B9AA8);
   margin: 0 -20rpx 0;
 }
 .rd-title {
-  font-size: 44rpx;
-  font-weight: 800;
-  color: var(--on-surface);
-  letter-spacing: -0.5rpx;
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.5rpx;
 }
 
-/* 二级切换 */
+/* 二级切换：文字变色 + 极细短线 */
 .rd-tabs {
   display: flex;
   background: #fff;
-  padding: 16rpx 20rpx;
-  gap: 12rpx;
-  margin: 0 -20rpx 20rpx;
-  border-bottom: 2rpx solid var(--outline-variant);
+  padding: 0 20rpx;
+  margin: 0 -20rpx 24rpx;
 }
 .rd-tab {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12rpx;
-  padding: 20rpx 0;
+  gap: 8rpx;
+  padding: 24rpx 0;
   font-size: 28rpx;
-  color: var(--on-surface-variant);
-  background: var(--surface-container);
-  border-radius: 32rpx;
-  transition: all 0.2s;
+  color: #b0b8c0;
   font-weight: 500;
+  position: relative;
 }
 .rd-tab.active {
-  color: #fff;
-  background: var(--primary);
+  color: var(--primary);
   font-weight: 700;
 }
-.rd-tab-count {
-  font-size: 22rpx;
-  padding: 2rpx 12rpx;
-  background: rgba(255,255,255,0.25);
-  border-radius: 20rpx;
-  font-weight: 600;
+.rd-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 25%;
+  right: 25%;
+  height: 3rpx;
+  border-radius: 2rpx;
+  background: var(--primary);
 }
-.rd-tab:not(.active) .rd-tab-count {
-  background: var(--surface-container-high);
-  color: var(--on-surface-variant);
+.rd-tab-count {
+  font-size: 20rpx;
+  padding: 2rpx 10rpx;
+  background: rgba(91,154,168,0.12);
+  border-radius: 16rpx;
+  font-weight: 600;
+  color: var(--primary);
 }
 
 /* 卡片列表 */
 .rd-list {
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
+  gap: 24rpx;
   padding: 0 4rpx;
 }
 .rd-card {
   padding: 28rpx;
-  background: linear-gradient(180deg, #F7FBFC 0%, #FFFFFF 100%);
-  border: 2rpx solid var(--outline-variant);
-  border-radius: 28rpx;
+  background: #f6fbfc;
+  border: 1rpx solid #e4eff2;
+  border-radius: 24rpx;
   display: flex;
   flex-direction: column;
-  gap: 12rpx;
-  transition: transform 0.15s, border-color 0.15s;
+  gap: 14rpx;
+  transition: transform 0.15s;
 }
 .rd-card:active {
   transform: scale(0.98);
-  border-color: var(--primary-light);
 }
-
-.rd-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.rd-card-tag {
-  font-size: 22rpx;
-  padding: 4rpx 16rpx;
-  border-radius: 20rpx;
-  font-weight: 600;
-}
-.rd-card-tag-ai { background: var(--primary-container); color: var(--on-primary-container); }
-.rd-card-tag-custom { background: #FFF3E0; color: #E65100; }
-.rd-card-tag-book { background: #E8F5E9; color: #2E7D32; }
-
-.rd-card-action {
-  font-size: 24rpx;
-  color: var(--primary);
-  padding: 6rpx 16rpx;
-  border-radius: 24rpx;
-  background: var(--primary-container);
-  font-weight: 600;
-}
-.rd-card-action:active { opacity: 0.7; }
 
 .rd-card-title {
   font-size: 32rpx;
@@ -466,7 +397,7 @@ onShow(loadData)
   overflow: hidden;
 }
 
-/* 进度条 */
+/* 进度条（突出） */
 .rd-progress {
   display: flex;
   align-items: center;
@@ -475,21 +406,21 @@ onShow(loadData)
 }
 .rd-progress-track {
   flex: 1;
-  height: 12rpx;
-  background: var(--surface-container-high);
-  border-radius: 6rpx;
+  height: 10rpx;
+  background: #e4eff2;
+  border-radius: 5rpx;
   overflow: hidden;
 }
 .rd-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary-light) 0%, var(--primary) 100%);
-  border-radius: 6rpx;
+  background: var(--primary);
+  border-radius: 5rpx;
   transition: width 0.4s ease;
 }
 .rd-progress-num {
-  font-size: 22rpx;
-  color: var(--on-surface-variant);
-  font-weight: 600;
+  font-size: 26rpx;
+  color: var(--primary);
+  font-weight: 700;
   min-width: 60rpx;
   text-align: right;
 }
@@ -502,10 +433,10 @@ onShow(loadData)
 }
 .rd-time {
   font-size: 22rpx;
-  color: var(--on-surface-muted);
+  color: #b0b8c0;
 }
 .rd-open-hint {
-  font-size: 24rpx;
+  font-size: 26rpx;
   color: var(--primary);
   font-weight: 600;
 }
