@@ -1,6 +1,6 @@
 <template>
   <view class="page-container notes-page">
-    <!-- 顶部通栏：主题青绿色块 + 白色标题，与图书馆一致 -->
+    <!-- 顶部通栏：主题青绿色块 + 白色标题 -->
     <view class="notes-header">
       <text class="notes-title">笔记</text>
     </view>
@@ -24,11 +24,14 @@
                 {{ todayWordCount > 0 ? '按遗忘曲线安排，开始复习' : '暂无待背单词，收藏更多词汇后再来' }}
               </text>
             </view>
-            <text
-              class="vocab-action"
-              :class="{ disabled: todayWordCount === 0 }"
-              @tap="goVocabReview"
-            >开始背词</text>
+            <view class="vocab-actions">
+              <text
+                class="vocab-action"
+                :class="{ disabled: todayWordCount === 0 }"
+                @tap="goVocabReview"
+              >开始背词</text>
+              <text class="vocab-action-secondary" @tap="goDictionary">单词书</text>
+            </view>
           </view>
         </view>
       </view>
@@ -36,7 +39,7 @@
       <!-- 细线分割 -->
       <view class="notes-divider"></view>
 
-      <!-- ② 默写存档区（按文章分组折叠） -->
+      <!-- ② 默写存档：摘要卡片 -->
       <view class="notes-section">
         <view class="notes-section-inner">
           <text class="notes-section-title">默写存档</text>
@@ -50,30 +53,31 @@
             <text class="empty-text">暂无默写记录</text>
             <text class="empty-hint">在文章阅读页点「默写」即可开始</text>
           </view>
-          <view v-else class="history-list">
-            <view
-              v-for="group in groupedHistory"
-              :key="group.title"
-              class="history-group"
-            >
-              <view class="history-group-header" @tap="toggleGroup(group.title)">
-                <text class="history-group-title">{{ group.title }}</text>
-                <text class="history-group-meta">{{ group.items.length }} 次 · 最高 {{ group.bestAccuracy }}%</text>
-                <text class="history-group-toggle">{{ expandedGroups.has(group.title) ? '▲' : '▼' }}</text>
+          <view v-else class="dictation-summary-card">
+            <!-- 统计概览 -->
+            <view class="summary-stats">
+              <view class="summary-stat">
+                <text class="summary-stat-num">{{ historyList.length }}</text>
+                <text class="summary-stat-label">总次数</text>
               </view>
-              <view v-if="expandedGroups.has(group.title)" class="history-group-list">
-                <view
-                  v-for="rec in group.items"
-                  :key="rec.dictation_id"
-                  class="history-card"
-                  @tap="goDictationDetail(rec.dictation_id)"
-                >
-                  <text class="history-meta">{{ formatDate(rec.created_at) }}</text>
-                  <text class="history-accuracy">{{ rec.accuracy_rate.toFixed(0) }}%</text>
-                  <text class="history-view">查看 ›</text>
-                </view>
+              <view class="summary-stat">
+                <text class="summary-stat-num">{{ avgAccuracy }}%</text>
+                <text class="summary-stat-label">平均准确率</text>
               </view>
             </view>
+
+            <!-- 擅长/不擅长 -->
+            <view v-if="strengthArticle" class="summary-insight">
+              <text class="summary-insight-label">擅长</text>
+              <text class="summary-insight-text">{{ strengthArticle.title }} ({{ strengthArticle.accuracy }}%)</text>
+            </view>
+            <view v-if="weaknessArticle" class="summary-insight">
+              <text class="summary-insight-label">需加强</text>
+              <text class="summary-insight-text">{{ weaknessArticle.title }} ({{ weaknessArticle.accuracy }}%)</text>
+            </view>
+
+            <!-- 查看详情入口 -->
+            <text class="summary-detail-link" @tap="goReviewDictation">查看全部默写记录 ›</text>
           </view>
         </view>
       </view>
@@ -90,9 +94,10 @@ import { navTo } from '@/utils/router'
 import type { DictationHistory } from '@/types'
 
 /**
- * 笔记页：复盘专区，两大分区上下排布
- *   ① 今日背词：显示待复习词量 → 跳复习页
- *   ② 默写存档：按文章分组折叠 → 跳默写详情
+ * 笔记页：复盘专区
+ *   ① 今日背词：显示待复习词量，提供"开始背词"和"单词书"两个入口
+ *   ② 默写存档：摘要卡片展示整体表现（总次数、平均准确率、擅长/需加强），
+ *      底部"查看全部"跳转复习页默写 tab。
  *
  * Why 数量取"待复习"而不是"收藏总数"：
  *   收藏总数会一直涨，用户看不出"今日要背几个"。用 wordReviewApi.getDue 拿
@@ -105,38 +110,41 @@ const loading = ref(true)
 const historyError = ref(false)
 const historyList = ref<DictationHistory[]>([])
 const todayWordCount = ref(0)
-const expandedGroups = ref<Set<string>>(new Set())
 
-// 按文章标题分组，同一篇文章多次默写折叠在一起
-interface HistoryGroup {
-  title: string
-  bestAccuracy: number
-  items: DictationHistory[]
-}
-const groupedHistory = computed<HistoryGroup[]>(() => {
-  const map = new Map<string, DictationHistory[]>()
+// ---- 默写摘要计算 ----
+
+const avgAccuracy = computed(() => {
+  if (historyList.value.length === 0) return 0
+  const sum = historyList.value.reduce((acc, r) => acc + r.accuracy_rate, 0)
+  return Math.round(sum / historyList.value.length)
+})
+
+// 按文章分组，取每篇文章最高准确率，找出最强和最弱
+interface ArticleStat { title: string; accuracy: number }
+
+const articleStats = computed<ArticleStat[]>(() => {
+  const map = new Map<string, number[]>()
   for (const rec of historyList.value) {
     const title = rec.content_title || '默写练习'
     if (!map.has(title)) map.set(title, [])
-    map.get(title)!.push(rec)
+    map.get(title)!.push(rec.accuracy_rate)
   }
-  const groups: HistoryGroup[] = []
-  for (const [title, items] of map) {
-    const bestAccuracy = Math.max(...items.map(i => i.accuracy_rate))
-    groups.push({ title, bestAccuracy: Math.round(bestAccuracy), items })
-  }
-  return groups
+  return Array.from(map.entries()).map(([title, rates]) => ({
+    title,
+    accuracy: Math.round(Math.max(...rates)),
+  }))
 })
 
-function toggleGroup(title: string) {
-  if (expandedGroups.value.has(title)) {
-    expandedGroups.value.delete(title)
-  } else {
-    expandedGroups.value.add(title)
-  }
-  // 触发响应式更新
-  expandedGroups.value = new Set(expandedGroups.value)
-}
+const strengthArticle = computed<ArticleStat | null>(() => {
+  // 至少练过 2 篇才展示"擅长"，避免只有 1 篇时两个都显示同一篇
+  if (articleStats.value.length < 2) return null
+  return articleStats.value.reduce((best, cur) => cur.accuracy > best.accuracy ? cur : best)
+})
+
+const weaknessArticle = computed<ArticleStat | null>(() => {
+  if (articleStats.value.length < 2) return null
+  return articleStats.value.reduce((worst, cur) => cur.accuracy < worst.accuracy ? cur : worst)
+})
 
 async function loadData() {
   loading.value = true
@@ -179,10 +187,6 @@ async function loadHistory() {
     const { data } = await dictationApi.getHistory(userId, 200)
     historyList.value = Array.isArray(data) ? data : []
     console.debug('[Notes] 默写历史=%d 条', historyList.value.length)
-    // 默认展开第一组
-    if (groupedHistory.value.length > 0) {
-      expandedGroups.value = new Set([groupedHistory.value[0].title])
-    }
   } catch (e) {
     console.debug('[Notes] 默写历史加载失败 err=%o', e)
     historyError.value = true
@@ -197,6 +201,14 @@ function goVocabReview() {
   }
   // autostart=1 让复习页数据加载完后自动进入背词练习，跳过中间的开始按钮
   navTo('/pages/review/index?tab=vocab&autostart=1')
+}
+
+function goDictionary() {
+  navTo('/pages/dictionary/index')
+}
+
+function goReviewDictation() {
+  navTo('/pages/review/index?tab=dictation')
 }
 
 function goDictationDetail(id: number) {
@@ -240,12 +252,8 @@ onShow(loadData)
 }
 
 /* 分区容器 */
-.notes-section {
-  padding: 24rpx 0;
-}
-.notes-section-inner {
-  padding: 0 8rpx;
-}
+.notes-section { padding: 24rpx 0; }
+.notes-section-inner { padding: 0 8rpx; }
 .notes-section-title {
   display: block;
   font-size: 28rpx;
@@ -309,85 +317,105 @@ onShow(loadData)
   color: var(--on-surface-muted);
   margin-top: 8rpx;
 }
-/* 背词按钮：细青描边 */
-.vocab-action {
+
+/* 两个按钮竖排 */
+.vocab-actions {
   flex-shrink: 0;
-  padding: 16rpx 32rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  align-items: center;
+}
+.vocab-action {
+  padding: 14rpx 28rpx;
   border: 2rpx solid var(--primary);
   border-radius: 40rpx;
   font-size: 26rpx;
   font-weight: 600;
   color: var(--primary);
-  background: transparent;
+  white-space: nowrap;
 }
 .vocab-action.disabled {
   border-color: #d0d8dc;
   color: #b0b8c0;
   pointer-events: none;
 }
-
-/* ② 默写存档 - 分组折叠 */
-.history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20rpx;
+.vocab-action-secondary {
+  padding: 14rpx 28rpx;
+  border: 2rpx solid #c8e0e6;
+  border-radius: 40rpx;
+  font-size: 26rpx;
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  white-space: nowrap;
 }
-.history-group {
+
+/* ② 默写存档摘要卡片 */
+.dictation-summary-card {
   background: #f6fbfc;
   border: 1rpx solid #e4eff2;
-  border-radius: 20rpx;
-  overflow: hidden;
-}
-.history-group-header {
+  border-radius: 24rpx;
+  padding: 32rpx 28rpx;
   display: flex;
-  align-items: center;
-  padding: 24rpx 28rpx;
-  gap: 12rpx;
+  flex-direction: column;
+  gap: 24rpx;
 }
-.history-group-title {
+
+.summary-stats {
+  display: flex;
+  gap: 0;
+}
+.summary-stat {
   flex: 1;
-  font-size: 28rpx;
-  font-weight: 700;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+}
+.summary-stat + .summary-stat {
+  border-left: 1rpx solid #e4eff2;
+}
+.summary-stat-num {
+  font-size: 44rpx;
+  font-weight: 800;
+  color: var(--primary);
+  line-height: 1;
+}
+.summary-stat-label {
+  font-size: 22rpx;
+  color: var(--on-surface-variant);
+}
+
+.summary-insight {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding-top: 4rpx;
+}
+.summary-insight-label {
+  font-size: 22rpx;
+  font-weight: 600;
+  color: var(--on-surface-variant);
+  flex-shrink: 0;
+  padding-top: 2rpx;
+}
+.summary-insight-text {
+  font-size: 26rpx;
   color: var(--on-surface);
+  line-height: 1.4;
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.history-group-meta {
-  font-size: 22rpx;
-  color: var(--on-surface-variant);
-  flex-shrink: 0;
-}
-.history-group-toggle {
-  font-size: 20rpx;
-  color: #b0b8c0;
-  flex-shrink: 0;
-}
-.history-group-list {
-  border-top: 1rpx solid #e4eff2;
-}
-.history-card {
-  display: flex;
-  align-items: center;
-  padding: 20rpx 28rpx;
-  gap: 16rpx;
-}
-.history-card + .history-card {
-  border-top: 1rpx solid #eef4f6;
-}
-.history-meta {
-  font-size: 24rpx;
-  color: var(--on-surface-variant);
-  flex: 1;
-}
-.history-accuracy {
-  font-size: 28rpx;
-  font-weight: 700;
-  color: var(--primary);
-}
-.history-view {
-  font-size: 24rpx;
-  color: var(--primary);
+
+.summary-detail-link {
+  display: block;
+  text-align: right;
+  font-size: 26rpx;
   font-weight: 600;
+  color: var(--primary);
+  padding-top: 8rpx;
+  border-top: 1rpx solid #eef4f6;
 }
 </style>
