@@ -251,9 +251,9 @@ onShow(loadData)
   align-items: center;
   gap: 24rpx;
   padding: 32rpx 28rpx;
-  background: #f6fbfc;
+  background: #ffffff;
   border-radius: 24rpx;
-  border: 1rpx solid #e4eff2;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
   min-height: 200rpx;
   box-sizing: border-box;
 }
@@ -332,9 +332,9 @@ onShow(loadData)
 
 /* ② 默写存档摘要卡片 */
 .dictation-summary-card {
-  background: #f6fbfc;
-  border: 1rpx solid #e4eff2;
+  background: #ffffff;
   border-radius: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
   padding: 32rpx 28rpx;
   display: flex;
   flex-direction: column;
