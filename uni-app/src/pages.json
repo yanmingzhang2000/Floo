@@ -12,8 +12,8 @@
       "path": "pages/learning/index",
       "style": {
         "navigationBarTitleText": "图书馆",
-        "navigationBarBackgroundColor": "#ffffff",
-        "navigationBarTextStyle": "black"
+        "navigationBarBackgroundColor": "#5B9AA8",
+        "navigationBarTextStyle": "white"
       }
     },
     {

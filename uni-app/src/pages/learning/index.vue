@@ -365,15 +365,15 @@ onShow(loadData)
 .lib-header {
   display: flex;
   align-items: center;
-  padding: calc(env(safe-area-inset-top, 44px) + 8rpx) 32rpx 20rpx;
-  background: #fff;
+  padding: calc(env(safe-area-inset-top, 44px) + 16rpx) 32rpx 24rpx;
+  background: var(--primary, #5B9AA8);
   margin: 0 -20rpx 0;
 }
 .lib-title {
-  font-size: 44rpx;
-  font-weight: 800;
-  color: var(--on-surface);
-  letter-spacing: -0.5rpx;
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.5rpx;
 }
 
 /* ---- 二级 tab 横向滑动（极简细线） ---- */
