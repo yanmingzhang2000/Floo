@@ -552,15 +552,28 @@ def check_learned(user_id: int, content_id: int, db: Session = Depends(get_db)):
 
 @router.get("/learned/list")
 def get_learned_content_ids(user_id: int, db: Session = Depends(get_db)):
-    """获取用户所有已学内容的 content_id 列表。"""
+    """获取用户所有已学内容 ID 及标记时间。
+
+    Why 同时返回 learned_at：前端「在读」页需要显示"上次阅读时间"，
+    对已学内容用 learned_at 作为该时间的近似值，避免为此新加接口。
+    content_ids 数组保留以兼容旧调用方（点选状态判断）。
+    """
     from app.models import UserLearnedContent
 
     rows = (
-        db.query(UserLearnedContent.content_id)
+        db.query(UserLearnedContent.content_id, UserLearnedContent.learned_at)
         .filter(UserLearnedContent.user_id == user_id)
         .all()
     )
-    return {"content_ids": [r[0] for r in rows]}
+    items = [
+        {"content_id": r[0], "learned_at": r[1].isoformat() if r[1] else None}
+        for r in rows
+    ]
+    log.debug("user_id=%s 已学内容数量=%d", user_id, len(items))
+    return {
+        "content_ids": [item["content_id"] for item in items],
+        "items": items,
+    }
 
 
 @router.get("/learned/filtered", response_model=FilteredLearnedContentResponse)

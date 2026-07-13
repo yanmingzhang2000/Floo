@@ -215,7 +215,8 @@ function navToDict() {
 }
 
 function goVocabReview() {
-  uni.switchTab({ url: '/pages/review/index' })
+  // review 已从 tabBar 移除到普通页栈，用 navigateTo；?tab=vocab 直落背单词分区
+  uni.navigateTo({ url: '/pages/review/index?tab=vocab' })
 }
 
 async function loadFavorites() {

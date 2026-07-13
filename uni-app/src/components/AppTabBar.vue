@@ -17,11 +17,12 @@
 import { computed } from 'vue'
 import { navTo } from '@/utils/router'
 
+// 备用自定义 tabBar：目前项目使用 pages.json 原生 tabBar，此处保持与之同步以备后用
 const tabs = [
-  { path: '/pages/home/index',       icon: '🏠', label: '首页' },
-  { path: '/pages/learning/index',   icon: '📖', label: '学习' },
-  { path: '/pages/dictionary/index', icon: '📚', label: '单词' },
-  { path: '/pages/review/index',     icon: '✏️', label: '复习' },
+  { path: '/pages/learning/index', icon: '📖', label: '图书馆' },
+  { path: '/pages/notes/index',    icon: '📝', label: '笔记' },
+  { path: '/pages/reading/index',  icon: '📚', label: '在读' },
+  { path: '/pages/floo/index',     icon: '🎁', label: 'Floo' },
 ]
 
 const currentPath = computed(() => {

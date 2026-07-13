@@ -31,38 +31,11 @@
       </view>
 
       <view class="illustration-area">
-        <svg class="book-svg" viewBox="0 0 400 320" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <!-- 左页 -->
-          <path d="M200 280 L200 100 Q160 80 80 90 L80 270 Q160 260 200 280Z" fill="#D0E8ED" stroke="#5B9AA8" stroke-width="2"/>
-          <path d="M100 120 L180 112" stroke="#5B9AA8" stroke-width="1.5" opacity="0.5"/>
-          <path d="M100 145 L175 138" stroke="#5B9AA8" stroke-width="1.5" opacity="0.4"/>
-          <path d="M100 170 L170 164" stroke="#5B9AA8" stroke-width="1.5" opacity="0.3"/>
-          <!-- 右页 -->
-          <path d="M200 280 L200 100 Q240 80 320 90 L320 270 Q240 260 200 280Z" fill="#E4F0F3" stroke="#5B9AA8" stroke-width="2"/>
-          <path d="M220 120 L300 128" stroke="#5B9AA8" stroke-width="1.5" opacity="0.5"/>
-          <path d="M220 145 L295 152" stroke="#5B9AA8" stroke-width="1.5" opacity="0.4"/>
-          <path d="M220 170 L290 176" stroke="#5B9AA8" stroke-width="1.5" opacity="0.3"/>
-          <!-- 银河旋涡 -->
-          <ellipse cx="200" cy="160" rx="55" ry="20" fill="none" stroke="#5B9AA8" stroke-width="1.5" transform="rotate(-20 200 160)" opacity="0.6"/>
-          <ellipse cx="200" cy="160" rx="38" ry="14" fill="none" stroke="#7FB3BE" stroke-width="1.2" transform="rotate(-20 200 160)" opacity="0.5"/>
-          <ellipse cx="200" cy="160" rx="20" ry="8" fill="#D0E8ED" stroke="#5B9AA8" stroke-width="1" transform="rotate(-20 200 160)"/>
-          <!-- 地球 -->
-          <circle cx="290" cy="130" r="28" fill="#D0E8ED" stroke="#5B9AA8" stroke-width="2"/>
-          <path d="M270 130 Q280 115 295 120 Q310 125 305 140 Q295 150 280 145 Q272 138 270 130Z" fill="#5B9AA8" opacity="0.3"/>
-          <!-- 星星 -->
-          <path d="M150 105 L153 112 L160 112 L154 117 L156 124 L150 120 L144 124 L146 117 L140 112 L147 112Z" fill="#5B9AA8" opacity="0.7"/>
-          <path d="M260 95 L262 100 L267 100 L263 103 L264 108 L260 105 L256 108 L257 103 L253 100 L258 100Z" fill="#5B9AA8" opacity="0.5"/>
-          <path d="M130 140 L132 145 L137 145 L133 148 L134 153 L130 150 L126 153 L127 148 L123 145 L128 145Z" fill="#7FB3BE" opacity="0.6"/>
-          <!-- 山川 -->
-          <path d="M120 250 L155 195 L175 215 L200 180 L225 210 L245 195 L280 250Z" fill="none" stroke="#5B9AA8" stroke-width="2" opacity="0.6"/>
-          <path d="M140 250 L170 205 L190 225 L210 200 L230 220 L260 250Z" fill="#D0E8ED" opacity="0.4"/>
-          <!-- 波浪 -->
-          <path d="M100 265 Q150 255 200 265 Q250 275 300 265" fill="none" stroke="#5B9AA8" stroke-width="2" opacity="0.5"/>
-          <path d="M110 280 Q160 270 210 280 Q260 290 310 280" fill="none" stroke="#7FB3BE" stroke-width="1.5" opacity="0.4"/>
-          <!-- 小蝴蝶 -->
-          <path d="M310 160 Q318 150 325 158 Q318 155 310 160Z" fill="#5B9AA8" opacity="0.5"/>
-          <path d="M310 160 Q318 170 325 162 Q318 165 310 160Z" fill="#7FB3BE" opacity="0.4"/>
-        </svg>
+        <image
+          src="/static/images/hero-book.png"
+          mode="widthFix"
+          class="hero-illustration"
+        />
       </view>
 
       <view class="bottom-card">
@@ -138,8 +111,10 @@ function handleMainAction() {
 function goDetail(id: number) { navTo(`/pages/detail/index?id=${id}`) }
 function goPreference() { navTo('/pages/preference/index') }
 function goCheckin() { navTo('/pages/checkin/index') }
-function goDictation() { uni.switchTab({ url: '/pages/review/index' }) }
+// review 不再是 tab，用 navigateTo 打开
+function goDictation() { uni.navigateTo({ url: '/pages/review/index' }) }
 function goCustom() {
+  // 图书馆是 tab；带上 storage 里的偏好 tab，让图书馆落地到"自定义文稿"分区
   storage.set('learning_active_tab', 'custom')
   uni.switchTab({ url: '/pages/learning/index' })
 }

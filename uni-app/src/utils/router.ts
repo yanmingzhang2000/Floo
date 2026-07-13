@@ -6,11 +6,12 @@
  */
 
 // tabBar 页面列表（必须和 pages.json 里的 tabBar 配置保持一致）
+// 注意：pages/home/index 不再是 tabBar，仅作为「每日首次启动」欢迎页存在
 const TAB_PAGES = [
-  '/pages/home/index',
   '/pages/learning/index',
-  '/pages/dictionary/index',
-  '/pages/review/index',
+  '/pages/notes/index',
+  '/pages/reading/index',
+  '/pages/floo/index',
 ]
 
 function isTabPage(path: string): boolean {
@@ -52,7 +53,7 @@ export function navReLaunch(path: string) {
 }
 
 /**
- * 安全返回：有历史栈就返回，否则跳首页
+ * 安全返回：有历史栈就返回，否则跳图书馆（新版默认落脚点）
  * 直接从浏览器地址栏进入内页时历史栈为空，navigateBack 会无效
  */
 export function navBackSafe(delta = 1) {
@@ -60,7 +61,8 @@ export function navBackSafe(delta = 1) {
   if (pages.length > 1) {
     uni.navigateBack({ delta })
   } else {
-    uni.switchTab({ url: '/pages/home/index' })
+    // 首页已从 tabBar 移除，兜底改跳图书馆（是新的默认 tab）
+    uni.switchTab({ url: '/pages/learning/index' })
   }
 }
 

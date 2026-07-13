@@ -869,7 +869,10 @@ async function toggleFavorite() {
   } catch { uni.showToast({ title: '操作失败', icon: 'none' }) }
 }
 
-function goReview() { uni.switchTab({ url: '/pages/review/index' }) }
+function goReview() {
+  // review 已从 tabBar 移除，改用 navigateTo；navTo 内部会自动挑对 API
+  uni.navigateTo({ url: '/pages/review/index' })
+}
 
 function openDictation() {
   uni.navigateTo({ url: `/pages/dictation/index?id=${contentId}` })

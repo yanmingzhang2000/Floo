@@ -38,8 +38,13 @@ export const dailyApi = {
     api.post('/api/daily/learned/toggle', null, { params: { user_id: userId, content_id: contentId } }),
   checkLearned: (userId: number, contentId: number) =>
     api.get('/api/daily/learned/check', { params: { user_id: userId, content_id: contentId } }),
+  // 返回结构：{ content_ids: number[], items: { content_id, learned_at }[] }
+  // items 供「在读」页显示"上次阅读时间"，content_ids 兼容旧调用（点选状态判断）
   getLearnedIds: (userId: number) =>
-    api.get('/api/daily/learned/list', { params: { user_id: userId } }),
+    api.get<{ content_ids: number[]; items: Array<{ content_id: number; learned_at: string | null }> }>(
+      '/api/daily/learned/list',
+      { params: { user_id: userId } },
+    ),
   getFilteredLearnedContents: (userId: number, startDate?: string, endDate?: string) =>
     api.get('/api/daily/learned/filtered', { 
       params: { user_id: userId, start_date: startDate, end_date: endDate } 
