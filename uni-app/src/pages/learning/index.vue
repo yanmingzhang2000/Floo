@@ -1,11 +1,8 @@
 <template>
   <view class="page-container library-page">
-    <!-- 顶部通栏：大标题 + 搜索图标（本轮占位，未来接实际搜索） -->
+    <!-- 顶部通栏：仅保留标题，移除搜索图标 -->
     <view class="lib-header">
       <text class="lib-title">图书馆</text>
-      <view class="lib-search-btn" @tap="onSearchTap">
-        <text class="lib-search-icon">🔍</text>
-      </view>
     </view>
 
     <view v-if="loading" class="loading">
@@ -30,22 +27,23 @@
 
       <!-- ====== AI 资讯 Tab ====== -->
       <view v-if="activeTab === 'ai'" class="lib-section">
-        <view class="lib-toolbar">
-          <button
-            class="btn btn-primary btn-block"
-            :disabled="generating || remainingCount <= 0"
-            @tap="handleGenerate"
-          >
-            <text>{{ generating ? '生成中...' : (remainingCount > 0 ? `✨ AI 生成 (${remainingCount})` : '今日已用完') }}</text>
-          </button>
-        </view>
-
         <view v-if="contents.length === 0" class="empty-state">
           <text class="icon">📰</text>
           <text class="empty-text">今日还没有 AI 资讯</text>
-          <text class="empty-hint">点击上方按钮生成</text>
+          <text
+            class="empty-action"
+            :class="{ disabled: generating || remainingCount <= 0 }"
+            @tap="handleGenerate"
+          >{{ generating ? '生成中...' : (remainingCount > 0 ? `生成今日资讯 (${remainingCount})` : '今日次数已用完') }}</text>
         </view>
         <view v-else class="lib-list">
+          <view class="lib-section-hint-row">
+            <text
+              class="lib-refresh-btn"
+              :class="{ disabled: generating || remainingCount <= 0 }"
+              @tap="handleGenerate"
+            >{{ remainingCount > 0 ? `换一批 (${remainingCount})` : '今日已用完' }}</text>
+          </view>
           <view
             v-for="item in contents"
             :key="item.id"
@@ -55,14 +53,11 @@
             <view class="lib-card-body">
               <view class="lib-card-header">
                 <text class="tag tag-ai">{{ themeLabels[item.theme_type] || item.theme_type }}</text>
-                <text v-if="learnedIds.includes(item.id)" class="lib-card-badge">已学</text>
               </view>
               <text class="lib-card-title">{{ item.title }}</text>
               <text class="lib-card-desc">{{ (item.article || '').slice(0, 80) }}...</text>
               <view class="lib-card-footer">
-                <button class="btn btn-outline btn-sm" @tap.stop="goDetail(item.id)">
-                  <text>开始阅读</text>
-                </button>
+                <text class="lib-card-action" @tap.stop="goDetail(item.id)">开始阅读</text>
               </view>
             </view>
           </view>
@@ -71,17 +66,15 @@
 
       <!-- ====== 自定义文稿 Tab ====== -->
       <view v-if="activeTab === 'custom'" class="lib-section">
-        <!-- 空态：仅显示一张"新建"大卡片；非空态：卡片列表 -->
+        <!-- 空态：仅显示一张"新建"大卡片 -->
         <view v-if="customContents.length === 0" class="lib-new-card" @tap="showCustomContent = true">
           <text class="lib-new-plus">＋</text>
           <text class="lib-new-title">创建我的学习文稿</text>
           <text class="lib-new-hint">粘贴或上传英文文本，AI 自动生成词组、译文</text>
         </view>
         <template v-else>
-          <view class="lib-toolbar">
-            <button class="btn btn-primary btn-block" @tap="showCustomContent = true">
-              <text>📝 新建文稿</text>
-            </button>
+          <view class="lib-section-hint-row">
+            <text class="lib-refresh-btn" @tap="showCustomContent = true">+ 新建文稿</text>
           </view>
           <view class="lib-list">
             <view
@@ -92,28 +85,21 @@
               <view class="lib-card-body">
                 <view class="lib-card-header">
                   <text class="tag tag-warning">自定义</text>
-                  <view class="lib-card-actions">
-                    <text v-if="isGenerationFailed(item)" class="tag tag-error">⚠️ 失败</text>
-                    <text v-else-if="learnedIds.includes(item.id)" class="lib-card-badge">已学</text>
-                    <text class="lib-card-del" @tap.stop="deleteCustomContent(item.id)">🗑️</text>
-                  </view>
+                  <text v-if="isGenerationFailed(item)" class="tag tag-error">生成失败</text>
                 </view>
                 <text class="lib-card-title" @tap="goDetail(item.id)">{{ item.title }}</text>
                 <text class="lib-card-desc" @tap="goDetail(item.id)">{{ (item.article || '').slice(0, 80) }}...</text>
                 <view v-if="isGenerationFailed(item)" class="lib-card-fail-row">
                   <text class="lib-card-fail-hint">译文或词组生成失败</text>
-                  <button
-                    class="btn btn-outline btn-sm"
-                    :disabled="regeneratingIds.includes(item.id)"
+                  <text
+                    class="lib-card-action"
+                    :class="{ disabled: regeneratingIds.includes(item.id) }"
                     @tap.stop="regenerateCustom(item.id)"
-                  >
-                    <text>{{ regeneratingIds.includes(item.id) ? '重生成中...' : '🔄 重生成' }}</text>
-                  </button>
+                  >{{ regeneratingIds.includes(item.id) ? '重生成中...' : '重新生成' }}</text>
                 </view>
                 <view v-else class="lib-card-footer">
-                  <button class="btn btn-outline btn-sm" @tap.stop="goDetail(item.id)">
-                    <text>开始阅读</text>
-                  </button>
+                  <text class="lib-card-action" @tap.stop="goDetail(item.id)">开始阅读</text>
+                  <text class="lib-card-action-secondary" @tap.stop="deleteCustomContent(item.id)">删除</text>
                 </view>
               </view>
             </view>
@@ -135,7 +121,7 @@
             class="lib-book-card"
             @tap="goBook(book)"
           >
-            <!-- 封面线稿 SVG 占位（未来可接真封面） -->
+            <!-- 封面线稿 SVG 占位 -->
             <view class="lib-book-cover">
               <svg viewBox="0 0 100 130" xmlns="http://www.w3.org/2000/svg">
                 <rect x="14" y="10" width="72" height="110" rx="4"
@@ -152,12 +138,11 @@
               <text v-if="book.name_cn && book.name !== book.name_cn" class="lib-book-en">{{ book.name }}</text>
               <text class="lib-book-desc">{{ book.total_chapters }} 章</text>
               <view class="lib-book-footer">
-                <button class="btn btn-primary btn-sm" @tap.stop="goBook(book)">
-                  <text>加入在读</text>
-                </button>
+                <text class="lib-card-action" @tap.stop="goBook(book)">加入在读</text>
               </view>
             </view>
           </view>
+          <text class="lib-book-more-hint">更多英文读物持续更新</text>
         </view>
       </view>
     </template>
@@ -367,12 +352,6 @@ function goBook(book: MyBook) {
   navTo(`/pages/book/chapters?series_id=${book.series_id}&name=${name}`)
 }
 
-function onSearchTap() {
-  // 搜索功能占位，未来接跨 tab 搜索
-  console.debug('[Library] 搜索按钮点击，暂未实现')
-  uni.showToast({ title: '搜索功能开发中', icon: 'none' })
-}
-
 onShow(loadData)
 </script>
 
@@ -386,7 +365,6 @@ onShow(loadData)
 .lib-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: calc(env(safe-area-inset-top, 44px) + 8rpx) 32rpx 20rpx;
   background: #fff;
   margin: 0 -20rpx 0;
@@ -397,24 +375,12 @@ onShow(loadData)
   color: var(--on-surface);
   letter-spacing: -0.5rpx;
 }
-.lib-search-btn {
-  width: 68rpx;
-  height: 68rpx;
-  border-radius: 50%;
-  background: var(--surface-container);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.lib-search-btn:active { transform: scale(0.94); background: var(--surface-container-high); }
-.lib-search-icon { font-size: 32rpx; }
 
-/* ---- 二级 tab 横向滑动 ---- */
+/* ---- 二级 tab 横向滑动（极简细线） ---- */
 .lib-tabs {
   background: #fff;
-  border-bottom: 2rpx solid var(--outline-variant);
   white-space: nowrap;
-  margin: 0 -20rpx 24rpx;
+  margin: 0 -20rpx 32rpx;
 }
 .lib-tabs-inner {
   display: inline-flex;
@@ -426,7 +392,7 @@ onShow(loadData)
   padding: 20rpx 24rpx;
   font-size: 28rpx;
   font-weight: 500;
-  color: var(--on-surface-variant);
+  color: #b0b8c0;
   position: relative;
   transition: color 0.2s;
 }
@@ -438,48 +404,56 @@ onShow(loadData)
   content: '';
   position: absolute;
   bottom: 0;
-  left: 20rpx;
-  right: 20rpx;
-  height: 6rpx;
-  border-radius: 3rpx;
+  left: 28rpx;
+  right: 28rpx;
+  height: 3rpx;
+  border-radius: 2rpx;
   background: var(--primary);
 }
 
 /* ---- 内容分区 ---- */
 .lib-section { padding: 0 4rpx; }
 
-.lib-toolbar { padding: 0 0 20rpx; }
+/* ---- 操作提示行（换一批 / 新建文稿） ---- */
+.lib-section-hint-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 8rpx 20rpx;
+}
+.lib-refresh-btn {
+  font-size: 24rpx;
+  color: var(--primary);
+  font-weight: 600;
+}
+.lib-refresh-btn.disabled {
+  color: #c0c8d0;
+  pointer-events: none;
+}
 
-/* ---- 列表：浅蓝白圆角卡片 ---- */
+/* ---- 列表 ---- */
 .lib-list {
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
+  gap: 28rpx;
 }
+
+/* ---- 卡片：极淡浅青底 + 超细边框 ---- */
 .lib-card {
-  background: linear-gradient(180deg, #F7FBFC 0%, #FFFFFF 100%);
-  border: 2rpx solid var(--outline-variant);
-  border-radius: 28rpx;
-  padding: 28rpx;
-  transition: transform 0.15s, border-color 0.15s;
+  background: #f6fbfc;
+  border: 1rpx solid #e4eff2;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  transition: transform 0.15s;
 }
 .lib-card:active {
   transform: scale(0.98);
-  border-color: var(--primary-light);
 }
-.lib-card-body { display: flex; flex-direction: column; gap: 12rpx; }
+.lib-card-body { display: flex; flex-direction: column; gap: 14rpx; }
 .lib-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-.lib-card-actions { display: flex; align-items: center; gap: 16rpx; }
-.lib-card-badge {
-  font-size: 22rpx;
-  color: var(--success);
-  font-weight: 600;
-}
-.lib-card-del { font-size: 26rpx; padding: 8rpx; }
 .lib-card-title {
   font-size: 32rpx;
   font-weight: 700;
@@ -502,15 +476,35 @@ onShow(loadData)
 .lib-card-footer {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 24rpx;
   padding-top: 8rpx;
 }
+
+/* ---- 按钮极简化：纯文字链接 ---- */
+.lib-card-action {
+  font-size: 26rpx;
+  color: var(--primary);
+  font-weight: 600;
+}
+.lib-card-action.disabled {
+  color: #c0c8d0;
+  pointer-events: none;
+}
+.lib-card-action-secondary {
+  font-size: 24rpx;
+  color: #b0b8c0;
+  font-weight: 500;
+}
+
+/* ---- 失败行 ---- */
 .lib-card-fail-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16rpx;
   padding-top: 12rpx;
-  border-top: 1rpx dashed var(--outline-variant);
+  border-top: 1rpx dashed #e4eff2;
 }
 .lib-card-fail-hint {
   font-size: 22rpx;
@@ -525,25 +519,26 @@ onShow(loadData)
   align-items: center;
   gap: 16rpx;
   padding: 80rpx 40rpx;
-  background: linear-gradient(180deg, #F0F9FF 0%, #E4F0F3 100%);
-  border: 3rpx dashed #B3D9E3;
-  border-radius: 32rpx;
+  background: #f6fbfc;
+  border: 2rpx dashed #c8e0e6;
+  border-radius: 24rpx;
   margin-top: 40rpx;
 }
 .lib-new-card:active { transform: scale(0.98); }
 .lib-new-plus {
-  width: 96rpx;
-  height: 96rpx;
+  width: 80rpx;
+  height: 80rpx;
   border-radius: 50%;
-  background: var(--primary);
-  color: #fff;
-  font-size: 56rpx;
-  line-height: 96rpx;
+  border: 2rpx solid var(--primary);
+  color: var(--primary);
+  font-size: 48rpx;
+  line-height: 80rpx;
   text-align: center;
   font-weight: 400;
+  background: transparent;
 }
 .lib-new-title {
-  font-size: 32rpx;
+  font-size: 30rpx;
   font-weight: 700;
   color: var(--primary);
 }
@@ -554,23 +549,34 @@ onShow(loadData)
   line-height: 1.5;
 }
 
+/* ---- 空态操作文字 ---- */
+.empty-action {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--primary);
+  margin-top: 12rpx;
+}
+.empty-action.disabled {
+  color: #c0c8d0;
+  pointer-events: none;
+}
+
 /* ---- 精选书籍卡 ---- */
 .lib-book-card {
   display: flex;
   gap: 24rpx;
-  padding: 24rpx;
-  background: linear-gradient(180deg, #F7FBFC 0%, #FFFFFF 100%);
-  border: 2rpx solid var(--outline-variant);
-  border-radius: 28rpx;
-  transition: transform 0.15s, border-color 0.15s;
+  padding: 28rpx;
+  background: #f6fbfc;
+  border: 1rpx solid #e4eff2;
+  border-radius: 24rpx;
+  transition: transform 0.15s;
 }
 .lib-book-card:active {
   transform: scale(0.98);
-  border-color: var(--primary-light);
 }
 .lib-book-cover {
-  width: 140rpx;
-  height: 180rpx;
+  width: 120rpx;
+  height: 160rpx;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -606,6 +612,13 @@ onShow(loadData)
   display: flex;
   justify-content: flex-end;
   padding-top: 12rpx;
+}
+.lib-book-more-hint {
+  display: block;
+  text-align: center;
+  font-size: 24rpx;
+  color: #b0b8c0;
+  padding: 32rpx 0 8rpx;
 }
 
 /* ---- 标签 ---- */

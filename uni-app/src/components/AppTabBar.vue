@@ -41,10 +41,10 @@ function onTap(path: string) {
 .app-tabbar {
   display: flex;
   align-items: center;
-  background: rgba(255,255,255,0.88);
+  background: rgba(255,255,255,0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-top: 1rpx solid rgba(255,255,255,0.5);
+  border-top: 1rpx solid #f0f0f0;
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
@@ -56,29 +56,25 @@ function onTap(path: string) {
   justify-content: center;
   padding: 14rpx 0 10rpx;
   gap: 4rpx;
-  opacity: 0.45;
-  transition: opacity 0.15s, transform 0.15s;
-}
-.app-tabbar-item.active {
-  opacity: 1;
-  transform: scale(1.05);
-}
-.app-tabbar-item:active {
-  opacity: 0.7;
-  transform: scale(0.95);
+  transition: opacity 0.15s;
 }
 
 .app-tabbar-icon {
   font-size: 40rpx;
   line-height: 1;
+  opacity: 0.4;
 }
+.app-tabbar-item.active .app-tabbar-icon {
+  opacity: 1;
+}
+
 .app-tabbar-label {
   font-size: 20rpx;
   font-weight: 500;
-  color: var(--on-surface-variant);
+  color: #b0b8c0;
 }
 .app-tabbar-item.active .app-tabbar-label {
   color: var(--primary);
-  font-weight: 600;
+  font-weight: 700;
 }
 </style>
