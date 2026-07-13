@@ -32,7 +32,7 @@
 
       <view class="illustration-area">
         <image
-          src="/static/images/hero-book.png"
+          src="/static/images/hero_book.png"
           mode="widthFix"
           class="hero-illustration"
         />
@@ -212,11 +212,11 @@ onShow(() => {
 .illustration-area {
   display: flex;
   justify-content: center;
-  padding: 20rpx 40rpx 0;
+  padding: 20rpx 0 0;
 }
-.book-svg {
+.hero-illustration {
   width: 100%;
-  max-width: 600rpx;
+  max-width: 650rpx;
   height: auto;
 }
 
