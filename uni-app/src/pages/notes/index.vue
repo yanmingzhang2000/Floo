@@ -36,13 +36,9 @@
         </view>
       </view>
 
-      <!-- 细线分割 -->
-      <view class="notes-divider"></view>
-
       <!-- ② 默写存档：摘要卡片 -->
       <view class="notes-section">
         <view class="notes-section-inner">
-          <text class="notes-section-title">默写存档</text>
           <view v-if="historyError" class="empty-state" @tap="loadHistory">
             <text class="icon">⚠️</text>
             <text class="empty-text">加载失败</text>
@@ -244,21 +240,6 @@ onShow(loadData)
 /* 分区容器 */
 .notes-section { padding: 24rpx 0; }
 .notes-section-inner { padding: 0 8rpx; }
-.notes-section-title {
-  display: block;
-  font-size: 28rpx;
-  font-weight: 700;
-  color: var(--on-surface);
-  margin-bottom: 20rpx;
-  letter-spacing: 0.5rpx;
-}
-
-/* 分割线 */
-.notes-divider {
-  height: 1rpx;
-  background: #e4eff2;
-  margin: 0 8rpx;
-}
 
 /* ① 今日背词 */
 .notes-vocab-section {
@@ -273,6 +254,8 @@ onShow(loadData)
   background: #f6fbfc;
   border-radius: 24rpx;
   border: 1rpx solid #e4eff2;
+  min-height: 200rpx;
+  box-sizing: border-box;
 }
 .vocab-info {
   flex: 1;
@@ -314,16 +297,20 @@ onShow(loadData)
   display: flex;
   flex-direction: column;
   gap: 16rpx;
-  align-items: center;
+  align-items: stretch;
+  width: 180rpx;
 }
 .vocab-action {
-  padding: 14rpx 28rpx;
+  padding: 14rpx 0;
   border: 2rpx solid var(--primary);
   border-radius: 40rpx;
   font-size: 26rpx;
   font-weight: 600;
   color: var(--primary);
   white-space: nowrap;
+  text-align: center;
+  width: 100%;
+  box-sizing: border-box;
 }
 .vocab-action.disabled {
   border-color: #d0d8dc;
@@ -331,13 +318,16 @@ onShow(loadData)
   pointer-events: none;
 }
 .vocab-action-secondary {
-  padding: 14rpx 28rpx;
+  padding: 14rpx 0;
   border: 2rpx solid #c8e0e6;
   border-radius: 40rpx;
   font-size: 26rpx;
   font-weight: 500;
   color: var(--on-surface-variant);
   white-space: nowrap;
+  text-align: center;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ② 默写存档摘要卡片 */
@@ -349,6 +339,8 @@ onShow(loadData)
   display: flex;
   flex-direction: column;
   gap: 24rpx;
+  min-height: 200rpx;
+  box-sizing: border-box;
 }
 
 .summary-stats {
