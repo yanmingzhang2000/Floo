@@ -195,8 +195,8 @@ function goVocabReview() {
     console.debug('[Notes] 无待背单词，拦截跳转')
     return
   }
-  // review 页支持 ?tab=vocab 直接落地到"背单词"分区
-  navTo('/pages/review/index?tab=vocab')
+  // autostart=1 让复习页数据加载完后自动进入背词练习，跳过中间的开始按钮
+  navTo('/pages/review/index?tab=vocab&autostart=1')
 }
 
 function goDictationDetail(id: number) {

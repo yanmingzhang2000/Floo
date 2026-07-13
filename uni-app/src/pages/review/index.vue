@@ -266,9 +266,13 @@ const stageColors: Record<number, string> = {
   3: '#FFC107', 4: '#4CAF50', 5: '#2196F3',
 }
 
+const autoStartVocab = ref(false)
+
 onLoad((options) => {
   if (options?.tab === 'dictation') activeTab.value = 'dictation'
   if (options?.tab === 'vocab') activeTab.value = 'vocab'
+  // 从笔记页「开始背词」跳转时带 autostart=1，数据加载完后自动开始
+  if (options?.autostart === '1') autoStartVocab.value = true
 })
 
 function switchTab(tab: typeof activeTab.value) {
@@ -473,6 +477,13 @@ async function loadData() {
   }
 
   loading.value = false
+
+  // 从笔记页带 autostart 跳转时，数据就绪后自动进入背词练习
+  if (autoStartVocab.value && vbDueWords.value.length > 0) {
+    console.debug('[Review] autostart 触发，自动开始背词')
+    autoStartVocab.value = false
+    startVocab()
+  }
 }
 
 onShow(loadData)
