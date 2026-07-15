@@ -87,6 +87,21 @@
               <text v-else class="translation-text">{{ segmentTranslations[currentSegmentGroup.segment.segment_id] }}</text>
             </view>
 
+            <!-- 段内嵌词汇（书籍模式，通过「更多」菜单切换显隐） -->
+            <view
+              v-if="segmentWordsVisible && segmentWords.length"
+              class="segment-vocab"
+            >
+              <text class="section-label">核心词汇</text>
+              <view class="vocab-list">
+                <view v-for="w in segmentWords" :key="w.word" class="vocab-row" @tap="showWordDetail(w)">
+                  <text class="vocab-word">{{ w.word }}</text>
+                  <text v-if="w.phonetic" class="vocab-phonetic">{{ w.phonetic }}</text>
+                  <text class="vocab-meaning">{{ w.meaning }}</text>
+                </view>
+              </view>
+            </view>
+
             <!-- 底部翻页条 -->
             <view class="segment-pager segment-pager-bottom">
               <view
@@ -629,6 +644,9 @@ async function loadBookContext() {
   }
 }
 
+// 书籍模式词汇列表显隐（通过「更多」菜单切换，默认折叠不占空间）
+const segmentWordsVisible = ref(false)
+
 /** 段级默写：调后端准备译文和词汇，成功后跳 dictation 页。 */
 /**
  * 书籍模式「更多操作」弹出菜单。
@@ -644,6 +662,7 @@ function showMoreActions() {
     itemList: [
       isVisible ? '收起译文' : '展开译文',
       isPreparing ? '准备中...' : '默写此段',
+      segmentWordsVisible.value ? '收起词汇' : '展开词汇',
     ],
     success: ({ tapIndex }) => {
       if (tapIndex === 0) {
@@ -652,6 +671,9 @@ function showMoreActions() {
       } else if (tapIndex === 1) {
         console.debug('[book] showMoreActions: 默写此段 seg=', seg.segment_id)
         startSegmentDictation(seg)
+      } else if (tapIndex === 2) {
+        console.debug('[book] showMoreActions: 切换词汇 visible=', !segmentWordsVisible.value)
+        segmentWordsVisible.value = !segmentWordsVisible.value
       }
     },
   })
@@ -980,6 +1002,43 @@ async function regenerateContent() {
 }
 .segment-translation .section-label {
   margin-bottom: 12rpx;
+}
+
+/* 书籍模式内嵌词汇列表：与译文卡片同风格，视觉归属同一段 */
+.segment-vocab {
+  margin-top: 20rpx;
+  padding: 20rpx 24rpx 16rpx;
+  background: #F7FBFC;
+  border-left: 6rpx solid var(--secondary, #78909C);
+  border-radius: 12rpx;
+}
+.segment-vocab .section-label {
+  margin-bottom: 12rpx;
+}
+.vocab-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+.vocab-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12rpx;
+  flex-wrap: wrap;
+}
+.vocab-row:active { opacity: 0.6; }
+.vocab-word {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--on-primary-container);
+}
+.vocab-phonetic {
+  font-size: 22rpx;
+  color: var(--on-surface-variant);
+}
+.vocab-meaning {
+  font-size: 24rpx;
+  color: var(--on-surface-variant);
 }
 
 /* 翻页控件 */
