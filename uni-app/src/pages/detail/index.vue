@@ -46,10 +46,26 @@
           <template v-if="currentSegmentGroup">
             <view class="segment-header">
               <text class="segment-label">{{ currentSegmentGroup.segment.word_count }} 词</text>
-              <view class="more-btn" @tap="showMoreActions">
-                <text>⋯ 更多</text>
+              <!-- 更多按钮 + 锚点下拉菜单 -->
+              <view class="more-wrap">
+                <view class="more-btn" @tap.stop="showMoreMenu = !showMoreMenu">
+                  <text>⋯ 更多</text>
+                </view>
+                <view v-if="showMoreMenu" class="more-dropdown" @tap.stop>
+                  <view class="more-item" @tap="onMoreAction(0)">
+                    <text>{{ isSegmentTranslationVisible(currentSegmentGroup.segment.segment_id) ? '收起译文' : '展开译文' }}</text>
+                  </view>
+                  <view class="more-item" @tap="onMoreAction(1)">
+                    <text>{{ preparingSegmentId === currentSegmentGroup.segment.segment_id ? '准备中...' : '默写此段' }}</text>
+                  </view>
+                  <view class="more-item" @tap="onMoreAction(2)">
+                    <text>{{ segmentWordsVisible ? '收起词汇' : '展开词汇' }}</text>
+                  </view>
+                </view>
               </view>
             </view>
+            <!-- 点击外部关闭菜单的透明遮罩 -->
+            <view v-if="showMoreMenu" class="more-overlay" @tap="showMoreMenu = false" />
 
             <!-- 原文 -->
             <view class="article-body">
@@ -408,6 +424,7 @@ function goPrevSegment() {
     console.debug('[book] goPrevSegment: 已是首段，忽略')
     return
   }
+  showMoreMenu.value = false
   currentSegmentIndex.value -= 1
   console.debug('[book] goPrevSegment: index=', currentSegmentIndex.value)
   scrollToChapterTop()
@@ -418,6 +435,7 @@ function goNextSegment() {
     console.debug('[book] goNextSegment: 已是末段，忽略')
     return
   }
+  showMoreMenu.value = false
   currentSegmentIndex.value += 1
   console.debug('[book] goNextSegment: index=', currentSegmentIndex.value)
   scrollToChapterTop()
@@ -646,37 +664,28 @@ async function loadBookContext() {
 
 // 书籍模式词汇列表显隐（通过「更多」菜单切换，默认折叠不占空间）
 const segmentWordsVisible = ref(false)
+// 「更多」下拉菜单显隐
+const showMoreMenu = ref(false)
 
 /** 段级默写：调后端准备译文和词汇，成功后跳 dictation 页。 */
 /**
- * 书籍模式「更多操作」弹出菜单。
- * 将「收起/展开译文」和「默写此段」收拢为 ActionSheet，
- * 避免段头区堆积多个漂浮按钮。
+ * 书籍模式「更多」下拉菜单的操作分发。
+ * Why 不用 uni.showActionSheet：H5 上渲染位置不受控，改为锚点定位的自定义下拉菜单。
  */
-function showMoreActions() {
+function onMoreAction(index: number) {
+  showMoreMenu.value = false
   if (!currentSegmentGroup.value) return
   const seg = currentSegmentGroup.value.segment
-  const isVisible = isSegmentTranslationVisible(seg.segment_id)
-  const isPreparing = preparingSegmentId.value === seg.segment_id
-  uni.showActionSheet({
-    itemList: [
-      isVisible ? '收起译文' : '展开译文',
-      isPreparing ? '准备中...' : '默写此段',
-      segmentWordsVisible.value ? '收起词汇' : '展开词汇',
-    ],
-    success: ({ tapIndex }) => {
-      if (tapIndex === 0) {
-        console.debug('[book] showMoreActions: 切换译文 seg=', seg.segment_id)
-        toggleSegmentTranslation(seg)
-      } else if (tapIndex === 1) {
-        console.debug('[book] showMoreActions: 默写此段 seg=', seg.segment_id)
-        startSegmentDictation(seg)
-      } else if (tapIndex === 2) {
-        console.debug('[book] showMoreActions: 切换词汇 visible=', !segmentWordsVisible.value)
-        segmentWordsVisible.value = !segmentWordsVisible.value
-      }
-    },
-  })
+  if (index === 0) {
+    console.debug('[book] onMoreAction: 切换译文 seg=', seg.segment_id)
+    toggleSegmentTranslation(seg)
+  } else if (index === 1) {
+    console.debug('[book] onMoreAction: 默写此段 seg=', seg.segment_id)
+    startSegmentDictation(seg)
+  } else if (index === 2) {
+    console.debug('[book] onMoreAction: 切换词汇 visible=', !segmentWordsVisible.value)
+    segmentWordsVisible.value = !segmentWordsVisible.value
+  }
 }
 
 async function startSegmentDictation(segment: BookSegment) {
@@ -982,6 +991,9 @@ async function regenerateContent() {
   color: var(--on-surface-variant);
   font-weight: 600;
 }
+.more-wrap {
+  position: relative;
+}
 .more-btn {
   font-size: 22rpx;
   padding: 8rpx 20rpx;
@@ -991,6 +1003,32 @@ async function regenerateContent() {
   border: 2rpx solid var(--outline-variant);
 }
 .more-btn:active { opacity: 0.7; }
+/* 下拉菜单：锚点在「更多」按钮右下角 */
+.more-dropdown {
+  position: absolute;
+  top: calc(100% + 10rpx);
+  right: 0;
+  min-width: 220rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.14);
+  overflow: hidden;
+  z-index: 200;
+}
+.more-item {
+  padding: 24rpx 32rpx;
+  font-size: 28rpx;
+  color: var(--on-surface);
+  border-bottom: 2rpx solid var(--outline-variant);
+}
+.more-item:last-child { border-bottom: none; }
+.more-item:active { background: var(--surface-container); }
+/* 透明遮罩：点击菜单外部时关闭，z-index 低于 .more-dropdown */
+.more-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 199;
+}
 
 /* 段内嵌译文卡片：视觉上贴在原文正下方，跟原文明显同属一段 */
 .segment-translation {
