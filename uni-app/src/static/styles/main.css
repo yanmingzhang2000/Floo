@@ -583,3 +583,23 @@ input, textarea {
   display: block;
   color: var(--on-surface-muted);
 }
+
+/* ===== 阅读内容文字可复制 =====
+ * uni-app H5 默认对所有元素禁止文字选取（WebKit -webkit-user-select: none）。
+ * 以下类覆盖该限制，涵盖阅读页（书籍/新闻/自定义）的所有正文和译文区域。
+ * 只开放内容区，导航栏/按钮/标签等 UI 控件不受影响。
+ */
+.article-body,
+.article-body .word-span,
+.translation-text,
+.segment-translation,
+.segment-translation .translation-text,
+.segment-vocab,
+.vocab-meaning,
+.popup-word,
+.popup-phonetic,
+.popup-meaning {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
