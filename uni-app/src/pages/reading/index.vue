@@ -149,6 +149,13 @@ async function loadData() {
     learnedMap.set(it.content_id, Number.isFinite(ts) ? ts : 0)
   }
 
+  // 建立「已打开」集合：只有打开过的内容才出现在读书页
+  // 已学完的内容也算打开过（兼容旧数据：learned 但无 opened 记录的情形）
+  const openedSet: Set<number> = new Set(learnedRes?.data?.opened_ids || [])
+  for (const id of learnedMap.keys()) {
+    openedSet.add(id)
+  }
+
   const results: ReadingItem[] = []
 
   // ---- AI 内容 ----
@@ -156,6 +163,8 @@ async function loadData() {
   for (const c of aiList) {
     // 只保留 AI（creator_type=0），后端 getList 混着两种，前端过滤一下
     if ((c as any).creator_type === 1) continue
+    // 从未打开过的内容不出现在读书页，避免"正在学习"堆满未接触过的文章
+    if (!openedSet.has(c.id)) continue
     const learnedAt = learnedMap.get(c.id) ?? -1
     const archived = learnedMap.has(c.id)
     results.push(buildArticleItem('ai', c, archived, learnedAt))
@@ -164,6 +173,8 @@ async function loadData() {
   // ---- 自定义 ----
   const customList: LearningContent[] = customRes?.data?.contents || []
   for (const c of customList) {
+    // 同 AI 内容：未打开过的不出现
+    if (!openedSet.has(c.id)) continue
     const learnedAt = learnedMap.get(c.id) ?? -1
     const archived = learnedMap.has(c.id)
     results.push(buildArticleItem('custom', c, archived, learnedAt))

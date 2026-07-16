@@ -641,6 +641,16 @@ async function loadContent() {
   try {
     const { data } = await dailyApi.getContent(contentId)
     content.value = data
+    // 内容加载完成后：
+    // 1. 幂等标记本次打开（让「在读」页能感知用户打开过这篇内容）
+    // 2. 启动自动已学计时器（onShow 时 content 尚未加载，timer 不会启动，此处补一次）
+    if (auth.currentUserId && contentId) {
+      dailyApi.markOpened(auth.currentUserId, contentId).catch(() => {
+        // 打开标记失败不影响主流程，静默忽略
+        log.debug('[detail] markOpened 失败，content_id=%s', contentId)
+      })
+    }
+    startAutoLearnTimer()
   } catch { content.value = null }
   loading.value = false
 }

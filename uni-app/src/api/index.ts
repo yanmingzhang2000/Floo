@@ -38,13 +38,17 @@ export const dailyApi = {
     api.post('/api/daily/learned/toggle', null, { params: { user_id: userId, content_id: contentId } }),
   checkLearned: (userId: number, contentId: number) =>
     api.get('/api/daily/learned/check', { params: { user_id: userId, content_id: contentId } }),
-  // 返回结构：{ content_ids: number[], items: { content_id, learned_at }[] }
-  // items 供「在读」页显示"上次阅读时间"，content_ids 兼容旧调用（点选状态判断）
+  // 返回结构：{ content_ids: number[], items: { content_id, learned_at }[], opened_ids: number[] }
+  // items 供「在读」页显示"上次阅读时间"，content_ids 兼容旧调用方（点选状态判断）
+  // opened_ids 供「在读」页区分"正在学习"（打开过但未学完）和"从未打开"
   getLearnedIds: (userId: number) =>
-    api.get<{ content_ids: number[]; items: Array<{ content_id: number; learned_at: string | null }> }>(
+    api.get<{ content_ids: number[]; items: Array<{ content_id: number; learned_at: string | null }>; opened_ids: number[] }>(
       '/api/daily/learned/list',
       { params: { user_id: userId } },
     ),
+  // 幂等标记内容已打开，每次进入 detail 页调用，首次打开才写库
+  markOpened: (userId: number, contentId: number) =>
+    api.post('/api/daily/opened/mark', null, { params: { user_id: userId, content_id: contentId } }),
   getFilteredLearnedContents: (userId: number, startDate?: string, endDate?: string) =>
     api.get('/api/daily/learned/filtered', { 
       params: { user_id: userId, start_date: startDate, end_date: endDate } 

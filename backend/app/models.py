@@ -350,6 +350,27 @@ class UserLearnedContent(Base):
     content = relationship("LearningContent")
 
 
+class UserOpenedContent(Base):
+    """用户已打开内容表 - 记录用户首次打开某篇内容的时间。
+
+    Why 独立建表而不复用 UserLearnedContent：
+    「打开」和「学完」是两个不同的语义阶段。打开 → 正在学习；学完 → 已归档。
+    两者都缺失 → 内容从未进入「在读」流程，不应出现在读书页。
+    """
+    __tablename__ = "user_opened_content"
+    __table_args__ = (
+        UniqueConstraint("user_id", "content_id", name="uq_user_opened_content"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("user_main.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    content_id = Column(Integer, ForeignKey("learning_contents.content_id", ondelete="CASCADE"), nullable=False, index=True)
+    opened_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user = relationship("UserMain")
+    content = relationship("LearningContent")
+
+
 class UserCollection(Base):
     """用户收藏表 - 记录用户抽到的角色。"""
     __tablename__ = "user_collection"
