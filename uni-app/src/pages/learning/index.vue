@@ -53,6 +53,7 @@
             <view class="lib-card-body">
               <view class="lib-card-header">
                 <text class="tag tag-ai">{{ themeLabels[item.theme_type] || item.theme_type }}</text>
+                <text class="lib-card-date">{{ item.content_date }}</text>
               </view>
               <text class="lib-card-title">{{ item.title }}</text>
               <text class="lib-card-desc">{{ (item.article || '').slice(0, 80) }}...</text>
@@ -453,6 +454,10 @@ onShow(loadData)
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+.lib-card-date {
+  font-size: 22rpx;
+  color: var(--on-surface-variant);
 }
 .lib-card-title {
   font-size: 32rpx;
