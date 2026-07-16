@@ -306,7 +306,8 @@ onShow(loadData)
   border-radius: 40rpx;
   font-size: 26rpx;
   font-weight: 600;
-  color: var(--primary);
+  background: var(--primary);
+  color: #fff;
   white-space: nowrap;
   text-align: center;
   width: 100%;
@@ -314,16 +315,17 @@ onShow(loadData)
 }
 .vocab-action.disabled {
   border-color: #d0d8dc;
-  color: #b0b8c0;
+  background: #d0d8dc;
+  color: #fff;
   pointer-events: none;
 }
 .vocab-action-secondary {
   padding: 14rpx 0;
-  border: 2rpx solid #c8e0e6;
+  border: 2rpx solid var(--primary);
   border-radius: 40rpx;
   font-size: 26rpx;
-  font-weight: 500;
-  color: var(--on-surface-variant);
+  font-weight: 600;
+  color: var(--primary);
   white-space: nowrap;
   text-align: center;
   width: 100%;
