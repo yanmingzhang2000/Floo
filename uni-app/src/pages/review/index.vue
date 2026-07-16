@@ -7,10 +7,6 @@
 
     <!-- 二级标签：极简细横线 -->
     <view class="underline-tabs">
-      <view class="underline-tab" :class="{ active: activeTab === 'review' }" @tap="switchTab('review')">
-        <text>复习</text>
-        <view v-if="dueTasks.length" class="tab-badge"><text>{{ dueTasks.length }}</text></view>
-      </view>
       <view class="underline-tab" :class="{ active: activeTab === 'dictation' }" @tap="switchTab('dictation')">
         <text>默写</text>
       </view>
@@ -24,44 +20,6 @@
     </view>
 
     <template v-else>
-      <!-- ===== 复述 ===== -->
-      <view v-show="activeTab === 'review'">
-        <view class="stats-banner">
-          <view class="stat-item">
-            <text class="stat-value">{{ progressList.length }}</text>
-            <text class="stat-label">总内容</text>
-          </view>
-          <view class="stat-item">
-            <text class="stat-value">{{ masteredCount }}</text>
-            <text class="stat-label">已掌握</text>
-          </view>
-          <view class="stat-item">
-            <text class="stat-value">{{ dueTasks.length }}</text>
-            <text class="stat-label">待复习</text>
-          </view>
-        </view>
-        <view v-if="dueTasks.length" class="section">
-          <text class="section-title">今日待复习</text>
-          <view class="task-list">
-            <view v-for="task in dueTasks" :key="task.content_id" class="task-item">
-              <view class="task-stage-dot" :style="{ background: stageColors[task.review_stage] || 'var(--primary)' }">
-                <text class="task-stage-text">{{ task.review_stage }}</text>
-              </view>
-              <view class="task-info">
-                <text class="task-title">{{ task.title }}</text>
-                <text class="task-meta">准确率 {{ task.last_accuracy.toFixed(0) }}%</text>
-              </view>
-              <text class="task-action" @tap="goDetail(task.content_id)">去复述</text>
-            </view>
-          </view>
-        </view>
-        <view v-else class="empty-state">
-          <text class="icon">✓</text>
-          <text class="empty-text">暂无待复习内容</text>
-          <text class="empty-hint">继续学习新内容吧</text>
-        </view>
-      </view>
-
       <!-- ===== 默写 ===== -->
       <view v-show="activeTab === 'dictation'">
         <view class="section">
@@ -227,16 +185,11 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { dailyApi, dictationApi, wordReviewApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { navTo } from '@/utils/router'
-import type { LearningContent, DictationHistory, ReviewTask, MemoryProgress } from '@/types'
+import type { LearningContent, DictationHistory } from '@/types'
 
 const auth = useAuthStore()
 const loading = ref(true)
-const activeTab = ref<'review' | 'dictation' | 'vocab'>('review')
-
-// 复述
-const dueTasks = ref<ReviewTask[]>([])
-const progressList = ref<MemoryProgress[]>([])
-const masteredCount = ref(0)
+const activeTab = ref<'dictation' | 'vocab'>('dictation')
 
 // 默写
 const todayContents = ref<LearningContent[]>([])
@@ -261,11 +214,6 @@ const vbCorrectCount = ref(0)
 
 const vbCurrentWord = computed(() => vbWords.value[vbIdx.value] || null)
 
-const stageColors: Record<number, string> = {
-  0: '#9E9E9E', 1: '#F44336', 2: '#FF9800',
-  3: '#FFC107', 4: '#4CAF50', 5: '#2196F3',
-}
-
 const autoStartVocab = ref(false)
 
 onLoad((options) => {
@@ -279,7 +227,6 @@ function switchTab(tab: typeof activeTab.value) {
   activeTab.value = tab
 }
 
-function goDetail(contentId: number) { navTo(`/pages/detail/index?id=${contentId}`) }
 function goDictationDetail(dictationId: number) { navTo(`/pages/dictation-detail/index?id=${dictationId}`) }
 
 function formatDate(dateStr: string) {
@@ -415,31 +362,16 @@ async function loadData() {
 
   // 并行加载所有独立的 API 请求
   const [
-    reviewTasksRes,
-    allProgressRes,
     todayListRes,
     listRes,
     historyRes,
     vocabRes
   ] = await Promise.allSettled([
-    dailyApi.getReviewTasks(auth.currentUserId),
-    dailyApi.getAllProgress(auth.currentUserId),
     dailyApi.getTodayList(auth.currentUserId),
     dailyApi.getList(30),
     dictationApi.getHistory(auth.currentUserId, 50),
     wordReviewApi.getDue(auth.currentUserId, 20)
   ])
-
-  // 处理复习任务
-  if (reviewTasksRes.status === 'fulfilled') {
-    dueTasks.value = reviewTasksRes.value.data.tasks || []
-  }
-
-  // 处理进度
-  if (allProgressRes.status === 'fulfilled') {
-    progressList.value = allProgressRes.value.data.items || []
-    masteredCount.value = allProgressRes.value.data.mastered_count || 0
-  }
 
   // 处理今日内容
   if (todayListRes.status === 'fulfilled') {
@@ -538,43 +470,6 @@ onShow(loadData)
   background: var(--primary);
 }
 
-/* 角标弱化：小圆点 */
-.tab-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 28rpx;
-  height: 28rpx;
-  border-radius: 14rpx;
-  padding: 0 6rpx;
-  background: var(--primary);
-  opacity: 0.7;
-}
-.tab-badge text { font-size: 18rpx; color: #fff; font-weight: 700; }
-
-/* ---- 统计栏 ---- */
-.stats-banner {
-  display: flex;
-  padding: 32rpx 20rpx 24rpx;
-  gap: 0;
-}
-.stat-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6rpx;
-}
-.stat-value {
-  font-size: 44rpx;
-  font-weight: 800;
-  color: var(--primary);
-  line-height: 1;
-}
-.stat-label {
-  font-size: 22rpx;
-  color: var(--on-surface-variant);
-}
 
 /* ---- 通用分区 ---- */
 .section { padding: 16rpx 20rpx 24rpx; }
@@ -587,33 +482,6 @@ onShow(loadData)
 }
 .section-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
 .section-toggle { font-size: 24rpx; color: var(--primary); }
-
-/* ---- 复述任务列表 ---- */
-.task-list { display: flex; flex-direction: column; gap: 16rpx; }
-.task-item {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  padding: 24rpx 28rpx;
-  background: #ffffff;
-  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
-  border-radius: 20rpx;
-}
-.task-stage-dot {
-  width: 56rpx;
-  height: 56rpx;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  opacity: 0.6;
-}
-.task-stage-text { color: white; font-weight: 700; font-size: 22rpx; }
-.task-info { flex: 1; min-width: 0; }
-.task-title { font-weight: 600; font-size: 28rpx; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.task-meta { font-size: 22rpx; color: var(--on-surface-variant); margin-top: 4rpx; display: block; }
-.task-action { font-size: 26rpx; color: var(--primary); font-weight: 600; flex-shrink: 0; }
 
 /* ---- 默写历史 ---- */
 .history-list { display: flex; flex-direction: column; gap: 12rpx; }
