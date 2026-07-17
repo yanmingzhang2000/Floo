@@ -3,6 +3,7 @@
     <!-- 顶部通栏：主题青绿色 + 白色标题 -->
     <view class="rd-header">
       <text class="rd-title">在读</text>
+      <UserAvatar />
     </view>
 
     <!-- 二级切换：文字变色 + 底部细短线 -->
@@ -79,6 +80,7 @@ import { dailyApi, bookApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { navTo } from '@/utils/router'
 import type { LearningContent } from '@/types'
+import UserAvatar from '@/components/UserAvatar.vue'
 
 /**
  * 在读页：全部已保存读物存档
@@ -314,6 +316,9 @@ onShow(loadData)
 
 /* 顶部通栏：主题青绿色 + 白色标题 */
 .rd-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: calc(env(safe-area-inset-top, 44px) + 16rpx) 32rpx 24rpx;
   background: var(--primary, #5B9AA8);
   margin: 0 -20rpx 0;

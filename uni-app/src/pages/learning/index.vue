@@ -1,8 +1,9 @@
 <template>
   <view class="page-container library-page">
-    <!-- 顶部通栏：仅保留标题，移除搜索图标 -->
+    <!-- 顶部通栏 -->
     <view class="lib-header">
       <text class="lib-title">图书馆</text>
+      <UserAvatar />
     </view>
 
     <view v-if="loading" class="loading">
@@ -164,6 +165,7 @@ import { storage } from '@/utils/storage'
 import type { LearningContent } from '@/types'
 import CustomContentModal from '@/components/CustomContentModal.vue'
 import OnboardingGuide from '@/components/OnboardingGuide.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 
 /**
  * 图书馆页：素材广场，用户在这里找新内容
@@ -366,6 +368,7 @@ onShow(loadData)
 .lib-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: calc(env(safe-area-inset-top, 44px) + 16rpx) 32rpx 24rpx;
   background: var(--primary, #5B9AA8);
   margin: 0 -20rpx 0;

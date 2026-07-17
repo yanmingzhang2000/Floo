@@ -1,11 +1,9 @@
 <template>
   <view class="page-container floo-page">
-    <!-- 顶部：品牌标题 + 仅保留设置 -->
+    <!-- 顶部：品牌标题 + 头像（含退出） -->
     <view class="floo-header">
       <text class="floo-title">Floo</text>
-      <view class="floo-icon-btn" @tap="goPreference">
-        <text>⚙️</text>
-      </view>
+      <UserAvatar />
     </view>
 
     <view v-if="loading" class="loading">
@@ -111,6 +109,7 @@ import { checkinApi, shopApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { navTo } from '@/utils/router'
 import type { CheckinCalendar } from '@/types'
+import UserAvatar from '@/components/UserAvatar.vue'
 
 /**
  * Floo 页：打卡 + 积分商城成长页

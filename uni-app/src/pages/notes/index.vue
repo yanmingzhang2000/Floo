@@ -3,6 +3,7 @@
     <!-- 顶部通栏：主题青绿色块 + 白色标题 -->
     <view class="notes-header">
       <text class="notes-title">笔记</text>
+      <UserAvatar />
     </view>
 
     <view v-if="loading" class="loading">
@@ -84,6 +85,7 @@ import { dictationApi, wordReviewApi, favoritesApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { navTo } from '@/utils/router'
 import type { DictationHistory } from '@/types'
+import UserAvatar from '@/components/UserAvatar.vue'
 
 /**
  * 笔记页：复盘专区
@@ -226,6 +228,9 @@ onShow(loadData)
 
 /* 顶部通栏：主题青绿色 + 白色标题 */
 .notes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: calc(env(safe-area-inset-top, 44px) + 16rpx) 32rpx 24rpx;
   background: var(--primary, #5B9AA8);
   margin: 0 -20rpx 0;
