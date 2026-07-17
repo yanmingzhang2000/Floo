@@ -46,26 +46,19 @@
           <template v-if="currentSegmentGroup">
             <view class="segment-header">
               <text class="segment-label">{{ currentSegmentGroup.segment.word_count }} 词</text>
-              <!-- 更多按钮 + 锚点下拉菜单 -->
+              <!-- 直接展示三个操作按钮 -->
               <view class="more-wrap">
-                <view class="more-btn" @tap.stop="showMoreMenu = !showMoreMenu">
-                  <text>⋯ 更多</text>
+                <view class="more-item" @tap="onMoreAction(0)">
+                  <text>{{ isSegmentTranslationVisible(currentSegmentGroup.segment.segment_id) ? '收起译文' : '展开译文' }}</text>
                 </view>
-                <view v-if="showMoreMenu" class="more-dropdown" @tap.stop>
-                  <view class="more-item" @tap="onMoreAction(0)">
-                    <text>{{ isSegmentTranslationVisible(currentSegmentGroup.segment.segment_id) ? '收起译文' : '展开译文' }}</text>
-                  </view>
-                  <view class="more-item" @tap="onMoreAction(1)">
-                    <text>{{ preparingSegmentId === currentSegmentGroup.segment.segment_id ? '准备中...' : '默写此段' }}</text>
-                  </view>
-                  <view class="more-item" @tap="onMoreAction(2)">
-                    <text>{{ segmentWordsVisible ? '收起词汇' : '展开词汇' }}</text>
-                  </view>
+                <view class="more-item" @tap="onMoreAction(1)">
+                  <text>{{ preparingSegmentId === currentSegmentGroup.segment.segment_id ? '准备中...' : '默写此段' }}</text>
+                </view>
+                <view class="more-item" @tap="onMoreAction(2)">
+                  <text>{{ segmentWordsVisible ? '收起词汇' : '展开词汇' }}</text>
                 </view>
               </view>
             </view>
-            <!-- 点击外部关闭菜单的透明遮罩 -->
-            <view v-if="showMoreMenu" class="more-overlay" @tap="showMoreMenu = false" />
 
             <!-- 原文 -->
             <view class="article-body">
