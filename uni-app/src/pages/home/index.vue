@@ -1,17 +1,8 @@
 <template>
   <view class="page-container">
-    <view class="nav-bar">
-      <view class="nav-left">
-        <text class="nav-logo">Floo!</text>
-      </view>
-      <view class="nav-right nav-right-row">
-        <view class="nav-icon-btn" @tap="goPreference">
-          <text>⚙️</text>
-        </view>
-        <view class="nav-user" v-if="auth.username">
-          <text class="nav-username">{{ auth.username }}</text>
-        </view>
-      </view>
+    <view class="home-header">
+      <text class="home-title">Floo!</text>
+      <UserAvatar />
     </view>
 
     <view v-if="loading" class="loading">
@@ -32,7 +23,7 @@
 
       <view class="illustration-area">
         <image
-          src="/static/images/hero_book.jpg"
+          src="/static/images/hero_book.png"
           mode="widthFix"
           class="hero-illustration"
         />
@@ -40,11 +31,11 @@
 
       <view class="bottom-card">
         <view class="cta-btn-group">
-          <button class="cta-btn cta-btn-secondary" @tap="goReviewLast" :disabled="!lastLearnedId">
-            <text class="cta-text cta-text-secondary">复习上次</text>
+          <button class="cta-btn cta-btn-main" @tap="goLibrary">
+            <text class="cta-text cta-text-primary">开始学习</text>
           </button>
-          <button class="cta-btn cta-btn-primary" @tap="goLibrary">
-            <text class="cta-text">开始学习</text>
+          <button class="cta-btn cta-btn-sub" @tap="goReviewLast" :disabled="!lastLearnedId">
+            <text class="cta-text cta-text-muted">复习上次</text>
           </button>
         </view>
         <view class="quick-grid" :class="{ expanded: showQuick }">
@@ -82,6 +73,7 @@ import { useAuthStore } from '@/stores'
 import { navTo } from '@/utils/router'
 import { storage } from '@/utils/storage'
 import type { LearningContent } from '@/types'
+import UserAvatar from '@/components/UserAvatar.vue'
 
 const auth = useAuthStore()
 const loading = ref(true)
@@ -103,7 +95,7 @@ async function loadData() {
 
   if (contentRes?.data) contents.value = contentRes.data.contents || []
   if (calendarRes?.data) streakDays.value = calendarRes.data.current_streak_days || 0
-  
+
   // 获取上次学习的内容ID：取 opened_ids 中最后一个（最近打开的）
   const openedIds: number[] = learnedRes?.data?.opened_ids || []
   if (openedIds.length > 0) {
@@ -130,7 +122,6 @@ function goLibrary() {
 }
 
 function goDetail(id: number) { navTo(`/pages/detail/index?id=${id}`) }
-function goPreference() { navTo('/pages/preference/index') }
 function goCheckin() { navTo('/pages/checkin/index') }
 // review 不再是 tab，用 navigateTo 打开
 function goDictation() { uni.navigateTo({ url: '/pages/review/index' }) }
@@ -147,40 +138,20 @@ onShow(() => {
 </script>
 
 <style scoped>
-.nav-logo {
-  font-size: 38rpx;
+/* ---- 顶部通栏（与图书馆页保持一致） ---- */
+.home-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(env(safe-area-inset-top, 44px) + 16rpx) 32rpx 24rpx;
+  background: var(--primary, #5B9AA8);
+  margin: 0 -20rpx 0;
+}
+.home-title {
+  font-size: 36rpx;
   font-weight: 800;
   color: #fff;
-  letter-spacing: -1rpx;
-}
-
-.nav-right-row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
-
-.nav-icon-btn {
-  width: 56rpx;
-  height: 56rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32rpx;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.15);
-}
-.nav-icon-btn:active { background: rgba(255,255,255,0.3); }
-
-.nav-user {
-  padding: 8rpx 20rpx;
-  background: rgba(255,255,255,0.2);
-  border-radius: 30rpx;
-}
-.nav-username {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: #fff;
+  letter-spacing: 1rpx;
 }
 
 .home-scroll { flex: 1; }
@@ -249,46 +220,44 @@ onShow(() => {
   box-shadow: 0 2rpx 16rpx rgba(91,154,168,0.1);
 }
 
+/* 两个按钮竖排 */
 .cta-btn-group {
   display: flex;
+  flex-direction: column;
   gap: 16rpx;
 }
 
 .cta-btn {
-  flex: 1;
+  width: 100%;
   height: 96rpx;
-  border: none;
+  background: #fff;
   border-radius: 48rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8rpx 24rpx rgba(91,154,168,0.3);
   transition: transform 0.15s;
 }
 .cta-btn:active { transform: scale(0.97); }
-.cta-btn:disabled {
-  opacity: 0.5;
-}
+.cta-btn:disabled { opacity: 0.4; }
 .cta-btn:disabled:active { transform: none; }
 
-.cta-btn-primary {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+/* 主按钮：粗边框突出 */
+.cta-btn-main {
+  border: 3rpx solid var(--primary);
+  box-shadow: 0 4rpx 16rpx rgba(91,154,168,0.18);
 }
 
-.cta-btn-secondary {
-  background: #fff;
-  border: 2rpx solid var(--primary);
+/* 次按钮：细边框低调 */
+.cta-btn-sub {
+  border: 2rpx solid var(--outline);
 }
 
 .cta-text {
   font-size: 32rpx;
   font-weight: 700;
-  color: #fff;
 }
-
-.cta-text-secondary {
-  color: var(--primary);
-}
+.cta-text-primary { color: var(--primary); }
+.cta-text-muted   { color: var(--on-surface-variant); }
 
 .quick-grid {
   display: flex;
