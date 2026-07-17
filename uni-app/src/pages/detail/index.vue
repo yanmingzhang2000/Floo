@@ -995,43 +995,21 @@ async function regenerateContent() {
   font-weight: 600;
 }
 .more-wrap {
-  position: relative;
-}
-.more-btn {
-  font-size: 22rpx;
-  padding: 8rpx 20rpx;
-  border-radius: 24rpx;
-  background: var(--surface-container);
-  color: var(--on-surface-variant);
-  border: 2rpx solid var(--outline-variant);
-}
-.more-btn:active { opacity: 0.7; }
-/* 下拉菜单：锚点在「更多」按钮右下角 */
-.more-dropdown {
-  position: absolute;
-  top: calc(100% + 10rpx);
-  right: 0;
-  min-width: 220rpx;
-  background: #fff;
-  border-radius: 16rpx;
-  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.14);
-  overflow: hidden;
-  z-index: 200;
+  display: flex;
+  flex-direction: row;
+  gap: 12rpx;
 }
 .more-item {
-  padding: 24rpx 32rpx;
-  font-size: 28rpx;
-  color: var(--on-surface);
-  border-bottom: 2rpx solid var(--outline-variant);
+  flex: 1;
+  text-align: center;
+  padding: 10rpx 0;
+  font-size: 24rpx;
+  color: var(--on-surface-variant);
+  border: 2rpx solid var(--outline-variant);
+  border-radius: 24rpx;
+  background: var(--surface-container);
 }
-.more-item:last-child { border-bottom: none; }
-.more-item:active { background: var(--surface-container); }
-/* 透明遮罩：点击菜单外部时关闭，z-index 低于 .more-dropdown */
-.more-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 199;
-}
+.more-item:active { opacity: 0.7; }
 
 /* 段内嵌译文卡片：视觉上贴在原文正下方，跟原文明显同属一段 */
 .segment-translation {
