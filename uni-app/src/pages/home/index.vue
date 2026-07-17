@@ -32,16 +32,21 @@
 
       <view class="illustration-area">
         <image
-          src="/static/images/hero_book.png"
+          src="/static/images/hero_book.jpg"
           mode="widthFix"
           class="hero-illustration"
         />
       </view>
 
       <view class="bottom-card">
-        <button class="cta-btn" @tap="handleMainAction">
-          <text class="cta-text">{{ contents.length > 0 ? '继续今日学习' : '开始今日学习' }}</text>
-        </button>
+        <view class="cta-btn-group">
+          <button class="cta-btn cta-btn-secondary" @tap="goReviewLast" :disabled="!lastLearnedId">
+            <text class="cta-text cta-text-secondary">复习上次</text>
+          </button>
+          <button class="cta-btn cta-btn-primary" @tap="goLibrary">
+            <text class="cta-text">开始学习</text>
+          </button>
+        </view>
         <view class="quick-grid" :class="{ expanded: showQuick }">
           <view class="quick-card" @tap="goDictation">
             <view class="quick-icon-wrap" style="background: #FFF3E0;">
@@ -83,25 +88,44 @@ const loading = ref(true)
 const contents = ref<LearningContent[]>([])
 const streakDays = ref(0)
 const showQuick = ref(false)
+const lastLearnedId = ref<number | null>(null)
 
 async function loadData() {
   loading.value = true
   const userId = auth.currentUserId
   const safe = (p: Promise<any>) => p.catch(() => null)
 
-  const [contentRes, calendarRes] = await Promise.all([
+  const [contentRes, calendarRes, learnedRes] = await Promise.all([
     safe(dailyApi.getTodayList(userId)),
     safe(checkinApi.getCalendar(userId, new Date().getFullYear(), new Date().getMonth() + 1)),
+    safe(dailyApi.getLearnedIds(userId)),
   ])
 
   if (contentRes?.data) contents.value = contentRes.data.contents || []
   if (calendarRes?.data) streakDays.value = calendarRes.data.current_streak_days || 0
+  
+  // 获取上次学习的内容ID：取 opened_ids 中最后一个（最近打开的）
+  const openedIds: number[] = learnedRes?.data?.opened_ids || []
+  if (openedIds.length > 0) {
+    lastLearnedId.value = openedIds[openedIds.length - 1]
+  } else {
+    // fallback: 取 learned_ids 最后一个
+    const learnedIds: number[] = learnedRes?.data?.content_ids || []
+    if (learnedIds.length > 0) {
+      lastLearnedId.value = learnedIds[learnedIds.length - 1]
+    }
+  }
 
   loading.value = false
 }
 
-function handleMainAction() {
-  // 无论是否有今日内容，主按钮统一跳图书馆
+function goReviewLast() {
+  if (lastLearnedId.value) {
+    navTo(`/pages/detail/index?id=${lastLearnedId.value}`)
+  }
+}
+
+function goLibrary() {
   uni.switchTab({ url: '/pages/learning/index' })
 }
 
@@ -225,10 +249,14 @@ onShow(() => {
   box-shadow: 0 2rpx 16rpx rgba(91,154,168,0.1);
 }
 
+.cta-btn-group {
+  display: flex;
+  gap: 16rpx;
+}
+
 .cta-btn {
-  width: 100%;
+  flex: 1;
   height: 96rpx;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   border: none;
   border-radius: 48rpx;
   display: flex;
@@ -238,10 +266,28 @@ onShow(() => {
   transition: transform 0.15s;
 }
 .cta-btn:active { transform: scale(0.97); }
+.cta-btn:disabled {
+  opacity: 0.5;
+}
+.cta-btn:disabled:active { transform: none; }
+
+.cta-btn-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+}
+
+.cta-btn-secondary {
+  background: #fff;
+  border: 2rpx solid var(--primary);
+}
+
 .cta-text {
   font-size: 32rpx;
   font-weight: 700;
   color: #fff;
+}
+
+.cta-text-secondary {
+  color: var(--primary);
 }
 
 .quick-grid {
