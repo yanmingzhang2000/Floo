@@ -1,17 +1,8 @@
 <template>
   <view class="page-container">
-    <view class="nav-bar">
-      <view class="nav-left">
-        <text class="nav-logo">Floo!</text>
-      </view>
-      <view class="nav-right nav-right-row">
-        <view class="nav-icon-btn" @tap="goPreference">
-          <text>⚙️</text>
-        </view>
-        <view class="nav-user" v-if="auth.username">
-          <text class="nav-username">{{ auth.username }}</text>
-        </view>
-      </view>
+    <view class="home-header">
+      <text class="home-title">Floo!</text>
+      <UserAvatar />
     </view>
 
     <view v-if="loading" class="loading">
@@ -31,43 +22,16 @@
       </view>
 
       <view class="illustration-area">
-        <svg class="book-svg" viewBox="0 0 400 320" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <!-- 左页 -->
-          <path d="M200 280 L200 100 Q160 80 80 90 L80 270 Q160 260 200 280Z" fill="#D0E8ED" stroke="#5B9AA8" stroke-width="2"/>
-          <path d="M100 120 L180 112" stroke="#5B9AA8" stroke-width="1.5" opacity="0.5"/>
-          <path d="M100 145 L175 138" stroke="#5B9AA8" stroke-width="1.5" opacity="0.4"/>
-          <path d="M100 170 L170 164" stroke="#5B9AA8" stroke-width="1.5" opacity="0.3"/>
-          <!-- 右页 -->
-          <path d="M200 280 L200 100 Q240 80 320 90 L320 270 Q240 260 200 280Z" fill="#E4F0F3" stroke="#5B9AA8" stroke-width="2"/>
-          <path d="M220 120 L300 128" stroke="#5B9AA8" stroke-width="1.5" opacity="0.5"/>
-          <path d="M220 145 L295 152" stroke="#5B9AA8" stroke-width="1.5" opacity="0.4"/>
-          <path d="M220 170 L290 176" stroke="#5B9AA8" stroke-width="1.5" opacity="0.3"/>
-          <!-- 银河旋涡 -->
-          <ellipse cx="200" cy="160" rx="55" ry="20" fill="none" stroke="#5B9AA8" stroke-width="1.5" transform="rotate(-20 200 160)" opacity="0.6"/>
-          <ellipse cx="200" cy="160" rx="38" ry="14" fill="none" stroke="#7FB3BE" stroke-width="1.2" transform="rotate(-20 200 160)" opacity="0.5"/>
-          <ellipse cx="200" cy="160" rx="20" ry="8" fill="#D0E8ED" stroke="#5B9AA8" stroke-width="1" transform="rotate(-20 200 160)"/>
-          <!-- 地球 -->
-          <circle cx="290" cy="130" r="28" fill="#D0E8ED" stroke="#5B9AA8" stroke-width="2"/>
-          <path d="M270 130 Q280 115 295 120 Q310 125 305 140 Q295 150 280 145 Q272 138 270 130Z" fill="#5B9AA8" opacity="0.3"/>
-          <!-- 星星 -->
-          <path d="M150 105 L153 112 L160 112 L154 117 L156 124 L150 120 L144 124 L146 117 L140 112 L147 112Z" fill="#5B9AA8" opacity="0.7"/>
-          <path d="M260 95 L262 100 L267 100 L263 103 L264 108 L260 105 L256 108 L257 103 L253 100 L258 100Z" fill="#5B9AA8" opacity="0.5"/>
-          <path d="M130 140 L132 145 L137 145 L133 148 L134 153 L130 150 L126 153 L127 148 L123 145 L128 145Z" fill="#7FB3BE" opacity="0.6"/>
-          <!-- 山川 -->
-          <path d="M120 250 L155 195 L175 215 L200 180 L225 210 L245 195 L280 250Z" fill="none" stroke="#5B9AA8" stroke-width="2" opacity="0.6"/>
-          <path d="M140 250 L170 205 L190 225 L210 200 L230 220 L260 250Z" fill="#D0E8ED" opacity="0.4"/>
-          <!-- 波浪 -->
-          <path d="M100 265 Q150 255 200 265 Q250 275 300 265" fill="none" stroke="#5B9AA8" stroke-width="2" opacity="0.5"/>
-          <path d="M110 280 Q160 270 210 280 Q260 290 310 280" fill="none" stroke="#7FB3BE" stroke-width="1.5" opacity="0.4"/>
-          <!-- 小蝴蝶 -->
-          <path d="M310 160 Q318 150 325 158 Q318 155 310 160Z" fill="#5B9AA8" opacity="0.5"/>
-          <path d="M310 160 Q318 170 325 162 Q318 165 310 160Z" fill="#7FB3BE" opacity="0.4"/>
-        </svg>
+        <image
+          src="/static/images/hero_book.png"
+          mode="widthFix"
+          class="hero-illustration"
+        />
       </view>
 
       <view class="bottom-card">
         <view class="cta-btn-group">
-          <button class="cta-btn cta-btn-main" @tap="goLearning">
+          <button class="cta-btn cta-btn-main" @tap="goLibrary">
             <text class="cta-text cta-text-primary">开始学习</text>
           </button>
           <button class="cta-btn cta-btn-sub" @tap="goReviewLast" :disabled="!lastLearnedId">
@@ -109,6 +73,7 @@ import { useAuthStore } from '@/stores'
 import { navTo } from '@/utils/router'
 import { storage } from '@/utils/storage'
 import type { LearningContent } from '@/types'
+import UserAvatar from '@/components/UserAvatar.vue'
 
 const auth = useAuthStore()
 const loading = ref(true)
@@ -130,16 +95,14 @@ async function loadData() {
 
   if (contentRes?.data) contents.value = contentRes.data.contents || []
   if (calendarRes?.data) streakDays.value = calendarRes.data.current_streak_days || 0
+
+  // 后端已按 UserLearnedContent.id DESC 排序，content_ids[0] 即最近学习的内容
   if (learnedRes?.data) {
-    const ids = learnedRes.data.content_ids || []
+    const ids: number[] = learnedRes.data.content_ids || []
     lastLearnedId.value = ids.length > 0 ? ids[0] : null
   }
 
   loading.value = false
-}
-
-function goLearning() {
-  uni.switchTab({ url: '/pages/learning/index' })
 }
 
 function goReviewLast() {
@@ -148,10 +111,13 @@ function goReviewLast() {
   }
 }
 
+function goLibrary() {
+  uni.switchTab({ url: '/pages/learning/index' })
+}
+
 function goDetail(id: number) { navTo(`/pages/detail/index?id=${id}`) }
-function goPreference() { navTo('/pages/preference/index') }
 function goCheckin() { navTo('/pages/checkin/index') }
-function goDictation() { uni.switchTab({ url: '/pages/review/index' }) }
+function goDictation() { uni.navigateTo({ url: '/pages/review/index' }) }
 function goCustom() {
   storage.set('learning_active_tab', 'custom')
   uni.switchTab({ url: '/pages/learning/index' })
@@ -164,40 +130,20 @@ onShow(() => {
 </script>
 
 <style scoped>
-.nav-logo {
-  font-size: 38rpx;
+/* ---- 顶部通栏（与图书馆页保持一致） ---- */
+.home-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(env(safe-area-inset-top, 44px) + 16rpx) 32rpx 24rpx;
+  background: var(--primary, #5B9AA8);
+  margin: 0 -20rpx 0;
+}
+.home-title {
+  font-size: 36rpx;
   font-weight: 800;
   color: #fff;
-  letter-spacing: -1rpx;
-}
-
-.nav-right-row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
-
-.nav-icon-btn {
-  width: 56rpx;
-  height: 56rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32rpx;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.15);
-}
-.nav-icon-btn:active { background: rgba(255,255,255,0.3); }
-
-.nav-user {
-  padding: 8rpx 20rpx;
-  background: rgba(255,255,255,0.2);
-  border-radius: 30rpx;
-}
-.nav-username {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: #fff;
+  letter-spacing: 1rpx;
 }
 
 .home-scroll { flex: 1; }
@@ -250,11 +196,11 @@ onShow(() => {
 .illustration-area {
   display: flex;
   justify-content: center;
-  padding: 20rpx 40rpx 0;
+  padding: 20rpx 0 0;
 }
-.book-svg {
+.hero-illustration {
   width: 100%;
-  max-width: 600rpx;
+  max-width: 650rpx;
   height: auto;
 }
 
@@ -266,13 +212,17 @@ onShow(() => {
   box-shadow: 0 2rpx 16rpx rgba(91,154,168,0.1);
 }
 
+/* 两个按钮竖排 */
 .cta-btn-group {
   display: flex;
+  flex-direction: column;
   gap: 16rpx;
 }
+
 .cta-btn {
+  width: 100%;
   height: 96rpx;
-  border: none;
+  background: #fff;
   border-radius: 48rpx;
   display: flex;
   align-items: center;
@@ -280,29 +230,26 @@ onShow(() => {
   transition: transform 0.15s;
 }
 .cta-btn:active { transform: scale(0.97); }
+.cta-btn:disabled { opacity: 0.4; }
+.cta-btn:disabled:active { transform: none; }
+
+/* 主按钮：粗边框突出 */
 .cta-btn-main {
-  flex: 2;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-  box-shadow: 0 8rpx 24rpx rgba(91,154,168,0.3);
+  border: 3rpx solid var(--primary);
+  box-shadow: 0 4rpx 16rpx rgba(91,154,168,0.18);
 }
+
+/* 次按钮：细边框低调 */
 .cta-btn-sub {
-  flex: 1;
-  background: var(--surface);
-  border: 2rpx solid var(--outline-variant);
+  border: 2rpx solid var(--outline);
 }
-.cta-btn-sub[disabled] {
-  opacity: 0.4;
-}
+
 .cta-text {
   font-size: 32rpx;
   font-weight: 700;
 }
-.cta-text-primary {
-  color: #fff;
-}
-.cta-text-muted {
-  color: var(--on-surface-variant);
-}
+.cta-text-primary { color: var(--primary); }
+.cta-text-muted   { color: var(--on-surface-variant); }
 
 .quick-grid {
   display: flex;

@@ -21,7 +21,7 @@
         <view class="card detail-card">
         <view class="detail-meta">
           <text v-if="!isBookChapter" class="tag tag-primary">{{ content.content_date }}</text>
-          <text v-if="isBookChapter && bookContext?.series_name" class="tag tag-primary">{{ bookContext.series_name }}</text>
+
           <text class="tag tag-success">{{ content.difficulty_level }}</text>
         </view>
         <text class="detail-title">{{ content.title }}</text>
@@ -44,42 +44,18 @@
         <!-- 书籍章节：一次只显示当前段（左右箭头/按钮翻页），段下方内嵌译文 -->
         <template v-else>
           <template v-if="currentSegmentGroup">
-            <!-- 顶部翻页条 -->
-            <view class="segment-pager">
-              <view
-                class="pager-btn"
-                :class="{ disabled: !canPrevSegment }"
-                @tap="goPrevSegment"
-              >
-                <text>‹ 上一段</text>
-              </view>
-              <text class="pager-indicator">
-                段 {{ currentSegmentIndex + 1 }} / {{ segmentGroups.length }}
-              </text>
-              <view
-                class="pager-btn"
-                :class="{ disabled: !canNextSegment }"
-                @tap="goNextSegment"
-              >
-                <text>下一段 ›</text>
-              </view>
-            </view>
-
             <view class="segment-header">
               <text class="segment-label">{{ currentSegmentGroup.segment.word_count }} 词</text>
-              <view class="segment-actions">
-                <view
-                  class="segment-toggle-btn"
-                  @tap="toggleSegmentTranslation(currentSegmentGroup.segment)"
-                >
+              <!-- 直接展示三个操作按钮 -->
+              <view class="more-wrap">
+                <view class="more-item" @tap="onMoreAction(0)">
                   <text>{{ isSegmentTranslationVisible(currentSegmentGroup.segment.segment_id) ? '收起译文' : '展开译文' }}</text>
                 </view>
-                <view
-                  class="segment-dict-btn"
-                  :class="{ disabled: preparingSegmentId === currentSegmentGroup.segment.segment_id }"
-                  @tap="startSegmentDictation(currentSegmentGroup.segment)"
-                >
-                  <text>{{ preparingSegmentId === currentSegmentGroup.segment.segment_id ? '准备中...' : '✏️ 默写此段' }}</text>
+                <view class="more-item" @tap="onMoreAction(1)">
+                  <text>{{ preparingSegmentId === currentSegmentGroup.segment.segment_id ? '准备中...' : '默写此段' }}</text>
+                </view>
+                <view class="more-item" @tap="onMoreAction(2)">
+                  <text>{{ segmentWordsVisible ? '收起词汇' : '展开词汇' }}</text>
                 </view>
               </view>
             </view>
@@ -120,6 +96,21 @@
               <text v-else class="translation-text">{{ segmentTranslations[currentSegmentGroup.segment.segment_id] }}</text>
             </view>
 
+            <!-- 段内嵌词汇（书籍模式，通过「更多」菜单切换显隐） -->
+            <view
+              v-if="segmentWordsVisible && segmentWords.length"
+              class="segment-vocab"
+            >
+              <text class="section-label">核心词汇</text>
+              <view class="vocab-list">
+                <view v-for="w in segmentWords" :key="w.word" class="vocab-row" @tap="showWordDetail(w)">
+                  <text class="vocab-word">{{ w.word }}</text>
+                  <text v-if="w.phonetic" class="vocab-phonetic">{{ w.phonetic }}</text>
+                  <text class="vocab-meaning">{{ w.meaning }}</text>
+                </view>
+              </view>
+            </view>
+
             <!-- 底部翻页条 -->
             <view class="segment-pager segment-pager-bottom">
               <view
@@ -141,7 +132,7 @@
               </view>
             </view>
 
-            <text class="pager-hint">⌨️ 提示：按 ← / → 键翻页</text>
+
           </template>
         </template>
       </view>
@@ -168,8 +159,8 @@
         </button>
       </view>
 
-      <!-- 核心词汇（书籍模式下只显示当前段的词） -->
-      <view v-if="segmentWords.length" class="card">
+      <!-- 核心词汇（仅非书籍模式显示；书籍模式下点击高亮词直接弹释义） -->
+      <view v-if="!isBookChapter && segmentWords.length" class="card">
         <text class="section-label">核心词汇</text>
         <view class="words-wrap">
           <view v-for="w in segmentWords" :key="w.word" class="word-chip" @tap="showWordDetail(w)">
@@ -184,14 +175,13 @@
       <view style="height: 160rpx;"></view>
     </view>
 
-    <!-- 底部浮动工具栏 -->
-    <view v-if="content" class="bottom-float-bar">
+    <!-- 底部浮动工具栏（书籍模式下隐藏：译文/默写已收入「更多」按钮） -->
+    <view v-if="content && !isBookChapter" class="bottom-float-bar">
       <view class="float-item" @tap="toggleAllTranslations">
         <text class="float-icon">{{ translationButtonIcon }}</text>
         <text class="float-label">{{ translationButtonLabel }}</text>
       </view>
-      <!-- 非书籍：底部默写按钮（整篇默写）；书籍：默写按钮下沉到每段内 -->
-      <view v-if="!isBookChapter" class="float-item" @tap="openDictation">
+      <view class="float-item" @tap="openDictation">
         <text class="float-icon">✏️</text>
         <text class="float-label">默写</text>
       </view>
@@ -247,7 +237,8 @@ const loading = ref(true)
 const content = ref<LearningContent | null>(null)
 const wordPopup = ref<{ word: string; phonetic?: string; meaning: string } | null>(null)
 // 全局译文显隐（非书籍章节控制单一整篇译文；书籍章节控制所有段译文的默认可见性）
-const showTranslation = ref(true)
+// 默认折叠，减少首屏视觉噪音，用户主动点击后再展开
+const showTranslation = ref(false)
 const isFavorited = ref(false)
 const learnedIds = ref<number[]>([])
 let autoLearnTimer: ReturnType<typeof setTimeout> | null = null
@@ -426,6 +417,7 @@ function goPrevSegment() {
     console.debug('[book] goPrevSegment: 已是首段，忽略')
     return
   }
+  showMoreMenu.value = false
   currentSegmentIndex.value -= 1
   console.debug('[book] goPrevSegment: index=', currentSegmentIndex.value)
   scrollToChapterTop()
@@ -436,6 +428,7 @@ function goNextSegment() {
     console.debug('[book] goNextSegment: 已是末段，忽略')
     return
   }
+  showMoreMenu.value = false
   currentSegmentIndex.value += 1
   console.debug('[book] goNextSegment: index=', currentSegmentIndex.value)
   scrollToChapterTop()
@@ -641,6 +634,16 @@ async function loadContent() {
   try {
     const { data } = await dailyApi.getContent(contentId)
     content.value = data
+    // 内容加载完成后：
+    // 1. 幂等标记本次打开（让「在读」页能感知用户打开过这篇内容）
+    // 2. 启动自动已学计时器（onShow 时 content 尚未加载，timer 不会启动，此处补一次）
+    if (auth.currentUserId && contentId) {
+      dailyApi.markOpened(auth.currentUserId, contentId).catch(() => {
+        // 打开标记失败不影响主流程，静默忽略
+        log.debug('[detail] markOpened 失败，content_id=%s', contentId)
+      })
+    }
+    startAutoLearnTimer()
   } catch { content.value = null }
   loading.value = false
 }
@@ -662,7 +665,32 @@ async function loadBookContext() {
   }
 }
 
+// 书籍模式词汇列表显隐（通过「更多」菜单切换，默认折叠不占空间）
+const segmentWordsVisible = ref(false)
+// 「更多」下拉菜单显隐
+const showMoreMenu = ref(false)
+
 /** 段级默写：调后端准备译文和词汇，成功后跳 dictation 页。 */
+/**
+ * 书籍模式「更多」下拉菜单的操作分发。
+ * Why 不用 uni.showActionSheet：H5 上渲染位置不受控，改为锚点定位的自定义下拉菜单。
+ */
+function onMoreAction(index: number) {
+  showMoreMenu.value = false
+  if (!currentSegmentGroup.value) return
+  const seg = currentSegmentGroup.value.segment
+  if (index === 0) {
+    console.debug('[book] onMoreAction: 切换译文 seg=', seg.segment_id)
+    toggleSegmentTranslation(seg)
+  } else if (index === 1) {
+    console.debug('[book] onMoreAction: 默写此段 seg=', seg.segment_id)
+    startSegmentDictation(seg)
+  } else if (index === 2) {
+    console.debug('[book] onMoreAction: 切换词汇 visible=', !segmentWordsVisible.value)
+    segmentWordsVisible.value = !segmentWordsVisible.value
+  }
+}
+
 async function startSegmentDictation(segment: BookSegment) {
   if (preparingSegmentId.value !== null) return
   preparingSegmentId.value = segment.segment_id
@@ -869,7 +897,10 @@ async function toggleFavorite() {
   } catch { uni.showToast({ title: '操作失败', icon: 'none' }) }
 }
 
-function goReview() { uni.switchTab({ url: '/pages/review/index' }) }
+function goReview() {
+  // review 已从 tabBar 移除，改用 navigateTo；navTo 内部会自动挑对 API
+  uni.navigateTo({ url: '/pages/review/index' })
+}
 
 function openDictation() {
   uni.navigateTo({ url: `/pages/dictation/index?id=${contentId}` })
@@ -963,31 +994,22 @@ async function regenerateContent() {
   color: var(--on-surface-variant);
   font-weight: 600;
 }
-.segment-actions {
+.more-wrap {
   display: flex;
+  flex-direction: row;
   gap: 12rpx;
-  align-items: center;
 }
-.segment-toggle-btn {
-  font-size: 22rpx;
-  padding: 8rpx 18rpx;
-  border-radius: 24rpx;
-  background: var(--surface-container);
+.more-item {
+  flex: 1;
+  text-align: center;
+  padding: 10rpx 0;
+  font-size: 24rpx;
   color: var(--on-surface-variant);
   border: 2rpx solid var(--outline-variant);
-}
-.segment-toggle-btn:active { opacity: 0.7; }
-.segment-dict-btn {
-  font-size: 24rpx;
-  padding: 8rpx 20rpx;
   border-radius: 24rpx;
-  background: var(--primary-container);
-  color: var(--primary);
-  font-weight: 600;
-  border: 2rpx solid var(--primary);
+  background: var(--surface-container);
 }
-.segment-dict-btn:active { opacity: 0.7; }
-.segment-dict-btn.disabled { opacity: 0.5; }
+.more-item:active { opacity: 0.7; }
 
 /* 段内嵌译文卡片：视觉上贴在原文正下方，跟原文明显同属一段 */
 .segment-translation {
@@ -999,6 +1021,43 @@ async function regenerateContent() {
 }
 .segment-translation .section-label {
   margin-bottom: 12rpx;
+}
+
+/* 书籍模式内嵌词汇列表：与译文卡片同风格，视觉归属同一段 */
+.segment-vocab {
+  margin-top: 20rpx;
+  padding: 20rpx 24rpx 16rpx;
+  background: #F7FBFC;
+  border-left: 6rpx solid var(--secondary, #78909C);
+  border-radius: 12rpx;
+}
+.segment-vocab .section-label {
+  margin-bottom: 12rpx;
+}
+.vocab-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+.vocab-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12rpx;
+  flex-wrap: wrap;
+}
+.vocab-row:active { opacity: 0.6; }
+.vocab-word {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--on-primary-container);
+}
+.vocab-phonetic {
+  font-size: 22rpx;
+  color: var(--on-surface-variant);
+}
+.vocab-meaning {
+  font-size: 24rpx;
+  color: var(--on-surface-variant);
 }
 
 /* 翻页控件 */
@@ -1033,16 +1092,8 @@ async function regenerateContent() {
   border-color: var(--outline-variant);
 }
 .pager-indicator {
-  font-size: 24rpx;
-  color: var(--on-surface-variant);
-  font-weight: 600;
-}
-.pager-hint {
-  display: block;
-  text-align: center;
-  font-size: 22rpx;
+  font-size: 20rpx;
   color: var(--on-surface-muted);
-  margin-top: 16rpx;
 }
 
 /* 译文按需加载状态 */

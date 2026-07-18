@@ -550,18 +550,67 @@ def check_learned(user_id: int, content_id: int, db: Session = Depends(get_db)):
     return {"learned": exists}
 
 
+@router.post("/opened/mark")
+def mark_opened(user_id: int, content_id: int, db: Session = Depends(get_db)):
+    """幂等标记内容已打开 — 首次打开时写入记录，已存在则直接返回。
+
+    Why 幂等：前端每次进入 detail 页都调用，重复打开同一内容不应产生副作用，
+    也不需要更新 opened_at（保留首次打开时间更有意义）。
+    """
+    from app.models import UserOpenedContent
+
+    existing = (
+        db.query(UserOpenedContent)
+        .filter(UserOpenedContent.user_id == user_id, UserOpenedContent.content_id == content_id)
+        .first()
+    )
+    if existing:
+        log.debug("内容已有打开记录，跳过 user_id=%s content_id=%s", user_id, content_id)
+        return {"opened": True}
+
+    record = UserOpenedContent(user_id=user_id, content_id=content_id)
+    db.add(record)
+    db.commit()
+    log.debug("首次打开内容 user_id=%s content_id=%s", user_id, content_id)
+    return {"opened": True}
+
+
 @router.get("/learned/list")
 def get_learned_content_ids(user_id: int, db: Session = Depends(get_db)):
-    """获取用户所有已学内容的 content_id 列表。"""
-    from app.models import UserLearnedContent
+    """获取用户所有已学内容 ID 及标记时间，同时返回已打开内容 ID。
 
-    rows = (
-        db.query(UserLearnedContent.content_id)
+    Why 同时返回 learned_at：前端「在读」页需要显示"上次阅读时间"，
+    对已学内容用 learned_at 作为该时间的近似值，避免为此新加接口。
+    content_ids 数组保留以兼容旧调用方（点选状态判断）。
+    Why 返回 opened_ids：前端「在读」页用 opened_ids 区分"正在学习"
+    （打开过但未学完）和"从未打开"（不出现在读书页），合并一个接口减少请求。
+    """
+    from app.models import UserLearnedContent, UserOpenedContent
+
+    learned_rows = (
+        db.query(UserLearnedContent.content_id, UserLearnedContent.learned_at)
         .filter(UserLearnedContent.user_id == user_id)
         .order_by(UserLearnedContent.id.desc())
         .all()
     )
-    return {"content_ids": [r[0] for r in rows]}
+    items = [
+        {"content_id": r[0], "learned_at": r[1].isoformat() if r[1] else None}
+        for r in learned_rows
+    ]
+
+    opened_rows = (
+        db.query(UserOpenedContent.content_id)
+        .filter(UserOpenedContent.user_id == user_id)
+        .all()
+    )
+    opened_ids = [r[0] for r in opened_rows]
+
+    log.debug("user_id=%s 已学内容数量=%d 已打开内容数量=%d", user_id, len(items), len(opened_ids))
+    return {
+        "content_ids": [item["content_id"] for item in items],
+        "items": items,
+        "opened_ids": opened_ids,
+    }
 
 
 @router.get("/learned/filtered", response_model=FilteredLearnedContentResponse)

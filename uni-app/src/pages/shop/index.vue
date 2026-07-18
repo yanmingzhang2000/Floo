@@ -1,47 +1,49 @@
 ﻿<template>
-  <view class="page-container">
-    <view class="nav-bar">
-      <view class="nav-left">
-        <view class="nav-back" @tap="navBackSafe"><text>‹</text></view>
-      </view>
-      <text class="nav-title">Floo！</text>
-      <view class="nav-right">
-        <view class="nav-avatar">
-          <text>{{ usernameInitial }}</text>
-        </view>
-      </view>
+  <view class="page-container shop-page">
+    <!-- 顶栏统一青绿 -->
+    <view class="shop-header">
+      <view class="shop-back" @tap="navBackSafe"><text class="shop-back-icon">‹</text></view>
+      <text class="shop-header-title">积分商城</text>
+      <view class="shop-placeholder"></view>
     </view>
 
     <view v-if="loading" class="loading">
       <view class="spinner"></view>
     </view>
 
-    <view v-else>
+    <view v-else class="shop-body">
       <!-- 积分余额 -->
       <view class="balance-card">
         <text class="balance-label">当前积分</text>
-        <text class="balance-num">{{ balance }}</text>
-      </view>
-
-      <!-- 盲盒区 -->
-      <view class="card shop-card">
-        <text class="shop-emoji">🎁</text>
-        <text class="shop-label">Floo</text>
-        <text class="shop-desc">收集美好品质，点亮你的性格树</text>
-        <view class="box-actions">
-          <button class="btn btn-primary" :disabled="opening || balance < 50" @tap="handleOpen(1)">
-            <text>Floo⭐ 50积分</text>
-          </button>
-          <button class="btn btn-outline" :disabled="opening || balance < 200" @tap="handleOpen(5)">
-            <text>Floo⭐ 200积分</text>
-          </button>
+        <view class="balance-row">
+          <text class="balance-num">{{ balance }}</text>
+          <text class="balance-unit">分</text>
         </view>
       </view>
 
+      <!-- 盲盒区 -->
+      <view class="section-card">
+        <text class="section-card-title">好词盲盒</text>
+        <text class="section-card-desc">收集美好品质，点亮你的性格树</text>
+        <view class="box-actions">
+          <text
+            class="box-btn"
+            :class="{ disabled: opening || balance < 50 }"
+            @tap="handleOpen(1)"
+          >开 1 次 · 50 分</text>
+          <text
+            class="box-btn box-btn-secondary"
+            :class="{ disabled: opening || balance < 200 }"
+            @tap="handleOpen(5)"
+          >开 5 次 · 200 分</text>
+        </view>
+        <text class="odds-note">概率：普通 70% · 稀有 25% · 传说 5%</text>
+      </view>
+
       <!-- 收藏 -->
-      <view class="card collection-card">
+      <view class="section-card">
         <view class="collection-header">
-          <text class="collection-title">📦 我的收藏</text>
+          <text class="section-card-title">我的收藏</text>
           <text class="collection-badge">{{ collection.length }}</text>
         </view>
         <view v-if="collection.length === 0" class="collection-empty">
@@ -50,17 +52,12 @@
         <view v-else class="collection-grid">
           <view v-for="c in collection" :key="c.character_id" class="collection-item">
             <text class="collection-rarity" :class="c.rarity">
-              {{ c.rarity === 'legendary' ? '🌟' : c.rarity === 'rare' ? '⭐' : '✦' }}
+              {{ c.rarity === 'legendary' ? '◆' : c.rarity === 'rare' ? '◇' : '·' }}
             </text>
             <text class="collection-name">{{ c.name }}</text>
             <text class="collection-count">x{{ c.count }}</text>
           </view>
         </view>
-      </view>
-
-      <!-- 概率说明 -->
-      <view class="odds-note">
-        <text>抽卡概率：普通 70% · 稀有 25% · 传说 5%</text>
       </view>
     </view>
 
@@ -75,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { shopApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { navBackSafe } from '@/utils/router'
@@ -90,8 +87,6 @@ const collection = ref<Character[]>([])
 const showAnimation = ref(false)
 const animationCharacters = ref<BoxResult[]>([])
 const animationIndex = ref(0)
-
-const usernameInitial = computed(() => (auth.username?.[0] || '?').toUpperCase())
 
 async function loadData() {
   loading.value = true
@@ -135,44 +130,97 @@ onMounted(loadData)
 </script>
 
 <style scoped>
+.shop-page { padding-bottom: 40rpx; }
+
+/* 顶栏 */
+.shop-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: calc(env(safe-area-inset-top, 44px) + 16rpx) 32rpx 24rpx;
+  background: var(--primary, #5B9AA8);
+}
+.shop-back { width: 48rpx; height: 48rpx; display: flex; align-items: center; justify-content: center; }
+.shop-back-icon { font-size: 40rpx; color: #fff; font-weight: 300; }
+.shop-header-title { font-size: 36rpx; font-weight: 600; color: #fff; }
+.shop-placeholder { width: 48rpx; }
+
+.shop-body { padding: 0 4rpx; }
+
+/* 积分余额 */
 .balance-card {
+  margin: 24rpx 0;
+  padding: 32rpx 28rpx;
+  background: #ffffff;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
+  border-radius: 24rpx;
+}
+.balance-label { font-size: 22rpx; color: var(--on-surface-variant); display: block; }
+.balance-row { display: flex; align-items: baseline; gap: 8rpx; margin-top: 8rpx; }
+.balance-num { font-size: 56rpx; font-weight: 800; color: var(--primary); line-height: 1; }
+.balance-unit { font-size: 26rpx; color: var(--on-surface-variant); font-weight: 600; }
+
+/* 分区卡片 */
+.section-card {
+  margin-bottom: 24rpx;
+  padding: 32rpx 28rpx;
+  background: #ffffff;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
+  border-radius: 24rpx;
+}
+.section-card-title { font-size: 30rpx; font-weight: 700; color: var(--on-surface); display: block; }
+.section-card-desc { font-size: 24rpx; color: var(--on-surface-variant); display: block; margin: 8rpx 0 24rpx; }
+
+/* 盲盒按钮 */
+.box-actions { display: flex; gap: 16rpx; }
+.box-btn {
+  flex: 1;
+  padding: 24rpx 0;
   text-align: center;
-  padding: 48rpx 32rpx;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-  color: white;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #fff;
+  background: var(--primary);
+  border-radius: 40rpx;
 }
-.balance-label { font-size: 26rpx; opacity: 0.85; display: block; }
-.balance-num { font-size: 72rpx; font-weight: 800; margin-top: 8rpx; display: block; }
-
-.shop-card { text-align: center; padding: 40rpx; }
-.shop-emoji { font-size: 64rpx; display: block; margin-bottom: 16rpx; }
-.shop-label { font-size: 34rpx; font-weight: 700; display: block; margin-bottom: 8rpx; }
-.shop-desc { font-size: 26rpx; color: var(--on-surface-variant); display: block; margin-bottom: 32rpx; }
-
-.box-actions { display: flex; gap: 20rpx; justify-content: center; }
-.box-actions .btn { flex: 1; }
-.btn-sub { font-size: 22rpx; opacity: 0.8; font-weight: 400; }
-
-.collection-header { display: flex; align-items: center; justify-content: center; gap: 16rpx; margin-bottom: 24rpx; }
-.collection-title { font-size: 30rpx; font-weight: 700; }
-.collection-badge {
-  font-size: 22rpx; background: var(--primary-container); color: var(--on-primary-container);
-  padding: 4rpx 20rpx; border-radius: 40rpx; font-weight: 600;
+.box-btn-secondary {
+  background: transparent;
+  color: var(--primary);
+  border: 2rpx solid var(--primary);
 }
-.collection-empty { text-align: center; padding: 32rpx; color: var(--on-surface-variant); font-size: 26rpx; }
-.collection-grid { display: flex; flex-wrap: wrap; gap: 16rpx; justify-content: center; }
-.collection-item {
-  width: 30%; text-align: center; padding: 24rpx 12rpx;
-  background: var(--surface-container); border-radius: 20rpx;
-}
-.collection-rarity { font-size: 44rpx; display: block; }
-.collection-name { font-size: 24rpx; font-weight: 600; display: block; margin-top: 8rpx; }
-.collection-count { font-size: 22rpx; color: var(--on-surface-variant); display: block; }
-.rarity.legendary { color: #FFD700; }
-.rarity.rare { color: #9C27B0; }
+.box-btn.disabled { background: #d0d8dc; color: #fff; border-color: #d0d8dc; }
+.box-btn-secondary.disabled { background: transparent; color: #b0b8c0; border-color: #d0d8dc; }
 
 .odds-note {
-  text-align: center; padding: 24rpx 0 48rpx;
-  font-size: 22rpx; color: var(--on-surface-muted);
+  text-align: center;
+  padding: 20rpx 0 0;
+  font-size: 22rpx;
+  color: #b0b8c0;
 }
+
+/* 收藏区 */
+.collection-header { display: flex; align-items: center; gap: 12rpx; margin-bottom: 20rpx; }
+.collection-badge {
+  font-size: 20rpx;
+  background: rgba(91,154,168,0.12);
+  color: var(--primary);
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+  font-weight: 600;
+}
+.collection-empty { text-align: center; padding: 32rpx; color: #b0b8c0; font-size: 26rpx; }
+.collection-grid { display: flex; flex-wrap: wrap; gap: 16rpx; }
+.collection-item {
+  width: 30%;
+  text-align: center;
+  padding: 24rpx 12rpx;
+  background: #fff;
+  border: 1rpx solid #e4eff2;
+  border-radius: 16rpx;
+}
+.collection-rarity { font-size: 36rpx; display: block; color: var(--primary); }
+.collection-rarity.legendary { color: var(--primary); font-weight: 800; }
+.collection-rarity.rare { color: var(--primary); opacity: 0.7; }
+.collection-name { font-size: 24rpx; font-weight: 600; display: block; margin-top: 8rpx; color: var(--on-surface); }
+.collection-count { font-size: 22rpx; color: #b0b8c0; display: block; }
 </style>

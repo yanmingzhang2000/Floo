@@ -9,23 +9,46 @@ uni-app/
 ├── src/
 │   ├── api/                    # API 接口层
 │   ├── pages/                  # 页面目录
-│   │   ├── learning/           # 学习页面
-│   │   ├── dictionary/         # 词典页面
-│   │   ├── review/             # 复习页面
-│   │   ├── checkin/            # 打卡页面
-│   │   ├── profile/            # 个人中心
-│   │   ├── shop/               # 商店页面
-│   │   ├── login/              # 登录页面
-│   │   └── landing/            # 落地页
+│   │   ├── home/               # 每日首次启动欢迎页（非 tab）
+│   │   ├── learning/           # 图书馆（tab 1，AI 资讯/自定义/精选书籍）
+│   │   ├── notes/              # 笔记（tab 2，今日背词 + 默写存档）
+│   │   ├── reading/            # 在读（tab 3，正在学习/已读完存档）
+│   │   ├── floo/               # Floo（tab 4，积分 + 打卡 + 商城）
+│   │   ├── dictionary/         # 单词书（从笔记页进入）
+│   │   ├── review/             # 复习/背单词（从笔记/详情页进入）
+│   │   ├── checkin/            # 打卡详情页
+│   │   ├── shop/               # 商城完整页
+│   │   ├── detail/             # 文章详情
+│   │   ├── dictation/          # 默写练习
+│   │   ├── dictation-detail/   # 默写详情
+│   │   ├── ai-coach/           # AI 陪练
+│   │   ├── book/               # 书籍精读（白名单）
+│   │   ├── weekly/             # 每周报告
+│   │   ├── preference/         # 学习偏好
+│   │   └── login/              # 登录
 │   ├── stores/                 # Pinia 状态管理
 │   ├── types/                  # TypeScript 类型定义
-│   ├── App.vue                 # 应用入口
+│   ├── App.vue                 # 应用入口（含每日首次启动跳首页逻辑）
 │   ├── main.ts                 # 主入口文件
-│   ├── pages.json              # 页面配置
+│   ├── pages.json              # 页面配置（tabBar 4 项）
 │   └── manifest.json           # 应用配置
 ├── package.json                # 依赖配置
 └── vite.config.ts              # Vite 配置
 ```
+
+## Tab 结构
+
+底部 tabBar 固定 4 项：
+
+| Tab | 路由 | 说明 |
+|---|---|---|
+| 图书馆 | `pages/learning/index` | 素材广场：AI 资讯 / 自定义文稿 / 精选书籍 |
+| 笔记 | `pages/notes/index` | 今日背词入口 + 默写历史存档 |
+| 在读 | `pages/reading/index` | 全部读物存档：正在学习 / 已读完存档 |
+| Floo | `pages/floo/index` | 积分总览 + 月度打卡日历 + 积分商城 |
+
+首页 `pages/home/index` 不在 tabBar，仅每天第一次进入 App 时以欢迎屏形式展示，
+之后自动 `switchTab` 到图书馆。逻辑见 `src/App.vue` 的 `last_home_shown_date`。
 
 ## 快速开始
 

@@ -1,9 +1,9 @@
 <template>
-  <view class="page-container">
-    <view class="nav-bar">
-      <view class="nav-left"></view>
-      <text class="nav-title">学习</text>
-      <view class="nav-right"></view>
+  <view class="page-container library-page">
+    <!-- 顶部通栏 -->
+    <view class="lib-header">
+      <text class="lib-title">图书馆</text>
+      <UserAvatar />
     </view>
 
     <view v-if="loading" class="loading">
@@ -11,214 +11,141 @@
     </view>
 
     <template v-else>
-      <!-- 书籍精读入口（只有被授权的用户能看到，无授权账号完全隐藏） -->
-      <view v-if="myBooks.length > 0" class="book-entry" @tap="goBookList">
-        <view class="book-entry-icon"><text>📚</text></view>
-        <view class="book-entry-info">
-          <text class="book-entry-title">书籍精读</text>
-          <text class="book-entry-subtitle">
-            <text v-if="myBooks.length === 1">《{{ myBooks[0].name_cn || myBooks[0].name }}》· {{ myBooks[0].total_chapters }} 章</text>
-            <text v-else>已授权 {{ myBooks.length }} 本书</text>
-          </text>
+      <!-- 二级分类横向滑动标签 -->
+      <scroll-view class="lib-tabs" scroll-x show-scrollbar="false">
+        <view class="lib-tabs-inner">
+          <view
+            v-for="t in tabDefs"
+            :key="t.value"
+            class="lib-tab"
+            :class="{ active: activeTab === t.value }"
+            @tap="switchTab(t.value)"
+          >
+            <text>{{ t.label }}</text>
+          </view>
         </view>
-        <text class="book-entry-arrow">›</text>
-      </view>
+      </scroll-view>
 
-      <!-- 分类标签栏 -->
-      <view class="underline-tabs">
-        <view class="underline-tab" :class="{ active: activeTab === 'ai' }" @tap="switchTab('ai')">
-          <text>AI生成</text>
-        </view>
-        <view class="underline-tab" :class="{ active: activeTab === 'custom' }" @tap="switchTab('custom')">
-          <text>自定义</text>
-        </view>
-        <view class="underline-tab" :class="{ active: activeTab === 'past' }" @tap="switchTab('past')">
-          <text>往期内容</text>
-        </view>
-      </view>
-
-      <!-- ====== AI生成 Tab ====== -->
-      <view v-if="activeTab === 'ai'">
-        <!-- 生成按钮 -->
-        <view class="gen-action">
-          <button class="btn btn-primary btn-block" :disabled="generating || remainingCount <= 0" @tap="handleGenerate">
-            <text>{{ generating ? '生成中...' : (remainingCount > 0 ? `✨ AI 生成 (${remainingCount})` : '今日已用完') }}</text>
-          </button>
-        </view>
+      <!-- ====== AI 资讯 Tab ====== -->
+      <view v-if="activeTab === 'ai'" class="lib-section">
         <view v-if="contents.length === 0" class="empty-state">
-          <text class="icon">📝</text>
-          <text class="empty-text">今日还没有学习内容</text>
-          <text class="empty-hint">点击上方按钮生成</text>
+          <text class="icon">📰</text>
+          <text class="empty-text">今日还没有 AI 资讯</text>
+          <text
+            class="empty-action"
+            :class="{ disabled: generating || remainingCount <= 0 }"
+            @tap="handleGenerate"
+          >{{ generating ? '生成中...' : (remainingCount > 0 ? `生成今日资讯 (${remainingCount})` : '今日次数已用完') }}</text>
         </view>
-        <view v-else class="content-list">
+        <view v-else class="lib-list">
+          <view class="lib-section-hint-row">
+            <text
+              class="lib-refresh-btn"
+              :class="{ disabled: generating || remainingCount <= 0 }"
+              @tap="handleGenerate"
+            >{{ remainingCount > 0 ? `换一批 (${remainingCount})` : '今日已用完' }}</text>
+          </view>
           <view
             v-for="item in contents"
             :key="item.id"
-            class="list-card"
+            class="lib-card"
             @tap="goDetail(item.id)"
           >
-            <view class="list-card-header">
-              <text class="tag tag-success">{{ themeLabels[item.theme_type] || item.theme_type }}</text>
-              <text class="list-card-status" :class="learnedIds.includes(item.id) ? 'done' : 'todo'">
-                {{ learnedIds.includes(item.id) ? '✅已学' : '未学' }}
-              </text>
-            </view>
-            <text class="list-card-title">{{ item.title }}</text>
-            <text class="list-card-desc">{{ item.article?.slice(0, 60) }}...</text>
-          </view>
-        </view>
-      </view>
-
-      <!-- ====== 自定义 Tab ====== -->
-      <view v-if="activeTab === 'custom'">
-        <view class="gen-action">
-          <button class="btn btn-primary btn-block" @tap="showCustomContent = true">
-            <text>📝 粘贴新文章</text>
-          </button>
-        </view>
-        <view v-if="customContents.length === 0" class="empty-state">
-          <text class="icon">📋</text>
-          <text class="empty-text">暂无自定义内容</text>
-          <text class="empty-hint">粘贴英文文章开始学习</text>
-        </view>
-        <view v-else class="content-list">
-          <view
-            v-for="item in customContents"
-            :key="item.id"
-            class="list-card"
-          >
-            <view class="list-card-header">
-              <text class="tag tag-warning">自定义</text>
-              <view class="list-card-actions">
-                <text v-if="isGenerationFailed(item)" class="tag tag-error">⚠️ 生成失败</text>
-                <text v-else class="list-card-status" :class="learnedIds.includes(item.id) ? 'done' : 'todo'">
-                  {{ learnedIds.includes(item.id) ? '✅已学' : '未学' }}
-                </text>
-                <text class="delete-btn" @tap.stop="deleteCustomContent(item.id)">🗑️</text>
+            <view class="lib-card-body">
+              <view class="lib-card-header">
+                <text class="tag tag-ai">{{ themeLabels[item.theme_type] || item.theme_type }}</text>
+                <text class="lib-card-date">{{ item.content_date }}</text>
+              </view>
+              <text class="lib-card-title">{{ item.title }}</text>
+              <text class="lib-card-desc">{{ (item.article || '').slice(0, 80) }}...</text>
+              <view class="lib-card-footer">
+                <text class="lib-card-action" @tap.stop="goDetail(item.id)">开始阅读</text>
               </view>
             </view>
-            <text class="list-card-title" @tap="goDetail(item.id)">{{ item.title }}</text>
-            <text class="list-card-desc" @tap="goDetail(item.id)">{{ item.article?.slice(0, 60) }}...</text>
-            <view v-if="isGenerationFailed(item)" class="regenerate-row">
-              <text class="regenerate-hint">译文或词组生成失败</text>
-              <button
-                class="btn-regenerate"
-                :disabled="regeneratingIds.includes(item.id)"
-                @tap.stop="regenerateCustom(item.id)"
-              >
-                <text>{{ regeneratingIds.includes(item.id) ? '重新生成中...' : '🔄 重新生成' }}</text>
-              </button>
-            </view>
           </view>
         </view>
       </view>
 
-      <!-- ====== 往期内容 Tab ====== -->
-      <view v-if="activeTab === 'past'">
-        <!-- 日期筛选区域 -->
-        <view class="filter-section">
-          <view class="filter-quick-btns">
-            <view class="filter-btn" :class="{ active: filterStartDate === filterEndDate && filterStartDate === new Date().toISOString().split('T')[0] }" @tap="filterToday">
-              <text>今天</text>
-            </view>
-            <view class="filter-btn" @tap="filterThisWeek">
-              <text>本周</text>
-            </view>
-            <view class="filter-btn" @tap="filterThisMonth">
-              <text>本月</text>
-            </view>
-            <view class="filter-btn" :class="{ active: !filterStartDate && !filterEndDate }" @tap="clearFilter">
-              <text>全部</text>
-            </view>
-            <!-- 自定义区间展开按钮 -->
-            <view class="filter-btn filter-btn-range" :class="{ active: showDateRange || (filterStartDate || filterEndDate) }" @tap="showDateRange = !showDateRange">
-              <text>📅{{ (filterStartDate || filterEndDate) ? ' ' + (filterStartDate || '…') + '~' + (filterEndDate || '今') : ' 区间' }}</text>
-            </view>
-          </view>
-          <!-- 自定义日期区间（默认收起） -->
-          <view v-if="showDateRange" class="filter-date-row">
-            <view class="filter-date-item" @tap="openDatePicker('start')">
-              <text class="filter-date-label">开始</text>
-              <text class="filter-date-value">{{ filterStartDate || '选择日期' }}</text>
-            </view>
-            <text class="filter-date-separator">~</text>
-            <view class="filter-date-item" @tap="openDatePicker('end')">
-              <text class="filter-date-label">结束</text>
-              <text class="filter-date-value">{{ filterEndDate || '选择日期' }}</text>
-            </view>
-            <view v-if="filterStartDate || filterEndDate" class="filter-clear-btn" @tap="clearFilter">
-              <text>✕</text>
-            </view>
-          </view>
+      <!-- ====== 自定义文稿 Tab ====== -->
+      <view v-if="activeTab === 'custom'" class="lib-section">
+        <!-- 空态：仅显示一张"新建"大卡片 -->
+        <view v-if="customContents.length === 0" class="lib-new-card" @tap="showCustomContent = true">
+          <text class="lib-new-plus">＋</text>
+          <text class="lib-new-title">创建我的学习文稿</text>
+          <text class="lib-new-hint">粘贴或上传英文文本，AI 自动生成词组、译文</text>
         </view>
-
-        <!-- 来源类型筛选 -->
-        <view class="type-filter-bar">
-          <view
-            v-for="f in pastTypeFilters"
-            :key="f.value"
-            class="type-chip"
-            :class="{ active: pastTypeFilter === f.value }"
-            @tap="pastTypeFilter = f.value"
-          >
-            <text>{{ f.label }}</text>
-            <text class="type-chip-count">{{ pastTypeCounts[f.value] }}</text>
+        <template v-else>
+          <view class="lib-section-hint-row">
+            <text class="lib-refresh-btn" @tap="showCustomContent = true">+ 新建文稿</text>
           </view>
-        </view>
-
-        <!-- 学习状态筛选 -->
-        <view class="type-filter-bar" style="padding-top:0;margin-top:-8rpx;">
-          <view
-            v-for="f in pastLearnFilters"
-            :key="f.value"
-            class="type-chip"
-            :class="{ active: pastLearnFilter === f.value }"
-            @tap="pastLearnFilter = f.value"
-          >
-            <text>{{ f.label }}</text>
-            <text class="type-chip-count">{{ pastLearnCounts[f.value] }}</text>
-          </view>
-        </view>
-
-        <view v-if="filteredPastContents.length === 0" class="empty-state">
-          <text class="icon">📋</text>
-          <text class="empty-text">{{ pastTypeFilter !== 'all' ? '该分类下暂无内容' : (filterStartDate || filterEndDate) ? '该时间段暂无内容' : '暂无往期内容' }}</text>
-          <text class="empty-hint">{{ pastTypeFilter !== 'all' ? '换个分类试试' : (filterStartDate || filterEndDate) ? '尝试调整筛选条件' : '完成学习后内容会出现在这里' }}</text>
-        </view>
-        <view v-else class="content-list">
-          <view
-            v-for="item in filteredPastContents"
-            :key="item.id"
-            class="list-card"
-            @tap="goDetail(item.id)"
-          >
-            <view class="list-card-header">
-              <text class="tag tag-success">{{ themeLabels[item.theme_type] || item.theme_type }}</text>
-              <view style="display:flex;align-items:center;gap:12rpx;">
-                <text class="tag" :class="item.creator_type === 1 ? 'tag-warning' : 'tag-ai'">{{ item.creator_type === 1 ? '✏️ 自定义' : '🤖 AI' }}</text>
-                <text class="list-card-status done">✅已学</text>
+          <view class="lib-list">
+            <view
+              v-for="item in customContents"
+              :key="item.id"
+              class="lib-card"
+            >
+              <view class="lib-card-body">
+                <view class="lib-card-header">
+                  <text class="tag tag-warning">自定义</text>
+                  <text v-if="isGenerationFailed(item)" class="tag tag-error">生成失败</text>
+                </view>
+                <text class="lib-card-title" @tap="goDetail(item.id)">{{ item.title }}</text>
+                <text class="lib-card-desc" @tap="goDetail(item.id)">{{ (item.article || '').slice(0, 80) }}...</text>
+                <view v-if="isGenerationFailed(item)" class="lib-card-fail-row">
+                  <text class="lib-card-fail-hint">译文或词组生成失败</text>
+                  <text
+                    class="lib-card-action"
+                    :class="{ disabled: regeneratingIds.includes(item.id) }"
+                    @tap.stop="regenerateCustom(item.id)"
+                  >{{ regeneratingIds.includes(item.id) ? '重生成中...' : '重新生成' }}</text>
+                </view>
+                <view v-else class="lib-card-footer">
+                  <text class="lib-card-action" @tap.stop="goDetail(item.id)">开始阅读</text>
+                  <text class="lib-card-action-secondary" @tap.stop="deleteCustomContent(item.id)">删除</text>
+                </view>
               </view>
             </view>
-            <text class="list-card-title">{{ item.title }}</text>
-            <text class="list-card-desc">{{ item.article?.slice(0, 60) }}...</text>
-            <text class="list-card-date">{{ item.content_date }}</text>
           </view>
-        </view>
-
-        <!-- 日期选择器 -->
-        <picker v-if="showDatePicker" mode="date" :value="datePickerType === 'start' ? filterStartDate : filterEndDate" @change="onDateConfirm" @cancel="showDatePicker = false">
-          <view></view>
-        </picker>
+        </template>
       </view>
 
-      <!-- 底部固定按钮 -->
-      <view class="bottom-action">
-        <button v-if="activeTab === 'ai' && contents.length > 0" class="btn btn-primary btn-block btn-lg" @tap="goDetail(contents[currentIdx]?.id)">
-          <text>{{ learnedIds.includes(contents[currentIdx]?.id) ? '复习当前' : '开始学习' }}</text>
-        </button>
-        <button v-else-if="activeTab === 'past' && pastContents.length > 0" class="btn btn-primary btn-block btn-lg" @tap="goDetail(pastContents[0]?.id)">
-          <text>复习最新</text>
-        </button>
+      <!-- ====== 精选书籍 Tab ====== -->
+      <view v-if="activeTab === 'book'" class="lib-section">
+        <view v-if="myBooks.length === 0" class="empty-state">
+          <text class="icon">📚</text>
+          <text class="empty-text">暂无精选书籍</text>
+          <text class="empty-hint">书籍精读采用白名单授权，敬请期待</text>
+        </view>
+        <view v-else class="lib-list">
+          <view
+            v-for="book in myBooks"
+            :key="book.series_id"
+            class="lib-book-card"
+            @tap="goBook(book)"
+          >
+            <!-- 封面线稿 SVG 占位 -->
+            <view class="lib-book-cover">
+              <svg viewBox="0 0 100 130" xmlns="http://www.w3.org/2000/svg">
+                <rect x="14" y="10" width="72" height="110" rx="4"
+                      fill="#F0F9FF" stroke="#5B9AA8" stroke-width="1.5"/>
+                <path d="M14 10 L14 120" stroke="#5B9AA8" stroke-width="1" opacity="0.4"/>
+                <path d="M28 32 L72 32" stroke="#5B9AA8" stroke-width="1" opacity="0.5"/>
+                <path d="M28 44 L64 44" stroke="#5B9AA8" stroke-width="1" opacity="0.4"/>
+                <path d="M28 56 L68 56" stroke="#5B9AA8" stroke-width="1" opacity="0.3"/>
+                <path d="M28 68 L60 68" stroke="#5B9AA8" stroke-width="1" opacity="0.3"/>
+              </svg>
+            </view>
+            <view class="lib-book-info">
+              <text class="lib-book-title">{{ book.name_cn || book.name }}</text>
+              <text v-if="book.name_cn && book.name !== book.name_cn" class="lib-book-en">{{ book.name }}</text>
+              <text class="lib-book-desc">{{ book.total_chapters }} 章</text>
+              <view class="lib-book-footer">
+                <text class="lib-card-action" @tap.stop="goBook(book)">加入在读</text>
+              </view>
+            </view>
+          </view>
+          <text class="lib-book-more-hint">更多英文读物持续更新</text>
+        </view>
       </view>
     </template>
 
@@ -229,7 +156,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { dailyApi, generationLimitApi, bookApi } from '@/api'
 import { useAuthStore } from '@/stores'
@@ -238,25 +165,47 @@ import { storage } from '@/utils/storage'
 import type { LearningContent } from '@/types'
 import CustomContentModal from '@/components/CustomContentModal.vue'
 import OnboardingGuide from '@/components/OnboardingGuide.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
+
+/**
+ * 图书馆页：素材广场，用户在这里找新内容
+ *
+ * 3 个 tab：
+ *   - ai     ：AI 生成的每日资讯
+ *   - custom ：用户自定义文稿（支持粘贴/上传）
+ *   - book   ：精选书籍（白名单授权，未授权空态）
+ *
+ * 原 learning 页的"往期内容"tab 已迁移到「在读」页，
+ * 底部固定 CTA 也已删除，符合"素材广场"的定位。
+ */
 
 const auth = useAuthStore()
 const loading = ref(true)
 const generating = ref(false)
 const contents = ref<LearningContent[]>([])
 const customContents = ref<LearningContent[]>([])
-const pastContents = ref<LearningContent[]>([])
-const currentIdx = ref(0)
 const learnedIds = ref<number[]>([])
 const remainingCount = ref(3)
 const showCustomContent = ref(false)
 const regeneratingIds = ref<number[]>([])
 
-// 书籍精读授权列表：只有此列表非空才显示入口卡片
-// 未授权用户 API 返回空数组，不报 403，保证隐藏对用户透明
 interface MyBook { series_id: number; name: string; name_cn?: string; total_chapters: number }
 const myBooks = ref<MyBook[]>([])
 
-const activeTab = ref<'ai' | 'custom' | 'past'>('ai')
+type TabKey = 'ai' | 'custom' | 'book'
+const activeTab = ref<TabKey>('ai')
+
+const tabDefs: Array<{ value: TabKey; label: string }> = [
+  { value: 'ai',     label: 'AI 资讯' },
+  { value: 'custom', label: '自定义文稿' },
+  { value: 'book',   label: '精选书籍' },
+]
+
+const themeLabels: Record<string, string> = {
+  ai_tech: 'AI科技', product_tech: '产品技术', business: '财经商业',
+  daily_news: '日常新闻', self_growth: '个人成长', all_random: '随机',
+  custom: '自定义',
+}
 
 // 判断自定义内容是否生成失败（译文降级或词组为空）
 // 后端降级文案固定以「（翻译生成失败」开头，见 backend/app/routers/daily.py:691
@@ -267,122 +216,45 @@ function isGenerationFailed(item: LearningContent): boolean {
   return failedTranslation || emptyWords
 }
 
-// 往期内容日期筛选相关
-const filterStartDate = ref('')
-const filterEndDate = ref('')
-const showDateRange = ref(false)
-const showDatePicker = ref(false)
-const datePickerType = ref<'start' | 'end'>('start')
-
-// 往期内容来源类型筛选
-const pastTypeFilter = ref<'all' | 'ai' | 'custom'>('all')
-const pastTypeFilters = [
-  { value: 'all' as const,    label: '全部' },
-  { value: 'ai' as const,     label: '🤖 AI生成' },
-  { value: 'custom' as const, label: '✏️ 自定义' },
-]
-
-// 往期内容学习状态筛选
-const pastLearnFilter = ref<'all' | 'learned' | 'unlearned'>('all')
-const pastLearnFilters = [
-  { value: 'all' as const,       label: '全部' },
-  { value: 'learned' as const,   label: '✅ 已学' },
-  { value: 'unlearned' as const, label: '📖 未学' },
-]
-
-// 综合筛选：日期 + 来源类型 + 学习状态，全部客户端完成
-const filteredPastContents = computed(() => {
-  let list = pastContents.value
-  if (filterStartDate.value) list = list.filter(i => (i.content_date || '') >= filterStartDate.value)
-  if (filterEndDate.value)   list = list.filter(i => (i.content_date || '') <= filterEndDate.value)
-  if (pastTypeFilter.value === 'ai')     list = list.filter(i => i.creator_type !== 1)
-  if (pastTypeFilter.value === 'custom') list = list.filter(i => i.creator_type === 1)
-  if (pastLearnFilter.value === 'learned')   list = list.filter(i => learnedIds.value.includes(i.id))
-  if (pastLearnFilter.value === 'unlearned') list = list.filter(i => !learnedIds.value.includes(i.id))
-  return list
-})
-
-// 来源类型数量（基于日期+学习状态过滤后的结果）
-const pastTypeCounts = computed(() => {
-  let base = pastContents.value
-  if (filterStartDate.value) base = base.filter(i => (i.content_date || '') >= filterStartDate.value)
-  if (filterEndDate.value)   base = base.filter(i => (i.content_date || '') <= filterEndDate.value)
-  if (pastLearnFilter.value === 'learned')   base = base.filter(i => learnedIds.value.includes(i.id))
-  if (pastLearnFilter.value === 'unlearned') base = base.filter(i => !learnedIds.value.includes(i.id))
-  return {
-    all:    base.length,
-    ai:     base.filter(i => i.creator_type !== 1).length,
-    custom: base.filter(i => i.creator_type === 1).length,
-  }
-})
-
-// 学习状态数量（基于日期+来源类型过滤后的结果）
-const pastLearnCounts = computed(() => {
-  let base = pastContents.value
-  if (filterStartDate.value) base = base.filter(i => (i.content_date || '') >= filterStartDate.value)
-  if (filterEndDate.value)   base = base.filter(i => (i.content_date || '') <= filterEndDate.value)
-  if (pastTypeFilter.value === 'ai')     base = base.filter(i => i.creator_type !== 1)
-  if (pastTypeFilter.value === 'custom') base = base.filter(i => i.creator_type === 1)
-  return {
-    all:       base.length,
-    learned:   base.filter(i => learnedIds.value.includes(i.id)).length,
-    unlearned: base.filter(i => !learnedIds.value.includes(i.id)).length,
-  }
-})
-
 onLoad(() => {
-  // 从 storage 读取外部传入的 tab 参数（如从首页跳转）
+  // 从 storage 读取外部传入的 tab 参数（如从首页跳转带过来的偏好）
   const savedTab = storage.get('learning_active_tab')
-  if (savedTab && ['ai', 'custom', 'past'].includes(savedTab)) {
-    activeTab.value = savedTab as typeof activeTab.value
+  if (savedTab && ['ai', 'custom', 'book'].includes(savedTab)) {
+    activeTab.value = savedTab as TabKey
   }
   storage.remove('learning_active_tab')
 })
 
-const themeLabels: Record<string, string> = {
-  ai_tech: 'AI科技', product_tech: '产品技术', business: '财经商业',
-  daily_news: '日常新闻', self_growth: '个人成长', all_random: '随机',
-  custom: '自定义',
-}
-const totalCount = computed(() => contents.value.length)
-
-function switchTab(tab: typeof activeTab.value) {
+function switchTab(tab: TabKey) {
   activeTab.value = tab
-  if (tab === 'past' && pastContents.value.length === 0) {
-    loadAllPastContents()
-  }
+  // 首次进入某个 tab 才拉数据，避免每次切换重复请求
   if (tab === 'custom' && customContents.value.length === 0) {
+    console.debug('[Library] 首次进入自定义 tab，加载列表')
     loadCustomContents()
   }
+  // book tab 数据在 loadData 里已经拉过（一次请求已完成，不需要再拉）
 }
 
 async function loadData() {
   loading.value = true
   const userId = auth.currentUserId
   const safe = (p: Promise<any>) => p.catch(() => null)
-  // 书籍列表也并行拉取，无授权用户拿空数组，不影响 loading 时序
+
+  // 并行拉今日 AI 内容 / 生成次数 / 已学 ID / 授权书籍
+  // 书籍列表也放这里预取：即使当前 tab 不是 book，切过去时也不用等
   const [contentRes, limitRes, learnedRes, bookRes] = await Promise.all([
     safe(dailyApi.getTodayList(userId)),
     safe(generationLimitApi.getLimit(userId)),
     safe(dailyApi.getLearnedIds(userId)),
     safe(bookApi.listMine(userId)),
   ])
+
   if (contentRes?.data) contents.value = contentRes.data.contents || []
   if (learnedRes?.data) learnedIds.value = learnedRes.data.content_ids || []
   if (limitRes?.data) remainingCount.value = limitRes.data.remaining_count ?? 3
   if (bookRes?.data) myBooks.value = bookRes.data.books || []
-  loading.value = false
-}
 
-function goBookList() {
-  // 只有一本书时直接跳到章节页，多本才跳列表页
-  if (myBooks.value.length === 1) {
-    const b = myBooks.value[0]
-    const name = encodeURIComponent(b.name_cn || b.name)
-    navTo(`/pages/book/chapters?series_id=${b.series_id}&name=${name}`)
-    return
-  }
-  navTo('/pages/book/list')
+  loading.value = false
 }
 
 async function loadCustomContents() {
@@ -390,11 +262,14 @@ async function loadCustomContents() {
   try {
     const { data } = await dailyApi.getCustomContents(userId)
     customContents.value = data?.contents || []
-  } catch { customContents.value = [] }
+  } catch {
+    console.debug('[Library] 自定义内容加载失败，置空')
+    customContents.value = []
+  }
 }
 
 function onCustomCreated() {
-  // 创建成功后切到自定义 Tab 并刷新列表
+  // 创建成功后切到自定义 tab 并刷新列表
   activeTab.value = 'custom'
   loadCustomContents()
 }
@@ -402,6 +277,7 @@ function onCustomCreated() {
 async function regenerateCustom(contentId: number) {
   if (regeneratingIds.value.includes(contentId)) {
     // 防止重复点击：同一条正在重新生成时忽略
+    console.debug('[Library] 该内容正在重生成，忽略重复点击 content_id=%s', contentId)
     return
   }
   const userId = auth.currentUserId
@@ -409,12 +285,12 @@ async function regenerateCustom(contentId: number) {
   uni.showLoading({ title: '重新生成中...', mask: true })
   try {
     await dailyApi.regenerateCustomContent(contentId, userId)
-    // 成功后重新拉列表以显示最新译文和词组
     await loadCustomContents()
     uni.hideLoading()
     uni.showToast({ title: '重新生成成功', icon: 'success' })
   } catch (e: any) {
     // AI 仍然失败时后端返回 503，其它是网络/服务异常
+    console.debug('[Library] 重生成失败 content_id=%s err=%o', contentId, e)
     uni.hideLoading()
     const detail = e?.data?.detail || e?.errMsg || '重新生成失败'
     uni.showToast({ title: detail, icon: 'none', duration: 2500 })
@@ -435,86 +311,19 @@ async function deleteCustomContent(contentId: number) {
           customContents.value = customContents.value.filter(c => c.id !== contentId)
           uni.showToast({ title: '已删除', icon: 'success' })
         } catch {
+          console.debug('[Library] 自定义内容删除失败 content_id=%s', contentId)
           uni.showToast({ title: '删除失败', icon: 'none' })
         }
+      } else {
+        console.debug('[Library] 用户取消删除 content_id=%s', contentId)
       }
     },
   })
 }
 
-async function loadAllPastContents() {
-  const userId = auth.currentUserId
-  try {
-    // 并行拉取 AI 内容（getList）和用户自定义内容（getCustomContents）
-    const [listRes, customRes] = await Promise.all([
-      dailyApi.getList(300).catch(() => null),
-      dailyApi.getCustomContents(userId).catch(() => null),
-    ])
-    const aiItems: LearningContent[] = (listRes?.data || []).filter((i: LearningContent) => i.creator_type !== 1)
-    const customItems: LearningContent[] = customRes?.data?.contents || []
-    // 合并去重（自定义优先，AI 内容不重复加入）
-    const customIds = new Set(customItems.map(i => i.id))
-    const merged = [...customItems, ...aiItems.filter(i => !customIds.has(i.id))]
-    // 按日期降序排列
-    merged.sort((a, b) => (b.content_date || '').localeCompare(a.content_date || ''))
-    pastContents.value = merged
-  } catch { pastContents.value = [] }
-}
-
-// 快捷筛选：今天（纯客户端，只更新日期 ref，computed 自动过滤）
-function filterToday() {
-  const today = new Date().toISOString().split('T')[0]
-  filterStartDate.value = today
-  filterEndDate.value = today
-  showDateRange.value = false
-}
-
-// 快捷筛选：本周
-function filterThisWeek() {
-  const now = new Date()
-  const dayOfWeek = now.getDay() || 7
-  const monday = new Date(now)
-  monday.setDate(now.getDate() - dayOfWeek + 1)
-  filterStartDate.value = monday.toISOString().split('T')[0]
-  filterEndDate.value = now.toISOString().split('T')[0]
-  showDateRange.value = false
-}
-
-// 快捷筛选：本月
-function filterThisMonth() {
-  const now = new Date()
-  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
-  filterStartDate.value = firstDay.toISOString().split('T')[0]
-  filterEndDate.value = now.toISOString().split('T')[0]
-  showDateRange.value = false
-}
-
-// 清除筛选
-function clearFilter() {
-  filterStartDate.value = ''
-  filterEndDate.value = ''
-  showDateRange.value = false
-}
-
-// 打开日期选择器
-function openDatePicker(type: 'start' | 'end') {
-  datePickerType.value = type
-  showDatePicker.value = true
-}
-
-// 日期选择确认（纯客户端，只更新 ref，computed 自动重算）
-function onDateConfirm(e: any) {
-  const date = e.detail.value
-  if (datePickerType.value === 'start') {
-    filterStartDate.value = date
-  } else {
-    filterEndDate.value = date
-  }
-  showDatePicker.value = false
-}
-
 async function handleGenerate() {
   if (remainingCount.value <= 0) {
+    console.debug('[Library] 今日生成次数已用完，拦截')
     uni.showToast({ title: '今日生成次数已用完', icon: 'none' })
     return
   }
@@ -523,12 +332,14 @@ async function handleGenerate() {
     const res: any = await dailyApi.generate(auth.currentUserId)
     if (res.statusCode && res.statusCode >= 400) {
       const msg = res.data?.detail || res.data?.message || `请求失败 (${res.statusCode})`
+      console.debug('[Library] AI 生成返回错误 status=%s msg=%s', res.statusCode, msg)
       uni.showToast({ title: msg, icon: 'none' })
       generating.value = false
       return
     }
     await loadData()
   } catch (e: any) {
+    console.debug('[Library] AI 生成异常 err=%o', e)
     const msg = e?.errMsg || e?.message || '网络异常'
     uni.showToast({ title: msg, icon: 'none' })
   }
@@ -537,279 +348,295 @@ async function handleGenerate() {
 
 function goDetail(id: number) { navTo(`/pages/detail/index?id=${id}`) }
 
+function goBook(book: MyBook) {
+  // 「加入在读」= 直接跳该书章节页开始阅读
+  // 只要读过任意章节，该书就会在「在读」页出现
+  const name = encodeURIComponent(book.name_cn || book.name)
+  navTo(`/pages/book/chapters?series_id=${book.series_id}&name=${name}`)
+}
+
 onShow(loadData)
 </script>
 
 <style scoped>
-/* 分类标签栏 */
-.underline-tabs {
-  display: flex;
-  border-bottom: 2rpx solid var(--outline-variant);
-  margin-bottom: 20rpx;
+/* 图书馆页整体：浅色底 + 上下留白 */
+.library-page {
+  padding-bottom: 40rpx;
 }
-.underline-tab {
-  flex: 1;
-  text-align: center;
-  padding: 20rpx 0;
+
+/* ---- 顶部通栏 ---- */
+.lib-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(env(safe-area-inset-top, 44px) + 16rpx) 32rpx 24rpx;
+  background: var(--primary, #5B9AA8);
+  margin: 0 -20rpx 0;
+}
+.lib-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.5rpx;
+}
+
+/* ---- 二级 tab 横向滑动（极简细线） ---- */
+.lib-tabs {
+  background: #fff;
+  white-space: nowrap;
+  margin: 0 -20rpx 32rpx;
+}
+.lib-tabs-inner {
+  display: inline-flex;
+  padding: 0 20rpx;
+  gap: 8rpx;
+}
+.lib-tab {
+  flex-shrink: 0;
+  padding: 20rpx 24rpx;
   font-size: 28rpx;
-  color: var(--on-surface-variant);
+  font-weight: 500;
+  color: #b0b8c0;
   position: relative;
   transition: color 0.2s;
 }
-.underline-tab.active {
+.lib-tab.active {
   color: var(--primary);
   font-weight: 700;
 }
-.underline-tab.active::after {
+.lib-tab.active::after {
   content: '';
   position: absolute;
   bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60%;
-  height: 6rpx;
-  border-radius: 3rpx;
+  left: 28rpx;
+  right: 28rpx;
+  height: 3rpx;
+  border-radius: 2rpx;
   background: var(--primary);
 }
 
-/* 生成按钮 */
-.gen-action { padding: 16rpx 0; }
+/* ---- 内容分区 ---- */
+.lib-section { padding: 0 4rpx; }
 
-/* 内容列表 */
-.content-list { padding: 8rpx 0; }
-.list-card {
-  background: #fff;
-  border-radius: 20rpx;
-  padding: 28rpx;
-  margin-bottom: 16rpx;
-  box-shadow: var(--shadow-sm);
+/* ---- 操作提示行（换一批 / 新建文稿） ---- */
+.lib-section-hint-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 8rpx 20rpx;
 }
-.list-card:active { opacity: 0.85; }
-.list-card-header {
+.lib-refresh-btn {
+  font-size: 24rpx;
+  color: var(--primary);
+  font-weight: 600;
+}
+.lib-refresh-btn.disabled {
+  color: #c0c8d0;
+  pointer-events: none;
+}
+
+/* ---- 列表 ---- */
+.lib-list {
+  display: flex;
+  flex-direction: column;
+  gap: 28rpx;
+}
+
+/* ---- 卡片：白底 + 阴影 ---- */
+.lib-card {
+  background: #ffffff;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
+  border-radius: 24rpx;
+  padding: 32rpx;
+  transition: transform 0.15s;
+}
+.lib-card:active {
+  transform: scale(0.98);
+}
+.lib-card-body { display: flex; flex-direction: column; gap: 14rpx; }
+.lib-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12rpx;
 }
-.list-card-actions { display: flex; align-items: center; gap: 16rpx; }
-.list-card-status { font-size: 22rpx; }
-.list-card-status.done { color: var(--success); font-weight: 600; }
-.list-card-status.todo { color: var(--on-surface-muted); }
-.delete-btn { font-size: 28rpx; padding: 8rpx; }
-.list-card-title {
-  font-size: 30rpx;
+.lib-card-date {
+  font-size: 22rpx;
+  color: var(--on-surface-variant);
+}
+.lib-card-title {
+  font-size: 32rpx;
   font-weight: 700;
-  line-height: 1.4;
+  line-height: 1.35;
+  color: var(--on-surface);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  margin-bottom: 8rpx;
 }
-.list-card-desc {
+.lib-card-desc {
   font-size: 26rpx;
   color: var(--on-surface-variant);
-  line-height: 1.5;
+  line-height: 1.55;
   display: -webkit-box;
-  -webkit-line-clamp: 1;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+.lib-card-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 24rpx;
+  padding-top: 8rpx;
+}
 
-/* 空状态 */
-.empty-state { padding: 60rpx 0; text-align: center; }
-.empty-state .icon { font-size: 64rpx; display: block; margin-bottom: 16rpx; }
-.empty-text { font-size: 28rpx; color: var(--on-surface-variant); display: block; }
-.empty-hint { font-size: 24rpx; color: var(--on-surface-muted); display: block; margin-top: 8rpx; }
+/* ---- 按钮极简化：纯文字链接 ---- */
+.lib-card-action {
+  font-size: 26rpx;
+  color: var(--primary);
+  font-weight: 600;
+}
+.lib-card-action.disabled {
+  color: #c0c8d0;
+  pointer-events: none;
+}
+.lib-card-action-secondary {
+  font-size: 24rpx;
+  color: #b0b8c0;
+  font-weight: 500;
+}
 
-/* 底部按钮 */
-.bottom-action { padding: 16rpx 0 32rpx; }
+/* ---- 失败行 ---- */
+.lib-card-fail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding-top: 12rpx;
+  border-top: 1rpx dashed #e4eff2;
+}
+.lib-card-fail-hint {
+  font-size: 22rpx;
+  color: var(--error);
+  flex: 1;
+}
 
-/* 标签 */
+/* ---- 自定义"新建"大卡片（空态用） ---- */
+.lib-new-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16rpx;
+  padding: 80rpx 40rpx;
+  background: #f6fbfc;
+  border: 2rpx dashed #c8e0e6;
+  border-radius: 24rpx;
+  margin-top: 40rpx;
+}
+.lib-new-card:active { transform: scale(0.98); }
+.lib-new-plus {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  border: 2rpx solid var(--primary);
+  color: var(--primary);
+  font-size: 48rpx;
+  line-height: 80rpx;
+  text-align: center;
+  font-weight: 400;
+  background: transparent;
+}
+.lib-new-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--primary);
+}
+.lib-new-hint {
+  font-size: 24rpx;
+  color: var(--on-surface-variant);
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* ---- 空态操作文字 ---- */
+.empty-action {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--primary);
+  margin-top: 12rpx;
+}
+.empty-action.disabled {
+  color: #c0c8d0;
+  pointer-events: none;
+}
+
+/* ---- 精选书籍卡 ---- */
+.lib-book-card {
+  display: flex;
+  gap: 24rpx;
+  padding: 28rpx;
+  background: #ffffff;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
+  border-radius: 24rpx;
+  transition: transform 0.15s;
+}
+.lib-book-card:active {
+  transform: scale(0.98);
+}
+.lib-book-cover {
+  width: 120rpx;
+  height: 160rpx;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lib-book-cover svg {
+  width: 100%;
+  height: 100%;
+}
+.lib-book-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  justify-content: space-between;
+}
+.lib-book-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: var(--on-surface);
+  line-height: 1.35;
+}
+.lib-book-en {
+  font-size: 22rpx;
+  color: var(--on-surface-muted);
+  font-style: italic;
+}
+.lib-book-desc {
+  font-size: 24rpx;
+  color: var(--on-surface-variant);
+}
+.lib-book-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 12rpx;
+}
+.lib-book-more-hint {
+  display: block;
+  text-align: center;
+  font-size: 24rpx;
+  color: #b0b8c0;
+  padding: 32rpx 0 8rpx;
+}
+
+/* ---- 标签 ---- */
 .tag {
   font-size: 20rpx;
   padding: 4rpx 16rpx;
   border-radius: 20rpx;
   font-weight: 600;
 }
-.tag-success { background: var(--success-container); color: var(--success); }
+.tag-ai { background: var(--primary-container); color: var(--on-primary-container); }
 .tag-warning { background: #FFF3E0; color: #E65100; }
 .tag-error { background: #FFEBEE; color: #C62828; }
-
-/* 重新生成入口：仅在自定义内容生成失败时出现 */
-.regenerate-row {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  margin-top: 16rpx;
-  padding-top: 16rpx;
-  border-top: 1rpx dashed var(--outline-variant);
-}
-.regenerate-hint {
-  flex: 1;
-  font-size: 22rpx;
-  color: #C62828;
-}
-.btn-regenerate {
-  font-size: 22rpx;
-  padding: 8rpx 20rpx;
-  background: var(--primary-container);
-  color: var(--primary);
-  border-radius: 24rpx;
-  border: none;
-  line-height: 1.4;
-}
-.btn-regenerate[disabled] {
-  opacity: 0.6;
-}
-
-/* 日期筛选区域 */
-.filter-section {
-  padding: 16rpx 0;
-  margin-bottom: 16rpx;
-  border-bottom: 1rpx solid var(--outline-variant);
-}
-.filter-quick-btns {
-  display: flex;
-  gap: 16rpx;
-  margin-bottom: 16rpx;
-}
-.filter-btn {
-  flex: 1;
-  text-align: center;
-  padding: 12rpx 0;
-  font-size: 24rpx;
-  color: var(--on-surface-variant);
-  background: var(--surface-container);
-  border-radius: 8rpx;
-  transition: all 0.2s;
-}
-.filter-btn.active {
-  color: var(--primary);
-  background: var(--primary-container);
-  font-weight: 600;
-}
-.filter-date-row {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-.filter-date-item {
-  flex: 1;
-  padding: 12rpx 16rpx;
-  background: var(--surface-container);
-  border-radius: 8rpx;
-  text-align: center;
-}
-.filter-date-label {
-  font-size: 20rpx;
-  color: var(--on-surface-muted);
-  display: block;
-  margin-bottom: 4rpx;
-}
-.filter-date-value {
-  font-size: 24rpx;
-  color: var(--on-surface);
-}
-.filter-date-separator {
-  color: var(--on-surface-muted);
-  font-size: 28rpx;
-}
-.filter-clear-btn {
-  width: 48rpx;
-  height: 48rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--error-container);
-  border-radius: 50%;
-  color: var(--error);
-  font-size: 24rpx;
-}
-.filter-result-info {
-  margin-top: 12rpx;
-  text-align: center;
-}
-.filter-result-text {
-  font-size: 22rpx;
-  color: var(--on-surface-muted);
-}
-.list-card-date {
-  font-size: 22rpx;
-  color: var(--on-surface-muted);
-  margin-top: 8rpx;
-}
-
-/* 来源类型筛选 chips */
-.type-filter-bar {
-  display: flex;
-  gap: 16rpx;
-  padding: 16rpx 0 20rpx;
-}
-.type-chip {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  padding: 10rpx 24rpx;
-  border-radius: 40rpx;
-  border: 2rpx solid var(--outline-variant);
-  background: transparent;
-  font-size: 24rpx;
-  color: var(--on-surface-variant);
-}
-.type-chip.active {
-  background: var(--primary-container);
-  border-color: var(--primary);
-  color: var(--primary);
-  font-weight: 600;
-}
-.type-chip-count {
-  font-size: 20rpx;
-  opacity: 0.7;
-}
-.filter-btn-range {
-  flex: 1.6;
-  font-size: 22rpx;
-  overflow: hidden;
-  white-space: nowrap;
-}
-.tag-ai { background: #E3F2FD; color: #1565C0; }
-
-/* 书籍精读入口卡片：只对授权用户显示，样式区别于其它卡片以突出稀缺权益 */
-.book-entry {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  padding: 24rpx;
-  margin: 8rpx 0 20rpx;
-  background: linear-gradient(135deg, #F0F9FF 0%, #E1F0F7 100%);
-  border-radius: 20rpx;
-  border: 2rpx solid #B3D9E3;
-}
-.book-entry:active { opacity: 0.85; }
-.book-entry-icon {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 16rpx;
-  background: var(--primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.book-entry-icon text { font-size: 40rpx; }
-.book-entry-info { flex: 1; display: flex; flex-direction: column; gap: 6rpx; }
-.book-entry-title {
-  font-size: 30rpx;
-  font-weight: 700;
-  color: var(--primary);
-}
-.book-entry-subtitle {
-  font-size: 24rpx;
-  color: var(--on-surface-variant);
-}
-.book-entry-arrow {
-  font-size: 40rpx;
-  color: var(--primary);
-}
 </style>

@@ -1,9 +1,8 @@
 <template>
-  <view class="page-container">
-    <view class="nav-bar">
-      <view class="nav-left"></view>
-      <text class="nav-title">我的单词书</text>
-      <view class="nav-right"></view>
+  <view class="page-container dict-page">
+    <!-- 顶部通栏：主题青绿色 + 白色标题 -->
+    <view class="dict-header">
+      <text class="dict-header-title">单词书</text>
     </view>
 
     <view v-if="loading" class="loading">
@@ -11,10 +10,9 @@
     </view>
 
     <template v-else>
-      <!-- 搜索栏：全局，同时支持筛选收藏和查新词 -->
+      <!-- 搜索栏 -->
       <view class="search-bar">
         <view class="search-input-wrap">
-          <text class="search-icon">🔍</text>
           <input
             v-model="searchWord"
             type="text"
@@ -31,28 +29,23 @@
       <!-- 背单词入口 -->
       <view class="vb-entry" @tap="goVocabReview">
         <view class="vb-entry-left">
-          <text class="vb-entry-icon">📖</text>
-          <view>
-            <text class="vb-entry-title">背单词</text>
-            <text class="vb-entry-desc">选义 + 默写，间隔重复记忆</text>
-          </view>
+          <text class="vb-entry-title">背单词</text>
+          <text class="vb-entry-desc">选义 + 默写，间隔重复记忆</text>
         </view>
         <text class="vb-entry-arrow">›</text>
       </view>
 
-      <!-- 查词结果弹出层 -->
-      <view v-if="dictResult" class="card dict-result-card">
-        <view class="dict-header">
-          <text class="dict-word">{{ dictResult.word }}</text>
-          <view class="dict-actions">
-          <view class="btn-icon dict-btn" @tap="playWord(dictResult.word!)"><text>🔊</text></view>
-            <view class="btn-icon dict-btn" :class="{ 'is-active': dictResult.isFavorite }" @tap="toggleDictFavorite">
-              <text>{{ dictResult.isFavorite ? '★' : '☆' }}</text>
-            </view>
+      <!-- 查词结果 -->
+      <view v-if="dictResult" class="dict-result-card">
+        <view class="dict-result-header">
+          <text class="dict-result-word">{{ dictResult.word }}</text>
+          <view class="dict-result-actions">
+            <text class="dict-action-btn" @tap="playWord(dictResult.word!)">🔊</text>
+            <text class="dict-action-btn" :class="{ favorited: dictResult.isFavorite }" @tap="toggleDictFavorite">{{ dictResult.isFavorite ? '★' : '☆' }}</text>
           </view>
         </view>
-        <text v-if="dictResult.phonetic" class="dict-phonetic">{{ dictResult.phonetic }}</text>
-        <text class="dict-meaning">{{ dictResult.meaning }}</text>
+        <text v-if="dictResult.phonetic" class="dict-result-phonetic">{{ dictResult.phonetic }}</text>
+        <text class="dict-result-meaning">{{ dictResult.meaning }}</text>
       </view>
 
       <!-- 单词列表 -->
@@ -60,20 +53,15 @@
         <view
           v-for="fav in filteredFavorites"
           :key="fav.id"
-          class="card word-item"
+          class="word-item"
+          @tap="playWord(fav.word)"
         >
-          <view class="word-main">
-            <view class="word-info" @tap="playWord(fav.word)">
-              <text class="word-text">{{ fav.word }}</text>
-              <text v-if="fav.phonetic" class="word-phonetic">{{ fav.phonetic }}</text>
-              <text class="word-meaning">{{ fav.meaning }}</text>
-            </view>
-            <view class="word-actions">
-              <view class="btn-icon remove-btn" @tap="handleRemove(fav.word)">
-                <text>✕</text>
-              </view>
-            </view>
+          <view class="word-info">
+            <text class="word-text">{{ fav.word }}</text>
+            <text v-if="fav.phonetic" class="word-phonetic">{{ fav.phonetic }}</text>
+            <text class="word-meaning">{{ fav.meaning }}</text>
           </view>
+          <text class="word-remove" @tap.stop="handleRemove(fav.word)">✕</text>
         </view>
       </view>
 
@@ -81,10 +69,7 @@
       <view v-else-if="!dictResult" class="empty-state">
         <text class="icon">📚</text>
         <text class="empty-text">{{ searchWord ? '没有匹配的单词' : '还没有收藏单词哦' }}</text>
-        <text class="empty-hint">{{ searchWord ? '换个关键词试试' : '在学习页面点击单词即可收藏，这里会显示你的专属词书' }}</text>
-        <button v-if="!searchWord" class="btn btn-primary btn-sm" style="margin-top: 32rpx;" @tap="navToDict">
-          <text>去查词</text>
-        </button>
+        <text class="empty-hint">{{ searchWord ? '换个关键词试试' : '在学习页面点击单词即可收藏' }}</text>
       </view>
     </template>
   </view>
@@ -210,12 +195,9 @@ function handleRemove(word: string) {
   })
 }
 
-function navToDict() {
-  searchWord.value = ''
-}
-
 function goVocabReview() {
-  uni.switchTab({ url: '/pages/review/index' })
+  // review 已从 tabBar 移除到普通页栈，用 navigateTo；?tab=vocab 直落背单词分区
+  uni.navigateTo({ url: '/pages/review/index?tab=vocab' })
 }
 
 async function loadFavorites() {
@@ -235,54 +217,95 @@ onShow(loadData)
 </script>
 
 <style scoped>
-.search-bar {
-  padding: 16rpx 0 8rpx;
-}
-.search-input-wrap {
-  display: flex; align-items: center;
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 0 20rpx;
-  border: 3rpx solid var(--outline-variant);
-}
-.search-icon { font-size: 28rpx; margin-right: 12rpx; }
-.search-input {
-  flex: 1; height: 72rpx; font-size: 28rpx; background: transparent; border: none;
-}
-.search-placeholder { color: var(--on-surface-muted); }
-.search-clear { font-size: 28rpx; color: var(--on-surface-muted); padding: 8rpx; }
+.dict-page { padding-bottom: 40rpx; }
 
-.dict-result-card { margin: 16rpx 0; }
+/* 顶部通栏 */
 .dict-header {
-  display: flex; align-items: center; justify-content: space-between; margin-bottom: 12rpx;
+  padding: calc(env(safe-area-inset-top, 44px) + 16rpx) 32rpx 24rpx;
+  background: var(--primary, #5B9AA8);
+  margin: 0 -20rpx 0;
 }
-.dict-word { font-size: 40rpx; font-weight: 700; }
-.dict-actions { display: flex; gap: 16rpx; }
-.dict-btn.is-active { color: #f59e0b; }
-.dict-phonetic { color: var(--on-surface-variant); font-size: 26rpx; display: block; margin-bottom: 8rpx; }
-.dict-meaning { font-size: 30rpx; line-height: 1.6; display: block; }
+.dict-header-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.5rpx;
+}
 
-.word-list { padding: 8rpx 0; }
-.word-item { padding: 24rpx; margin: 8rpx 0; }
-.word-main { display: flex; align-items: center; justify-content: space-between; }
-.word-info { flex: 1; }
-.word-text { font-size: 32rpx; font-weight: 600; display: block; }
-.word-phonetic { font-size: 24rpx; color: var(--on-surface-variant); display: block; margin: 4rpx 0; }
-.word-meaning { font-size: 26rpx; color: var(--on-surface-variant); display: block; }
-.word-actions { display: flex; gap: 12rpx; align-items: center; }
-.remove-btn { font-size: 24rpx; color: var(--on-surface-muted); }
+/* 搜索栏 */
+.search-bar { padding: 24rpx 0 12rpx; }
+.search-input-wrap {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 0 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
+}
+.search-input {
+  flex: 1;
+  height: 72rpx;
+  font-size: 28rpx;
+  background: transparent;
+  border: none;
+}
+.search-placeholder { color: #b0b8c0; }
+.search-clear { font-size: 28rpx; color: #b0b8c0; padding: 8rpx; }
 
-/* 背单词入口 */
+/* 背单词入口：突出显示，区别于普通单词卡片 */
 .vb-entry {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 24rpx 28rpx; margin: 12rpx 0;
-  background: linear-gradient(135deg, var(--primary-container) 0%, #E8F5E9 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx 28rpx;
+  margin: 16rpx 0 28rpx;
+  background: var(--primary, #5B9AA8);
   border-radius: 20rpx;
 }
-.vb-entry:active { opacity: 0.7; }
-.vb-entry-left { display: flex; align-items: center; gap: 20rpx; }
-.vb-entry-icon { font-size: 44rpx; }
-.vb-entry-title { font-size: 30rpx; font-weight: 700; display: block; }
-.vb-entry-desc { font-size: 24rpx; color: var(--on-surface-variant); display: block; margin-top: 4rpx; }
-.vb-entry-arrow { font-size: 36rpx; color: var(--on-surface-muted); }
+.vb-entry:active { transform: scale(0.98); opacity: 0.9; }
+.vb-entry-left { display: flex; flex-direction: column; gap: 6rpx; }
+.vb-entry-title { font-size: 30rpx; font-weight: 700; color: #fff; }
+.vb-entry-desc { font-size: 22rpx; color: rgba(255,255,255,0.7); }
+.vb-entry-arrow { font-size: 32rpx; color: rgba(255,255,255,0.6); }
+
+/* 查词结果 */
+.dict-result-card {
+  margin: 0 0 20rpx;
+  padding: 28rpx;
+  background: #ffffff;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
+  border-radius: 20rpx;
+}
+.dict-result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+.dict-result-word { font-size: 36rpx; font-weight: 700; color: var(--on-surface); }
+.dict-result-actions { display: flex; gap: 20rpx; }
+.dict-action-btn { font-size: 32rpx; color: var(--on-surface-variant); }
+.dict-action-btn.favorited { color: var(--primary); }
+.dict-result-phonetic { color: var(--on-surface-variant); font-size: 24rpx; display: block; margin-bottom: 8rpx; }
+.dict-result-meaning { font-size: 28rpx; line-height: 1.6; display: block; color: var(--on-surface); }
+
+/* 单词列表 */
+.word-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+.word-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 28rpx;
+  background: #ffffff;
+  box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
+  border-radius: 16rpx;
+}
+.word-info { flex: 1; }
+.word-text { font-size: 30rpx; font-weight: 600; display: block; color: var(--on-surface); }
+.word-phonetic { font-size: 22rpx; color: var(--on-surface-variant); display: block; margin: 4rpx 0; }
+.word-meaning { font-size: 24rpx; color: var(--on-surface-variant); display: block; }
+.word-remove { font-size: 24rpx; color: #b0b8c0; padding: 12rpx; flex-shrink: 0; }
 </style>

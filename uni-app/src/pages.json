@@ -11,7 +11,31 @@
     {
       "path": "pages/learning/index",
       "style": {
-        "navigationBarTitleText": "学习",
+        "navigationBarTitleText": "图书馆",
+        "navigationBarBackgroundColor": "#5B9AA8",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/notes/index",
+      "style": {
+        "navigationBarTitleText": "笔记",
+        "navigationBarBackgroundColor": "#5B9AA8",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/reading/index",
+      "style": {
+        "navigationBarTitleText": "在读",
+        "navigationBarBackgroundColor": "#5B9AA8",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/floo/index",
+      "style": {
+        "navigationBarTitleText": "Floo",
         "navigationBarBackgroundColor": "#5B9AA8",
         "navigationBarTextStyle": "white"
       }
@@ -143,29 +167,29 @@
     "backgroundColor": "#ffffff",
     "list": [
       {
-        "pagePath": "pages/home/index",
-        "text": "首页",
-        "iconPath": "static/icons/home.svg",
-        "selectedIconPath": "static/icons/home.svg"
-      },
-      {
         "pagePath": "pages/learning/index",
-        "text": "学习",
+        "text": "图书馆",
         "iconPath": "static/icons/learning.svg",
         "selectedIconPath": "static/icons/learning.svg"
       },
       {
-        "pagePath": "pages/dictionary/index",
-        "text": "单词",
+        "pagePath": "pages/notes/index",
+        "text": "笔记",
         "iconPath": "static/icons/dictionary.svg",
         "selectedIconPath": "static/icons/dictionary.svg"
       },
       {
-        "pagePath": "pages/review/index",
-        "text": "复习",
+        "pagePath": "pages/reading/index",
+        "text": "在读",
         "iconPath": "static/icons/review.svg",
         "selectedIconPath": "static/icons/review.svg"
       },
+      {
+        "pagePath": "pages/floo/index",
+        "text": "Floo",
+        "iconPath": "static/icons/home.svg",
+        "selectedIconPath": "static/icons/home.svg"
+      }
     ]
   }
 }
