@@ -66,9 +66,14 @@
       </view>
 
       <view class="bottom-card">
-        <button class="cta-btn" @tap="handleMainAction">
-          <text class="cta-text">{{ contents.length > 0 ? '继续今日学习' : '开始今日学习' }}</text>
-        </button>
+        <view class="cta-btn-group">
+          <button class="cta-btn cta-btn-main" @tap="goLearning">
+            <text class="cta-text cta-text-primary">开始学习</text>
+          </button>
+          <button class="cta-btn cta-btn-sub" @tap="goReviewLast" :disabled="!lastLearnedId">
+            <text class="cta-text cta-text-muted">复习上次</text>
+          </button>
+        </view>
         <view class="quick-grid" :class="{ expanded: showQuick }">
           <view class="quick-card" @tap="goDictation">
             <view class="quick-icon-wrap" style="background: #FFF3E0;">
@@ -110,28 +115,36 @@ const loading = ref(true)
 const contents = ref<LearningContent[]>([])
 const streakDays = ref(0)
 const showQuick = ref(false)
+const lastLearnedId = ref<number | null>(null)
 
 async function loadData() {
   loading.value = true
   const userId = auth.currentUserId
   const safe = (p: Promise<any>) => p.catch(() => null)
 
-  const [contentRes, calendarRes] = await Promise.all([
+  const [contentRes, calendarRes, learnedRes] = await Promise.all([
     safe(dailyApi.getTodayList(userId)),
     safe(checkinApi.getCalendar(userId, new Date().getFullYear(), new Date().getMonth() + 1)),
+    safe(dailyApi.getLearnedIds(userId)),
   ])
 
   if (contentRes?.data) contents.value = contentRes.data.contents || []
   if (calendarRes?.data) streakDays.value = calendarRes.data.current_streak_days || 0
+  if (learnedRes?.data) {
+    const ids = learnedRes.data.content_ids || []
+    lastLearnedId.value = ids.length > 0 ? ids[0] : null
+  }
 
   loading.value = false
 }
 
-function handleMainAction() {
-  if (contents.value.length > 0) {
-    goDetail(contents.value[0].id)
-  } else {
-    showQuick.value = !showQuick.value
+function goLearning() {
+  uni.switchTab({ url: '/pages/learning/index' })
+}
+
+function goReviewLast() {
+  if (lastLearnedId.value) {
+    navTo(`/pages/detail/index?id=${lastLearnedId.value}`)
   }
 }
 
@@ -253,23 +266,42 @@ onShow(() => {
   box-shadow: 0 2rpx 16rpx rgba(91,154,168,0.1);
 }
 
+.cta-btn-group {
+  display: flex;
+  gap: 16rpx;
+}
 .cta-btn {
-  width: 100%;
   height: 96rpx;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   border: none;
   border-radius: 48rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8rpx 24rpx rgba(91,154,168,0.3);
   transition: transform 0.15s;
 }
 .cta-btn:active { transform: scale(0.97); }
+.cta-btn-main {
+  flex: 2;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  box-shadow: 0 8rpx 24rpx rgba(91,154,168,0.3);
+}
+.cta-btn-sub {
+  flex: 1;
+  background: var(--surface);
+  border: 2rpx solid var(--outline-variant);
+}
+.cta-btn-sub[disabled] {
+  opacity: 0.4;
+}
 .cta-text {
   font-size: 32rpx;
   font-weight: 700;
+}
+.cta-text-primary {
   color: #fff;
+}
+.cta-text-muted {
+  color: var(--on-surface-variant);
 }
 
 .quick-grid {

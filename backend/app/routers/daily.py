@@ -558,6 +558,7 @@ def get_learned_content_ids(user_id: int, db: Session = Depends(get_db)):
     rows = (
         db.query(UserLearnedContent.content_id)
         .filter(UserLearnedContent.user_id == user_id)
+        .order_by(UserLearnedContent.id.desc())
         .all()
     )
     return {"content_ids": [r[0] for r in rows]}
