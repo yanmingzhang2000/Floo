@@ -233,15 +233,13 @@ onShow(() => {
 .cta-btn:disabled { opacity: 0.4; }
 .cta-btn:disabled:active { transform: none; }
 
-/* 主按钮：粗边框突出 */
+/* 主按钮 */
 .cta-btn-main {
-  border: 3rpx solid var(--primary);
   box-shadow: 0 4rpx 16rpx rgba(91,154,168,0.18);
 }
 
-/* 次按钮：细边框低调 */
+/* 次按钮 */
 .cta-btn-sub {
-  border: 2rpx solid var(--outline);
 }
 
 .cta-text {
