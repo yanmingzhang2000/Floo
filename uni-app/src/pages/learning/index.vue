@@ -121,7 +121,6 @@
             v-for="book in myBooks"
             :key="book.series_id"
             class="lib-book-card"
-            @tap="goBook(book)"
           >
             <!-- 封面线稿 SVG 占位 -->
             <view class="lib-book-cover">
@@ -140,7 +139,7 @@
               <text v-if="book.name_cn && book.name !== book.name_cn" class="lib-book-en">{{ book.name }}</text>
               <text class="lib-book-desc">{{ book.total_chapters }} 章</text>
               <view class="lib-book-footer">
-                <text class="lib-card-action" @tap.stop="goBook(book)">加入在读</text>
+                <text class="lib-card-action" @tap="goBook(book)">开始阅读</text>
               </view>
             </view>
           </view>
