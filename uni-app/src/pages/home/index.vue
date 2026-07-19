@@ -60,6 +60,18 @@
         </view>
       </view>
 
+      <!-- 继续阅读卡片：有上次学习记录时展示 -->
+      <view v-if="lastContent" class="resume-card" @tap="goReviewLast">
+        <view class="resume-card-left">
+          <text class="resume-label">继续阅读</text>
+          <text class="resume-title">{{ lastContent.title }}</text>
+          <view class="resume-meta">
+            <text class="resume-tag">{{ THEME_LABEL[lastContent.theme_type] || lastContent.theme_type }}</text>
+          </view>
+        </view>
+        <text class="resume-arrow">→</text>
+      </view>
+
       <view style="height: 40rpx;"></view>
     </scroll-view>
   </view>
@@ -72,6 +84,7 @@ import { dailyApi, checkinApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { navTo } from '@/utils/router'
 import { storage } from '@/utils/storage'
+import type { LearningContent } from '@/types'
 import UserAvatar from '@/components/UserAvatar.vue'
 
 const auth = useAuthStore()
@@ -79,6 +92,22 @@ const loading = ref(true)
 const streakDays = ref(0)
 const showQuick = ref(false)
 const lastLearnedId = ref<number | null>(null)
+const lastContent = ref<LearningContent | null>(null)
+
+// theme_type → 中文标签映射
+const THEME_LABEL: Record<string, string> = {
+  daily_news: '每日新闻',
+  technology: '科技',
+  culture: '文化',
+  business: '商业',
+  science: '科学',
+  sports: '体育',
+  health: '健康',
+  travel: '旅行',
+  food: '美食',
+  all_random: '随机',
+  custom: '自定义',
+}
 
 async function loadData() {
   loading.value = true
@@ -100,6 +129,12 @@ async function loadData() {
     lastLearnedId.value = ids.length > 0 ? ids[0] : null
   }
 
+  // 拉上次学习内容详情，用于「继续阅读」卡片
+  if (lastLearnedId.value) {
+    const contentRes = await safe(dailyApi.getContent(lastLearnedId.value))
+    lastContent.value = contentRes?.data ?? null
+  }
+
   loading.value = false
 }
 
@@ -113,7 +148,6 @@ function goLibrary() {
   uni.switchTab({ url: '/pages/learning/index' })
 }
 
-function goDetail(id: number) { navTo(`/pages/detail/index?id=${id}`) }
 function goCheckin() { navTo('/pages/checkin/index') }
 function goDictation() { uni.navigateTo({ url: '/pages/review/index' }) }
 function goCustom() {
@@ -283,6 +317,58 @@ onShow(() => {
   font-size: 24rpx;
   font-weight: 600;
   color: var(--on-surface);
+}
+
+/* 继续阅读卡片 */
+.resume-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 24rpx 32rpx 0;
+  padding: 28rpx 32rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(91,154,168,0.1);
+  transition: transform 0.15s;
+}
+.resume-card:active { transform: scale(0.98); }
+.resume-card-left {
+  flex: 1;
+  overflow: hidden;
+}
+.resume-label {
+  font-size: 22rpx;
+  color: var(--on-surface-muted);
+  letter-spacing: 1rpx;
+  display: block;
+  margin-bottom: 8rpx;
+}
+.resume-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--on-surface);
+  display: block;
+  /* 超长标题截断 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.resume-meta {
+  margin-top: 10rpx;
+}
+.resume-tag {
+  font-size: 22rpx;
+  color: var(--primary);
+  background: var(--primary-container);
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+  display: inline-block;
+}
+.resume-arrow {
+  font-size: 36rpx;
+  color: var(--primary);
+  margin-left: 24rpx;
+  flex-shrink: 0;
 }
 
 @media (min-width: 768px) {
