@@ -29,15 +29,28 @@
         />
       </view>
 
-      <view class="bottom-card">
-        <view class="cta-btn-group">
-          <button class="cta-btn cta-btn-main" @tap="goLibrary">
-            <text class="cta-text cta-text-primary">开始学习</text>
-          </button>
-          <button class="cta-btn cta-btn-sub" @tap="goReviewLast" :disabled="!lastLearnedId">
-            <text class="cta-text cta-text-muted">复习上次</text>
-          </button>
+      <view class="cta-area">
+        <!-- 主行动：有历史则「继续阅读」为主，否则「开始学习」为主 -->
+        <view v-if="lastContent" class="resume-card-primary" @tap="goReviewLast">
+          <view class="resume-card-left">
+            <text class="resume-label">继续阅读</text>
+            <text class="resume-title">{{ lastContent.title }}</text>
+            <view class="resume-meta">
+              <text class="resume-tag">{{ THEME_LABEL[lastContent.theme_type] || lastContent.theme_type }}</text>
+            </view>
+          </view>
+          <text class="resume-arrow">→</text>
         </view>
+        <button v-else class="cta-btn cta-btn-main" @tap="goLibrary">
+          <text class="cta-text cta-text-primary">开始学习</text>
+        </button>
+
+        <!-- 次级入口：有历史时显示「去图书馆」 -->
+        <view v-if="lastContent" class="secondary-link" @tap="goLibrary">
+          <text class="secondary-link-text">探索图书馆</text>
+        </view>
+
+        <!-- 快捷入口（折叠） -->
         <view class="quick-grid" :class="{ expanded: showQuick }">
           <view class="quick-card" @tap="goDictation">
             <view class="quick-icon-wrap" style="background: #FFF3E0;">
@@ -58,18 +71,6 @@
             <text class="quick-title">打卡</text>
           </view>
         </view>
-      </view>
-
-      <!-- 继续阅读卡片：有上次学习记录时展示 -->
-      <view v-if="lastContent" class="resume-card" @tap="goReviewLast">
-        <view class="resume-card-left">
-          <text class="resume-label">继续阅读</text>
-          <text class="resume-title">{{ lastContent.title }}</text>
-          <view class="resume-meta">
-            <text class="resume-tag">{{ THEME_LABEL[lastContent.theme_type] || lastContent.theme_type }}</text>
-          </view>
-        </view>
-        <text class="resume-arrow">→</text>
       </view>
 
       <view style="height: 40rpx;"></view>
@@ -236,17 +237,77 @@ onShow(() => {
   height: auto;
 }
 
-.bottom-card {
+.cta-area {
   margin: 24rpx 32rpx 0;
 }
 
-/* 两个按钮竖排 */
-.cta-btn-group {
+/* 主行动卡片：继续阅读（有历史时） */
+.resume-card-primary {
   display: flex;
-  flex-direction: column;
-  gap: 16rpx;
+  align-items: center;
+  justify-content: space-between;
+  padding: 36rpx 40rpx;
+  background: var(--primary);
+  border-radius: 28rpx;
+  box-shadow: 0 6rpx 24rpx rgba(91,154,168,0.3);
+  transition: transform 0.15s;
+}
+.resume-card-primary:active { transform: scale(0.98); }
+.resume-card-left {
+  flex: 1;
+  overflow: hidden;
+}
+.resume-label {
+  font-size: 22rpx;
+  color: rgba(255,255,255,0.75);
+  letter-spacing: 1rpx;
+  display: block;
+  margin-bottom: 10rpx;
+}
+.resume-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #fff;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.resume-meta {
+  margin-top: 12rpx;
+}
+.resume-tag {
+  font-size: 22rpx;
+  color: var(--primary);
+  background: rgba(255,255,255,0.9);
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+  display: inline-block;
+  font-weight: 600;
+}
+.resume-arrow {
+  font-size: 40rpx;
+  color: rgba(255,255,255,0.9);
+  margin-left: 24rpx;
+  flex-shrink: 0;
 }
 
+/* 次级入口：探索图书馆 */
+.secondary-link {
+  display: flex;
+  justify-content: center;
+  padding: 28rpx 0 8rpx;
+}
+.secondary-link-text {
+  font-size: 28rpx;
+  color: var(--on-surface-variant);
+  font-weight: 500;
+}
+.secondary-link:active .secondary-link-text {
+  color: var(--primary);
+}
+
+/* 新用户唯一主按钮 */
 .cta-btn {
   width: 100%;
   height: 96rpx;
@@ -258,24 +319,14 @@ onShow(() => {
   transition: transform 0.15s;
 }
 .cta-btn:active { transform: scale(0.97); }
-.cta-btn:disabled { opacity: 0.4; }
-.cta-btn:disabled:active { transform: none; }
-
-/* 主按钮 */
 .cta-btn-main {
   box-shadow: 0 4rpx 16rpx rgba(91,154,168,0.18);
 }
-
-/* 次按钮 */
-.cta-btn-sub {
-}
-
 .cta-text {
   font-size: 32rpx;
   font-weight: 700;
 }
 .cta-text-primary { color: var(--primary); }
-.cta-text-muted   { color: var(--on-surface-variant); }
 
 .quick-grid {
   display: flex;
@@ -319,57 +370,6 @@ onShow(() => {
   color: var(--on-surface);
 }
 
-/* 继续阅读卡片 */
-.resume-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 24rpx 32rpx 0;
-  padding: 28rpx 32rpx;
-  background: #fff;
-  border-radius: 24rpx;
-  box-shadow: 0 2rpx 12rpx rgba(91,154,168,0.1);
-  transition: transform 0.15s;
-}
-.resume-card:active { transform: scale(0.98); }
-.resume-card-left {
-  flex: 1;
-  overflow: hidden;
-}
-.resume-label {
-  font-size: 22rpx;
-  color: var(--on-surface-muted);
-  letter-spacing: 1rpx;
-  display: block;
-  margin-bottom: 8rpx;
-}
-.resume-title {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: var(--on-surface);
-  display: block;
-  /* 超长标题截断 */
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.resume-meta {
-  margin-top: 10rpx;
-}
-.resume-tag {
-  font-size: 22rpx;
-  color: var(--primary);
-  background: var(--primary-container);
-  padding: 4rpx 16rpx;
-  border-radius: 20rpx;
-  display: inline-block;
-}
-.resume-arrow {
-  font-size: 36rpx;
-  color: var(--primary);
-  margin-left: 24rpx;
-  flex-shrink: 0;
-}
 
 @media (min-width: 768px) {
   /* 方案一：桌面端放大标题字号 */
