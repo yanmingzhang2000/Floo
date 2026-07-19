@@ -205,7 +205,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, watch } from 'vue'
+import { ref, computed, reactive, watch, nextTick } from 'vue'
 import { onLoad, onShow, onHide } from '@dcloudio/uni-app'
 import { dailyApi, dictionaryApi, favoritesApi, bookApi } from '@/api'
 import { speakWord, initVoices } from '@/composables/useSpeech'
@@ -461,6 +461,8 @@ function toggleSegmentTranslation(segment: BookSegment) {
     segmentTranslationHidden.delete(segment.segment_id)
     console.debug('[book] toggleSegmentTranslation: 展开 seg=', segment.segment_id)
     ensureSegmentTranslation(segment)
+    // 方案 B：展开译文时保存当前段进度
+    saveReadProgress(currentSegmentIndex.value)
   } else {
     segmentTranslationHidden.add(segment.segment_id)
     console.debug('[book] toggleSegmentTranslation: 收起 seg=', segment.segment_id)
@@ -530,7 +532,55 @@ async function ensureSegmentTranslation(segment: BookSegment) {
   }
 }
 
-/** 段索引变化：加载当前段译文 + 预取下一段。 */
+// ---- 阅读进度持久化（书籍章节分段翻页）----
+const PROGRESS_PREFIX = 'book_progress_'
+const progressRestored = ref(false)
+
+/**
+ * 保存当前段下标到本地存储。
+ * Why 用 content_id 做 key：同一本书不同章节各自独立记录，互不干扰。
+ */
+function saveReadProgress(index: number) {
+  if (!contentId || !isBookChapter.value) return
+  try {
+    uni.setStorageSync(PROGRESS_PREFIX + contentId, index)
+    console.debug('[book] saveReadProgress idx=', index, 'content_id=', contentId)
+  } catch { /* 存储失败静默忽略 */ }
+}
+
+/**
+ * 从本地存储恢复上次读到的段。
+ * 只在 segmentGroups 首次加载完成后调用一次。
+ */
+function restoreReadProgress() {
+  if (!contentId) return
+  try {
+    const saved = uni.getStorageSync(PROGRESS_PREFIX + contentId)
+    if (saved !== '' && saved !== null && saved !== undefined) {
+      const idx = Number(saved)
+      if (!isNaN(idx) && idx > 0 && idx < segmentGroups.value.length) {
+        currentSegmentIndex.value = idx
+        console.debug('[book] restoreReadProgress: 恢复到段 idx=', idx)
+        nextTick(() => scrollToChapterTop())
+      }
+    }
+  } catch { /* 读取失败静默忽略 */ }
+}
+
+// 方案 A：段下标变化时保存进度
+watch(currentSegmentIndex, (idx) => {
+  if (isBookChapter.value) saveReadProgress(idx)
+})
+
+// 恢复：segmentGroups 首次非空时执行一次
+watch(segmentGroups, (groups) => {
+  if (groups.length > 0 && !progressRestored.value) {
+    progressRestored.value = true
+    restoreReadProgress()
+  }
+})
+
+
 watch(
   [currentSegmentIndex, segmentGroups],
   ([idx, groups]) => {
