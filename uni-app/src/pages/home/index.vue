@@ -124,12 +124,14 @@ async function loadData() {
 
   if (calendarRes?.data) streakDays.value = calendarRes.data.current_streak_days || 0
 
-  // 用 opened_ids[0] 作为"上次阅读"，后端已按 opened_at DESC 排序
-  // Why：书籍章节只写 UserOpenedContent，不一定触发 UserLearnedContent（需手动/停留5分钟）
-  // 用 opened_ids 能准确反映用户最近实际阅读的内容
+  // 优先用 opened_ids[0]（最近打开，覆盖书籍章节）；若为空则退回 content_ids[0]（最近标记完成）
+  // Why 双兜底：markOpened 历史上可能失败过导致 opened_ids 为空，content_ids 更稳定
   if (learnedRes?.data) {
     const openedIds: number[] = learnedRes.data.opened_ids || []
-    lastLearnedId.value = openedIds.length > 0 ? openedIds[0] : null
+    const learnedIds: number[] = learnedRes.data.content_ids || []
+    lastLearnedId.value = openedIds.length > 0 ? openedIds[0]
+      : learnedIds.length > 0 ? learnedIds[0]
+      : null
   }
 
   // 拉上次学习内容详情，用于「继续阅读」卡片
