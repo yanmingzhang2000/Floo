@@ -72,12 +72,10 @@ import { dailyApi, checkinApi } from '@/api'
 import { useAuthStore } from '@/stores'
 import { navTo } from '@/utils/router'
 import { storage } from '@/utils/storage'
-import type { LearningContent } from '@/types'
 import UserAvatar from '@/components/UserAvatar.vue'
 
 const auth = useAuthStore()
 const loading = ref(true)
-const contents = ref<LearningContent[]>([])
 const streakDays = ref(0)
 const showQuick = ref(false)
 const lastLearnedId = ref<number | null>(null)
@@ -87,13 +85,13 @@ async function loadData() {
   const userId = auth.currentUserId
   const safe = (p: Promise<any>) => p.catch(() => null)
 
-  const [contentRes, calendarRes, learnedRes] = await Promise.all([
-    safe(dailyApi.getTodayList(userId)),
+  // 首页只需要连续打卡天数和上次学习 ID，不调 today-list
+  // （today-list 有兜底 AI 生成逻辑，会导致首页卡住等 LLM 响应）
+  const [calendarRes, learnedRes] = await Promise.all([
     safe(checkinApi.getCalendar(userId, new Date().getFullYear(), new Date().getMonth() + 1)),
     safe(dailyApi.getLearnedIds(userId)),
   ])
 
-  if (contentRes?.data) contents.value = contentRes.data.contents || []
   if (calendarRes?.data) streakDays.value = calendarRes.data.current_streak_days || 0
 
   // 后端已按 UserLearnedContent.id DESC 排序，content_ids[0] 即最近学习的内容
