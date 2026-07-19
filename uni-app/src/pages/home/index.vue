@@ -284,4 +284,21 @@ onShow(() => {
   font-weight: 600;
   color: var(--on-surface);
 }
+
+@media (min-width: 768px) {
+  /* 方案一：桌面端放大标题字号 */
+  .hero-title-en {
+    font-size: 72rpx;
+  }
+  .hero-title-cn {
+    font-size: 56rpx;
+  }
+  .hero-desc {
+    font-size: 32rpx;
+  }
+  /* 方案三：桌面端加大左右 padding，收窄文字区域减少右侧留白感 */
+  .hero-section {
+    padding: 40rpx 80rpx 0;
+  }
+}
 </style>
