@@ -1033,11 +1033,9 @@ async function regenerateContent() {
 /* ===== 书籍章节：段头 + 段内嵌译文 + 段翻页 ===== */
 .segment-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 16rpx;
-  margin-bottom: 16rpx;
-  flex-wrap: wrap;
+  margin-bottom: 20rpx;
 }
 .segment-label {
   font-size: 24rpx;
@@ -1047,12 +1045,12 @@ async function regenerateContent() {
 .more-wrap {
   display: flex;
   flex-direction: row;
-  gap: 12rpx;
+  gap: 16rpx;
 }
 .more-item {
   flex: 1;
   text-align: center;
-  padding: 10rpx 0;
+  padding: 16rpx 0;
   font-size: 24rpx;
   color: var(--on-surface-variant);
   border: 2rpx solid var(--outline-variant);
