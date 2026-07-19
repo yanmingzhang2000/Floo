@@ -204,10 +204,6 @@ onShow(() => {
 
 .bottom-card {
   margin: 24rpx 32rpx 0;
-  background: #fff;
-  border-radius: 28rpx;
-  padding: 32rpx;
-  box-shadow: 0 2rpx 16rpx rgba(91,154,168,0.1);
 }
 
 /* 两个按钮竖排 */
