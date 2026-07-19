@@ -598,9 +598,13 @@ def get_learned_content_ids(user_id: int, db: Session = Depends(get_db)):
         for r in learned_rows
     ]
 
+    # 按 opened_at DESC 排序，opened_ids[0] 即最近打开的内容
+    # Why：首页「继续阅读」需要的是"最近有交互"的内容，而不是"最近标记完成"的内容
+    # 书籍章节只写 UserOpenedContent，不一定写 UserLearnedContent，所以必须用这个表
     opened_rows = (
         db.query(UserOpenedContent.content_id)
         .filter(UserOpenedContent.user_id == user_id)
+        .order_by(UserOpenedContent.opened_at.desc())
         .all()
     )
     opened_ids = [r[0] for r in opened_rows]
