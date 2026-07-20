@@ -79,6 +79,35 @@ def get_today_ai_contents_by_theme(db: Session, theme: str) -> list[LearningCont
     return contents
 
 
+def deactivate_today_ai_contents_by_theme(db: Session, theme: str) -> int:
+    """
+    将今天指定 theme 的所有 AI 文章软删除（is_active=False）。
+
+    为什么在生成新批次前调用：
+    "换一批"的语义是替换当前批次，不是追加。软删除而非硬删除，
+    是为了保留用户已打开/已学过的历史记录，避免关联数据孤立。
+    """
+    from datetime import datetime
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = datetime.utcnow().replace(hour=23, minute=59, second=59, microsecond=999999)
+    items = (
+        db.query(LearningContent)
+        .filter(
+            LearningContent.creator_type == 0,
+            LearningContent.is_active == True,
+            LearningContent.theme_type == theme,
+            LearningContent.created_at >= today_start,
+            LearningContent.created_at <= today_end,
+        )
+        .all()
+    )
+    for item in items:
+        item.is_active = False
+    count = len(items)
+    log.debug("软删除今日旧文章 theme=%s count=%s，准备写入新批次", theme, count)
+    return count
+
+
 def get_latest_ai_content_by_theme(db: Session, theme: str) -> Optional[LearningContent]:
     """
     获取指定 theme 最新一条 AI 内容。
