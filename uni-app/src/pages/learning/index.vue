@@ -112,10 +112,14 @@
               :key="item.id"
               class="lib-card"
             >
+              <!-- 左侧色条：自定义用紫色 -->
+              <view class="lib-card-accent" :style="{ backgroundColor: getThemeColor('custom') }"></view>
               <view class="lib-card-body">
-                <view class="lib-card-header">
-                  <text class="tag tag-warning">自定义</text>
-                  <text v-if="isGenerationFailed(item)" class="tag tag-error">生成失败</text>
+                <!-- Badge 行：主题标签 + 阅读时长 -->
+                <view class="lib-badge-row">
+                  <view class="lib-badge lib-badge-light">{{ themeLabels['custom'] }}</view>
+                  <view class="lib-badge lib-badge-light">{{ getReadingTime(item.article) }} 分钟</view>
+                  <text v-if="isGenerationFailed(item)" class="tag tag-error" style="margin-left: auto;">生成失败</text>
                 </view>
                 <text class="lib-card-title" @tap="goDetail(item.id)">{{ item.title }}</text>
                 <text class="lib-card-desc" @tap="goDetail(item.id)">{{ (item.article || '').slice(0, 80) }}...</text>
@@ -128,6 +132,7 @@
                   >{{ regeneratingIds.includes(item.id) ? '重生成中...' : '重新生成' }}</text>
                 </view>
                 <view v-else class="lib-card-footer">
+                  <text class="lib-card-date">{{ formatRelativeDate(item.content_date) }}</text>
                   <text class="lib-card-action" @tap.stop="goDetail(item.id)">开始阅读</text>
                   <text class="lib-card-action-secondary" @tap.stop="deleteCustomContent(item.id)">删除</text>
                 </view>
