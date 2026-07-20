@@ -21,17 +21,6 @@
         <text class="pref-group-title">文章设置</text>
         <view class="card pref-card">
           <view class="pref-row">
-            <text class="pref-label">难度等级</text>
-            <picker mode="selector" :range="difficultyLabels" :value="difficultyIdx" @change="e => difficultyIdx = e.detail.value">
-              <view class="pref-value">
-                <text>{{ difficultyLabels[difficultyIdx] }}</text>
-                <text class="pref-arrow">›</text>
-              </view>
-            </picker>
-          </view>
-        </view>
-        <view class="card pref-card">
-          <view class="pref-row">
             <text class="pref-label">阅读主题</text>
             <picker mode="selector" :range="themeLabels" :value="themeIdx" @change="e => themeIdx = e.detail.value">
               <view class="pref-value">
@@ -77,14 +66,11 @@ const auth = useAuthStore()
 const loading = ref(true)
 const saving = ref(false)
 
-const difficulties = ['easy', 'medium', 'hard']
-const difficultyLabels = ['简单', '中等', '困难']
 const themes = ['daily_news', 'ai_tech', 'product_tech', 'business', 'self_growth', 'all_random']
 const themeLabels = ['日常新闻', 'AI科技', '产品技术', '财经商业', '个人成长', '随机主题']
 const goals = [5, 10, 15, 30, 45, 60]
 const goalLabels = ['5分钟', '10分钟', '15分钟', '30分钟', '45分钟', '60分钟']
 
-const difficultyIdx = ref(1)
 const themeIdx = ref(0)
 const goalIdx = ref(2)
 
@@ -96,7 +82,6 @@ async function handleSave() {
   saving.value = true
   try {
     await userApi.updatePreference(auth.currentUserId, {
-      difficulty_level: difficulties[difficultyIdx.value],
       theme_type: themes[themeIdx.value],
       daily_goal_minutes: goals[goalIdx.value],
     })
@@ -110,7 +95,6 @@ onMounted(async () => {
   loading.value = true
   try {
     const { data } = await userApi.getPreference(auth.currentUserId)
-    difficultyIdx.value = difficulties.indexOf(data.difficulty_level)
     themeIdx.value = themes.indexOf(data.theme_type)
     goalIdx.value = goals.indexOf(data.daily_goal_minutes)
   } catch {}

@@ -287,7 +287,6 @@ def _normalize_batch(
             "article": article_text,
             "translation": (news.get("summary_cn") or "").strip() or None,
             "audio_url": (news.get("source_link") or "").strip() or None,
-            "difficulty_level": "medium",
             "theme_type": theme,
             "content_type": "article",
             "words": words,

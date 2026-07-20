@@ -5,7 +5,6 @@
       <h1 v-if="content">{{ content.title }}</h1>
       <div v-if="content" class="header-tags">
         <span class="tag btn-header">{{ content.content_date }}</span>
-        <span class="tag btn-header">{{ content.difficulty_level }}</span>
         <span class="tag btn-header">{{ content.theme_type }}</span>
       </div>
     </div>

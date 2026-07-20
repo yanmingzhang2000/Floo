@@ -40,7 +40,6 @@ def _content_to_out(content, words: list) -> LearningContentOut:
         article=content.content_text,
         translation=content.translation,
         audio_url=content.audio_url,
-        difficulty_level=content.difficulty_level,
         theme_type=content.theme_type,
         words=words,
         creator_type=content.creator_type,
@@ -101,18 +100,12 @@ async def generate_daily(
         actual_theme = random.choice([t for t in THEME_OPTIONS if t != "all_random"])
         log.info("all_random 模式，今日随机选择 theme=%s", actual_theme)
 
-    # 幂等检查：同 theme 今日已有内容（1 总览 + 3 文章 = 4 条）且未强制重新生成则直接返回
-    if not force:
-        existing = content_repo.get_today_ai_contents_by_theme(db, actual_theme)
-        if len(existing) >= 4:
-            ids = [c.content_id for c in existing[:3]]
-            log.info("theme=%s 今日内容已存在，跳过生成 content_ids=%s", actual_theme, ids)
-            return GenerateContentResult(
-                content_id=ids[0],
-                content_ids=ids,
-                count=len(ids),
-                message=f"今日 {actual_theme} 内容已生成",
-            )
+    # 生成前软删除今日旧文章，确保"换一批"是替换而不是追加。
+    # 为什么不再做幂等检查：DailyGenerationLimit 已限制每天最多 3 次，
+    # 用户主动点"换一批"就是要拿新内容，返回旧批次违背操作语义。
+    deactivated = content_repo.deactivate_today_ai_contents_by_theme(db, actual_theme)
+    if deactivated > 0:
+        log.debug("换一批：软删除旧文章 theme=%s count=%s，准备生成新批次", actual_theme, deactivated)
 
     batch = await generate_daily_news_batch(theme=actual_theme)
     if not batch or not batch[0].get("article"):
@@ -792,11 +785,8 @@ async def create_custom_content(
     log.debug("开始处理自定义内容 user_id=%s text_len=%s", payload.user_id, len(text))
     ai_result = await _process_custom_content(text)
 
-    # 读取用户偏好获取 difficulty_level
-    user = user_repo.get_user(db, payload.user_id)
+    # difficulty 固定写入 medium，不再读取用户偏好
     difficulty = "medium"
-    if user and user.preference:
-        difficulty = user.preference.difficulty_level
 
     # 写入数据库
     # 为 lexicon 条目补全 is_phrase 字段（LLM 通常不返回）

@@ -7,7 +7,6 @@ export interface User {
 }
 
 export interface UserPreference {
-  difficulty_level: string
   theme_type: string
   daily_goal_minutes: number
 }
@@ -27,7 +26,6 @@ export interface LearningContent {
   article: string
   translation?: string
   audio_url?: string
-  difficulty_level: string
   theme_type: string
   words: WordItem[]
   content_type: string

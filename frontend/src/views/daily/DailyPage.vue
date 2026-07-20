@@ -39,7 +39,6 @@
         <div class="card-header">
           <span class="tag tag-primary">{{ currentItem.content_type === 'overview' ? '今日总览' : `文章 ${currentIdx + 1}` }}</span>
           <span v-if="currentItem.creator_type === 1" class="tag tag-warning">自定义</span>
-          <span class="tag tag-success">{{ currentItem.difficulty_level }}</span>
           <button class="read-btn" @click.stop="toggleReading(currentItem.article)" :class="{ active: readState === 'playing' }">
             {{ readState === 'playing' ? '⏸ 暂停' : readState === 'paused' ? '▶ 继续' : '🔊 朗读' }}
           </button>

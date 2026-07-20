@@ -35,7 +35,6 @@
             <div class="content-title">{{ item.title }}</div>
             <div class="content-meta">
               <span>{{ item.content_date }}</span>
-              <span class="tag tag-primary" style="margin-left:8px;font-size:11px">{{ item.difficulty_level }}</span>
               <span v-if="item.words?.length" style="margin-left:8px;font-size:11px;color:var(--primary)">重点词汇 {{ item.words.length }} 个</span>
             </div>
           </div>

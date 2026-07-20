@@ -135,7 +135,6 @@ def update_streak(db: Session, account: UserPointAccount, has_yesterday: bool) -
 def update_preference(
     db: Session,
     user_id: int,
-    difficulty_level: Optional[str] = None,
     theme_type: Optional[str] = None,
     daily_goal_count: Optional[int] = None,
 ) -> Optional[UserLearningPreference]:
@@ -146,8 +145,6 @@ def update_preference(
     if not pref:
         log.debug("user_id=%s 偏好记录不存在", user_id)
         return None
-    if difficulty_level is not None:
-        pref.difficulty_level = difficulty_level
     if theme_type is not None:
         pref.theme_type = theme_type
     if daily_goal_count is not None:

@@ -8,7 +8,7 @@ export const userApi = {
     api.post('/api/user/register', data),
   getPreference: (userId: number) =>
     api.get(`/api/user/${userId}/preference`),
-  updatePreference: (userId: number, data: { difficulty_level?: string; theme_type?: string; daily_goal_minutes?: number }) =>
+  updatePreference: (userId: number, data: { theme_type?: string; daily_goal_minutes?: number }) =>
     api.put(`/api/user/${userId}/preference`, data),
   getPoints: (userId: number) =>
     api.get(`/api/user/${userId}/points`),

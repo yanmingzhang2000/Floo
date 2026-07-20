@@ -83,23 +83,18 @@ def get_preference(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(404, "用户偏好不存在")
     pref = user.preference
     return {
-        "difficulty_level": pref.difficulty_level,
         "theme_type": pref.theme_type,
         "daily_goal_minutes": pref.daily_goal_count,
     }
-
-
-@router.put("/{user_id}/preference")
 def update_preference(
     user_id: int,
     payload: UserPreferenceUpdate,
     db: Session = Depends(get_db),
 ):
-    """更新用户学习偏好（难度、主题、每日目标）。"""
+    """更新用户学习偏好（主题、每日目标）。"""
     pref = user_repo.update_preference(
         db=db,
         user_id=user_id,
-        difficulty_level=payload.difficulty_level,
         theme_type=payload.theme_type,
         daily_goal_count=payload.daily_goal_count,
     )
@@ -108,7 +103,6 @@ def update_preference(
         raise HTTPException(404, "用户偏好不存在")
     db.commit()
     return {
-        "difficulty_level": pref.difficulty_level,
         "theme_type": pref.theme_type,
         "daily_goal_minutes": pref.daily_goal_count,
     }

@@ -40,7 +40,6 @@ class UserPreferenceOut(BaseModel):
     """用户学习偏好输出。"""
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    difficulty_level: str
     theme_type: str
     daily_goal_count: int
 
@@ -54,7 +53,6 @@ class UserPreferenceUpdate(BaseModel):
     """更新学习偏好。"""
     model_config = ConfigDict(populate_by_name=True)
 
-    difficulty_level: Optional[str] = None
     theme_type: Optional[str] = None
     daily_goal_count: Optional[int] = Field(None, alias="daily_goal_minutes")
 
@@ -75,7 +73,6 @@ class LearningContentOut(BaseModel):
     article: str  # 映射 content_text
     translation: Optional[str] = None
     audio_url: Optional[str] = None
-    difficulty_level: str
     theme_type: str
     # key_words 从 JSON 字符串解析后返回
     words: list[dict[str, Any]] = []  # 临时用 dict，后续可拆单独表

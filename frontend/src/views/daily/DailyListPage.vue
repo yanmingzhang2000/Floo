@@ -38,7 +38,6 @@
           <div class="item-title">{{ item.title }}</div>
           <div class="item-meta">
             <span>{{ item.content_date }}</span>
-            <span class="tag tag-primary" style="margin-left:8px">{{ item.difficulty_level }}</span>
             <span
               class="tag"
               :class="item.creator_type === 1 ? 'tag-custom' : 'tag-ai'"

@@ -22,7 +22,6 @@
         <view class="detail-meta">
           <text v-if="!isBookChapter" class="tag tag-primary">{{ content.content_date }}</text>
 
-          <text class="tag tag-success">{{ content.difficulty_level }}</text>
         </view>
         <text class="detail-title">{{ content.title }}</text>
 

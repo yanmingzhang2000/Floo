@@ -41,7 +41,7 @@ export const useAuthStore = defineStore('auth', () => {
       const { data } = await userApi.getPreference(currentUserId.value)
       preference.value = data
     } catch {
-      preference.value = { difficulty_level: 'medium', theme_type: 'daily_news', daily_goal_minutes: 15 }
+      preference.value = { theme_type: 'daily_news', daily_goal_minutes: 15 }
     }
   }
 
@@ -68,7 +68,7 @@ export const usePreferenceStore = defineStore('preference', () => {
       const { data } = await userApi.getPreference(userId)
       preference.value = data
     } catch {
-      preference.value = { difficulty_level: 'medium', theme_type: 'daily_news', daily_goal_minutes: 15 }
+      preference.value = { theme_type: 'daily_news', daily_goal_minutes: 15 }
     } finally {
       loading.value = false
     }

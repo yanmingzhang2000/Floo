@@ -73,7 +73,6 @@ async function handleSave() {
   saving.value = true
   try {
     await prefStore.updatePreference(auth.currentUserId, {
-      difficulty_level: 'medium',
       theme_type: theme.value,
       daily_goal_minutes: dailyGoal.value,
     })
