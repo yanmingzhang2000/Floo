@@ -27,7 +27,7 @@
             <view class="card-rarity-badge" :class="currentRarity">
               <text>{{ rarityText }}</text>
             </view>
-            <text class="card-character-icon">{{ characterEmoji }}</text>
+            <view class="card-character-icon" v-html="characterSvg"></view>
             <text class="card-name">{{ currentCharacter?.name }}</text>
             <text class="card-meaning">{{ currentCharacter?.meaning }}</text>
             <view class="card-divider" :class="currentRarity"></view>
@@ -95,13 +95,17 @@ const rarityText = computed(() => {
   return map[currentRarity.value] || '普通'
 })
 
-const characterEmoji = computed(() => {
+// 按稀有度返回线条风格 SVG 图标，白色描边 + 透明填充，视觉上与各自卡面配色呼应
+const characterSvg = computed(() => {
   const map: Record<string, string> = {
-    legendary: '🌟',
-    rare: '💎',
-    common: '✨',
+    // 皇冠：三个冠尖 + 顶端圆点，象征最高荣誉
+    legendary: `<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 64 L10 36 L24 50 L40 12 L56 50 L70 36 L70 64 Q70 68 66 68 L14 68 Q10 68 10 64 Z" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="40" cy="11" r="3.5" fill="white"/><circle cx="10" cy="36" r="3" fill="white"/><circle cx="70" cy="36" r="3" fill="white"/></svg>`,
+    // 宝石：竖向切割钻石 + 内部棱面线
+    rare: `<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg"><polygon points="40,8 66,32 40,72 14,32" stroke="white" stroke-width="2.5" stroke-linejoin="round"/><line x1="14" y1="32" x2="66" y2="32" stroke="white" stroke-width="1.5" stroke-opacity="0.55"/><line x1="27" y1="20" x2="40" y2="32" stroke="white" stroke-width="1.5" stroke-opacity="0.4"/><line x1="53" y1="20" x2="40" y2="32" stroke="white" stroke-width="1.5" stroke-opacity="0.4"/></svg>`,
+    // 四角星：纤细四尖星，线条简洁优雅
+    common: `<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M40 6 L45 28 L74 40 L45 52 L40 74 L35 52 L6 40 L35 28 Z" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
   }
-  return map[currentRarity.value] || '✨'
+  return map[currentRarity.value] || map['common']
 })
 
 // 品质祝福语
@@ -372,8 +376,12 @@ function handleTap() {
 }
 
 .card-character-icon {
-  font-size: 100rpx;
+  width: 120rpx;
+  height: 120rpx;
   margin-bottom: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .card-name {
