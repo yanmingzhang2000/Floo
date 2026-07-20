@@ -28,8 +28,13 @@ log = logging.getLogger(__name__)
 def has_access(db: Session, user_id: int, series_id: int) -> bool:
     """判断用户是否有权访问指定书籍。
 
-    只需一次 index 查询（idx_book_access_user），O(1)。
+    公开书籍（is_public=True）所有用户直接放行；
+    否则查白名单 UserBookAccess，O(1) index 查询。
     """
+    series = db.query(BookSeries).filter(BookSeries.series_id == series_id).first()
+    if series and series.is_public:  # type: ignore[truthy-function]
+        log.debug("has_access 公开书籍直接放行 series=%s", series_id)
+        return True
     row = (
         db.query(UserBookAccess)
         .filter(
@@ -40,7 +45,7 @@ def has_access(db: Session, user_id: int, series_id: int) -> bool:
         .first()
     )
     if row:
-        log.debug("has_access 命中 user=%s series=%s", user_id, series_id)
+        log.debug("has_access 白名单命中 user=%s series=%s", user_id, series_id)
         return True
     log.debug("has_access 无权限 user=%s series=%s", user_id, series_id)
     return False
@@ -100,21 +105,28 @@ def revoke_access(db: Session, user_id: int, series_id: int) -> bool:
 # =========================================================================
 
 def list_accessible_series(db: Session, user_id: int) -> list[BookSeries]:
-    """列出用户可访问的所有书籍，按授权时间倒序。"""
+    """列出用户可访问的所有书籍。
+
+    公开书籍（is_public=True）所有用户均可见；
+    白名单书籍仅授权用户可见；两者取并集。
+    """
+    from sqlalchemy import exists as sa_exists
     rows = (
-        db.query(BookSeries, UserBookAccess.granted_at)
-        .join(UserBookAccess, UserBookAccess.series_id == BookSeries.series_id)
+        db.query(BookSeries)
         .filter(
-            UserBookAccess.user_id == user_id,
-            UserBookAccess.is_active == True,
             BookSeries.is_active == True,
+            (BookSeries.is_public == True)  # type: ignore[arg-type]
+            | sa_exists().where(
+                (UserBookAccess.series_id == BookSeries.series_id)
+                & (UserBookAccess.user_id == user_id)
+                & (UserBookAccess.is_active == True)
+            ),
         )
-        .order_by(UserBookAccess.granted_at.desc())
+        .order_by(BookSeries.created_at.desc())
         .all()
     )
-    series_list = [row[0] for row in rows]
-    log.debug("list_accessible_series user=%s count=%s", user_id, len(series_list))
-    return series_list
+    log.debug("list_accessible_series user=%s count=%s", user_id, len(rows))
+    return rows
 
 
 def get_series(db: Session, series_id: int) -> Optional[BookSeries]:

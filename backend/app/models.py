@@ -425,6 +425,8 @@ class BookSeries(Base):
     description = Column(Text, nullable=True)
     total_chapters = Column(Integer, default=0, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
+    # 公开书籍无需白名单授权，所有登录用户均可访问
+    is_public = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 

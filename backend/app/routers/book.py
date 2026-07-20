@@ -485,6 +485,27 @@ def admin_lookup_user(username: str, db: Session = Depends(get_db)) -> dict:
     }
 
 
+@router.patch("/admin/series/{series_id}/public", dependencies=[Depends(require_admin)])
+def admin_set_series_public(
+    series_id: int,
+    is_public: bool,
+    db: Session = Depends(get_db),
+) -> dict:
+    """设置书籍是否公开（对所有登录用户可见，无需白名单授权）。
+
+    为什么用 query param 而不是 body：单一布尔值用 query 更简洁，
+    curl 一行搞定，不需要 -d JSON。
+    """
+    series = book_repo.get_series(db, series_id)
+    if not series:
+        log.debug("admin_set_series_public series 不存在 series_id=%s", series_id)
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "series not found")
+    series.is_public = is_public  # type: ignore[assignment]
+    db.commit()
+    log.debug("admin_set_series_public series=%s is_public=%s", series_id, is_public)
+    return {"series_id": series_id, "is_public": is_public}
+
+
 @router.get("/admin/series", dependencies=[Depends(require_admin)])
 def admin_list_all_series(db: Session = Depends(get_db)) -> dict:
     """列出所有已导入的书籍（供 admin 查看/授权时挑）。"""

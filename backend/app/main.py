@@ -91,6 +91,21 @@ def _patch_missing_columns():
             log.info("limit_type 列已补齐")
         else:
             log.debug("daily_generation_limit.limit_type 列已存在，跳过补列")
+
+        # 检查 book_series.is_public 列是否存在
+        result_pub = db.execute(text(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'book_series' AND COLUMN_NAME = 'is_public'"
+        )).scalar()
+        if result_pub == 0:
+            log.info("检测到 book_series 缺少 is_public 列，开始补列")
+            db.execute(text(
+                "ALTER TABLE book_series ADD COLUMN is_public BOOLEAN NOT NULL DEFAULT FALSE"
+            ))
+            db.commit()
+            log.info("book_series.is_public 列已补齐")
+        else:
+            log.debug("book_series.is_public 列已存在，跳过补列")
     except Exception as e:
         db.rollback()
         log.warning("补列检查失败（如果数据库已正常可忽略）: %s", e)
