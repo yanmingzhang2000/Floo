@@ -112,12 +112,12 @@
               :key="item.id"
               class="lib-card"
             >
-              <!-- 左侧色条：自定义用紫色 -->
-              <view class="lib-card-accent" :style="{ backgroundColor: getThemeColor('custom') }"></view>
+              <!-- 左侧色条：按 theme_type 取色 -->
+              <view class="lib-card-accent" :style="{ backgroundColor: getThemeColor(item.theme_type) }"></view>
               <view class="lib-card-body">
                 <!-- Badge 行：主题标签 + 阅读时长 -->
                 <view class="lib-badge-row">
-                  <view class="lib-badge lib-badge-light">{{ themeLabels['custom'] }}</view>
+                  <view class="lib-badge lib-badge-light">{{ themeLabels[item.theme_type] || item.theme_type }}</view>
                   <view class="lib-badge lib-badge-light">{{ getReadingTime(item.article) }} 分钟</view>
                   <text v-if="isGenerationFailed(item)" class="tag tag-error" style="margin-left: auto;">生成失败</text>
                 </view>
