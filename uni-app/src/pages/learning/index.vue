@@ -2,7 +2,10 @@
   <view class="page-container library-page">
     <!-- 顶部通栏 -->
     <view class="lib-header">
-      <text class="lib-title">图书馆</text>
+      <view class="lib-header-text">
+        <text class="lib-title">图书馆</text>
+        <text v-if="activeTab === 'ai' && contents.length > 0" class="lib-subtitle">今日 · {{ contents.length }} 篇 AI 精读</text>
+      </view>
       <UserAvatar />
     </view>
 
@@ -39,29 +42,54 @@
         </view>
         <view v-else class="lib-list">
           <view class="lib-section-hint-row">
-            <text
+            <view
               class="lib-refresh-btn"
               :class="{ disabled: generating || remainingCount <= 0 }"
               @tap="handleGenerate"
-            >{{ remainingCount > 0 ? `换一批 (${remainingCount})` : '今日已用完' }}</text>
+            ><text>{{ remainingCount > 0 ? `换一批 (${remainingCount})` : '今日已用完' }}</text></view>
           </view>
           <view
-            v-for="item in contents"
+            v-for="(item, index) in contents"
             :key="item.id"
-            class="lib-card"
+            :class="index === 0 ? 'lib-card-featured' : 'lib-card'"
             @tap="goDetail(item.id)"
           >
-            <view class="lib-card-body">
-              <view class="lib-card-header">
+            <!-- 精选大卡（第一张） -->
+            <template v-if="index === 0">
+              <view class="lib-featured-tag-row">
                 <text class="tag tag-ai">{{ themeLabels[item.theme_type] || item.theme_type }}</text>
-                <text class="lib-card-date">{{ item.content_date }}</text>
+                <text class="tag tag-featured">精选</text>
               </view>
-              <text class="lib-card-title">{{ item.title }}</text>
-              <text class="lib-card-desc">{{ (item.article || '').slice(0, 80) }}...</text>
-              <view class="lib-card-footer">
-                <text class="lib-card-action" @tap.stop="goDetail(item.id)">开始阅读</text>
+              <text class="lib-featured-title">{{ item.title }}</text>
+              <text class="lib-featured-desc">{{ (item.article || '').slice(0, 100) }}...</text>
+              <view class="lib-featured-footer">
+                <view class="lib-badge-row">
+                  <text class="lib-badge lib-badge-light">{{ getDifficultyLevel(item.theme_type) }}</text>
+                  <text class="lib-badge lib-badge-light">{{ getReadingTime(item.article) }} 分钟</text>
+                  <text class="lib-badge-date">{{ formatRelativeDate(item.content_date) }}</text>
+                </view>
+                <text class="lib-featured-action" @tap.stop="goDetail(item.id)">开始阅读 →</text>
               </view>
-            </view>
+            </template>
+            <!-- 普通卡（第二张起） -->
+            <template v-else>
+              <view class="lib-card-accent" :style="{ background: getThemeColor(item.theme_type) }"></view>
+              <view class="lib-card-body">
+                <view class="lib-card-header">
+                  <text class="tag tag-ai">{{ themeLabels[item.theme_type] || item.theme_type }}</text>
+                  <view class="lib-badge-row">
+                    <text class="lib-badge">{{ getDifficultyLevel(item.theme_type) }}</text>
+                    <text class="lib-badge">{{ getReadingTime(item.article) }} 分钟</text>
+                  </view>
+                </view>
+                <text class="lib-card-title">{{ item.title }}</text>
+                <text class="lib-card-desc">{{ (item.article || '').slice(0, 80) }}...</text>
+                <view class="lib-card-footer">
+                  <text class="lib-card-date">{{ formatRelativeDate(item.content_date) }}</text>
+                  <text class="lib-card-action" @tap.stop="goDetail(item.id)">开始阅读</text>
+                </view>
+              </view>
+            </template>
           </view>
         </view>
       </view>
@@ -76,7 +104,7 @@
         </view>
         <template v-else>
           <view class="lib-section-hint-row">
-            <text class="lib-refresh-btn" @tap="showCustomContent = true">+ 新建文稿</text>
+            <view class="lib-refresh-btn" @tap="showCustomContent = true"><text>+ 新建文稿</text></view>
           </view>
           <view class="lib-list">
             <view
@@ -204,6 +232,55 @@ const themeLabels: Record<string, string> = {
   ai_tech: 'AI科技', product_tech: '产品技术', business: '财经商业',
   daily_news: '日常新闻', self_growth: '个人成长', all_random: '随机',
   custom: '自定义',
+}
+
+// 主题色映射，用于普通卡左侧色条
+const themeColors: Record<string, string> = {
+  ai_tech: '#5B9AA8',
+  product_tech: '#7B6CF6',
+  business: '#F4A261',
+  daily_news: '#52B788',
+  self_growth: '#E07BA0',
+  all_random: '#5B9AA8',
+  custom: '#9C6EDE',
+}
+
+// 难度等级：以主题作为代理（后端暂无此字段）
+const difficultyMap: Record<string, string> = {
+  ai_tech: 'C1', product_tech: 'B2', business: 'B2',
+  daily_news: 'B1', self_growth: 'B1', all_random: 'B2', custom: 'B2',
+}
+
+// 根据主题返回对应的强调色
+function getThemeColor(themeType: string): string {
+  return themeColors[themeType] || '#5B9AA8'
+}
+
+// 根据主题推断难度等级
+function getDifficultyLevel(themeType: string): string {
+  return difficultyMap[themeType] || 'B2'
+}
+
+// 按英语学习者阅读速度（~150词/分钟）估算阅读时长
+function getReadingTime(article: string): number {
+  const wordCount = (article || '').trim().split(/\s+/).length
+  return Math.max(1, Math.ceil(wordCount / 150))
+}
+
+// 将 YYYY-MM-DD 转为用户友好的相对时间描述
+function formatRelativeDate(dateStr: string): string {
+  if (!dateStr) return ''
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const date = new Date(dateStr)
+  date.setHours(0, 0, 0, 0)
+  const diffDays = Math.round((today.getTime() - date.getTime()) / 86400000)
+  if (diffDays === 0) return '今天'
+  if (diffDays === 1) return '昨天'
+  if (diffDays === 2) return '前天'
+  if (diffDays <= 6) return `${diffDays} 天前`
+  if (diffDays <= 13) return '上周'
+  return `${Math.ceil(diffDays / 7)} 周前`
 }
 
 // 判断自定义内容是否生成失败（译文降级或词组为空）
@@ -372,11 +449,21 @@ onShow(loadData)
   background: var(--primary, #5B9AA8);
   margin: 0 -20rpx 0;
 }
+.lib-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
 .lib-title {
   font-size: 36rpx;
   font-weight: 600;
   color: #fff;
   letter-spacing: 0.5rpx;
+}
+.lib-subtitle {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.72);
+  font-weight: 400;
 }
 
 /* ---- 二级 tab 横向滑动（极简细线） ---- */
@@ -423,13 +510,20 @@ onShow(loadData)
   justify-content: flex-end;
   padding: 0 8rpx 20rpx;
 }
+/* pill 按钮：有边框、圆角、浅背景，变成可见的交互组件 */
 .lib-refresh-btn {
   font-size: 24rpx;
   color: var(--primary);
   font-weight: 600;
+  border: 1.5rpx solid var(--primary);
+  border-radius: 40rpx;
+  padding: 8rpx 28rpx;
+  background: rgba(91, 154, 168, 0.06);
 }
 .lib-refresh-btn.disabled {
   color: #c0c8d0;
+  border-color: #c0c8d0;
+  background: transparent;
   pointer-events: none;
 }
 
@@ -440,16 +534,111 @@ onShow(loadData)
   gap: 28rpx;
 }
 
-/* ---- 卡片：白底 + 阴影 ---- */
+/* ---- 精选大卡（第一张，渐变背景） ---- */
+.lib-card-featured {
+  background: linear-gradient(135deg, #3a8fa0 0%, #5B9AA8 60%, #7bb5c0 100%);
+  border-radius: 24rpx;
+  padding: 36rpx;
+  transition: transform 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+.lib-card-featured:active { transform: scale(0.98); }
+.lib-featured-tag-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+/* 精选大卡内的 tag-ai 用半透明白色覆盖 */
+.lib-card-featured .tag-ai {
+  background: rgba(255, 255, 255, 0.20);
+  color: #fff;
+}
+.tag-featured {
+  background: rgba(255, 255, 255, 0.20);
+  color: #fff;
+  border: 1rpx solid rgba(255, 255, 255, 0.50);
+}
+.lib-featured-title {
+  font-size: 36rpx;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.lib-featured-desc {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.80);
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.lib-featured-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4rpx;
+}
+.lib-featured-action {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* ---- 普通卡片：白底 + 阴影 + 左侧色条支撑 ---- */
 .lib-card {
   background: #ffffff;
   box-shadow: 0 2rpx 12rpx rgba(91, 154, 168, 0.10);
   border-radius: 24rpx;
-  padding: 32rpx;
+  padding: 32rpx 32rpx 32rpx 36rpx;
   transition: transform 0.15s;
+  position: relative;
+  overflow: hidden;
 }
 .lib-card:active {
   transform: scale(0.98);
+}
+
+/* ---- 左侧彩色竖条 ---- */
+.lib-card-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6rpx;
+  border-radius: 24rpx 0 0 24rpx;
+}
+
+/* ---- 难度 / 时长 badge ---- */
+.lib-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+.lib-badge {
+  font-size: 20rpx;
+  color: var(--on-surface-variant);
+  background: #EEF7FA;
+  border-radius: 12rpx;
+  padding: 3rpx 12rpx;
+  font-weight: 600;
+}
+/* 精选大卡上的 badge：白色半透明 */
+.lib-badge-light {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+.lib-badge-date {
+  font-size: 20rpx;
+  color: rgba(255, 255, 255, 0.68);
+  font-weight: 400;
+  margin-left: 4rpx;
 }
 .lib-card-body { display: flex; flex-direction: column; gap: 14rpx; }
 .lib-card-header {
