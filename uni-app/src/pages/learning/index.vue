@@ -64,7 +64,7 @@
               <text class="lib-featured-desc">{{ (item.article || '').slice(0, 100) }}...</text>
               <view class="lib-featured-footer">
                 <view class="lib-badge-row">
-                  <text class="lib-badge lib-badge-light">{{ getDifficultyLevel(item.theme_type) }}</text>
+                  <text class="lib-badge lib-badge-light">{{ themeLabels[item.theme_type] || item.theme_type }}</text>
                   <text class="lib-badge lib-badge-light">{{ getReadingTime(item.article) }} 分钟</text>
                   <text class="lib-badge-date">{{ formatRelativeDate(item.content_date) }}</text>
                 </view>
@@ -78,7 +78,7 @@
                 <view class="lib-card-header">
                   <text class="tag tag-ai">{{ themeLabels[item.theme_type] || item.theme_type }}</text>
                   <view class="lib-badge-row">
-                    <text class="lib-badge">{{ getDifficultyLevel(item.theme_type) }}</text>
+                    <text class="lib-badge">{{ themeLabels[item.theme_type] || item.theme_type }}</text>
                     <text class="lib-badge">{{ getReadingTime(item.article) }} 分钟</text>
                   </view>
                 </view>
